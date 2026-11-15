@@ -17,11 +17,14 @@ def main():
   a=re.search(pattern,originals['rcs_route.c'].decode('utf-8-sig'),re.S).group(1)
   b=re.search(pattern,actual['rcs_route.c'].decode('utf-8-sig'),re.S).group(1)
   assert a==b,('legacy geometry changed',label)
+ old070=R.parent/'foxmolika_CubeMX_0.7.0/map_editor/dist/foxmolika_MapEditor.exe'
+ p=subprocess.run([str(old070),'--export',str(fixture/'map.rcsmap.json'),str(area/'old070')],capture_output=True);assert p.returncode==0
+ assert actual=={p.name:p.read_bytes() for p in (area/'old070').iterdir()},'flat6files changed from070'
  assert (fixture/'map.rcsmap.json').read_bytes()==before
  run('--selftest',area/'model');text=(area/'model/selftest.txt').read_text(encoding='utf-8');assert 'PASS 49 ' in text,text
  run('--render-course-angles',area/'course.png');assert (area/'course.png').stat().st_size>10000
  (R/'build/ui').mkdir(exist_ok=True);shutil.copyfile(area/'course.png',R/'build/ui/course_angles.png')
- report={'passed':True,'editor_sha256':sha(exe),'model_checks':49,'same_generated_six_C_H_as_040':False,'legacy_points_segments_preserved':True,'intentional_correction_engine_upgrade':True,
+ report={'passed':True,'editor_sha256':sha(exe),'model_checks':49,'same_generated_six_C_H_as_040':False,'same_generated_six_C_H_as_070':True,'legacy_points_segments_preserved':True,'intentional_correction_engine_upgrade':True,
          'map_unchanged':True,'signed_arc_pixel_oracle':True,'area':str(area)}
  (R/'build/course_validation.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
  print('PASS 49 model/angle checks; signed-arc pixel oracle; legacy point/segment geometry preserved; explicit correction upgrade recorded')

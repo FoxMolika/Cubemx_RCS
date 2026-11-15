@@ -25,7 +25,7 @@ namespace RcsMap {
   }
   public static string RouteRevision(MapDocument doc) {using(var sha=System.Security.Cryptography.SHA256.Create()){return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(doc.Json()))).Replace("-","").ToLowerInvariant();}}
   public static Dictionary<string,string> Generate(MapDocument doc) {
-   TerrainGeometry.RequireFlat(doc);
+   TerrainMotionRules.ValidateExport(doc);
    var errors=doc.Validate();if(errors.Count>0)throw new Exception(String.Join("\r\n",errors.ToArray()));
    var s=doc.Settings;var values=new Dictionary<string,string> {
     {"LAYOUT",s.Layout.ToString(CultureInfo.InvariantCulture)}, {"DIAMETER",F(s.Diameter/1000)},
@@ -83,6 +83,7 @@ namespace RcsMap {
    var files=new Dictionary<string,string>();
    foreach(string name in new[]{"rcs_route.c","rcs_route.h","rcs_actions.c","rcs_actions.h"})files[name]=Render(name+".tpl",values);
    files["rcs_nav.c"]=Exporter.Resource("rcs_nav.c");files["rcs_nav.h"]=Exporter.Resource("rcs_nav.h");
+   AddTerrain(doc,files);
    foreach(string name in files.Keys.ToArray()){
     bool user=false;var wrapped=new StringBuilder();foreach(string raw in files[name].Replace("\r\n","\n").Split('\n')){string line=raw;if(line.StartsWith("/* USER CODE BEGIN"))user=true;if(!user&&!line.StartsWith("/* RCS REGION DEFAULT")){while(line.Length>110){int cut=line.LastIndexOf(',',Math.Min(100,line.Length-1));if(cut<0)break;wrapped.AppendLine(line.Substring(0,cut+1));line="        "+line.Substring(cut+1).TrimStart();}}wrapped.AppendLine(line);if(line.StartsWith("/* USER CODE END"))user=false;}files[name]=wrapped.ToString();GeneratedPolicy.Check(name,files[name]);
    }

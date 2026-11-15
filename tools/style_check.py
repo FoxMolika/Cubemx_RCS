@@ -7,7 +7,7 @@ from pathlib import Path
 import re,sys
 ROOT=Path(__file__).resolve().parents[1]
 CORE=['rcs_chassis.c','rcs_chassis.h','rcs_control.c','rcs_control.h','rcs_hal.c','rcs_hal.h']
-ROUTE=['rcs_nav.c','rcs_nav.h','rcs_route.c','rcs_route.h','rcs_actions.c','rcs_actions.h']
+ROUTE=['rcs_nav.c','rcs_nav.h','rcs_route.c','rcs_route.h','rcs_actions.c','rcs_actions.h','rcs_terrain.c','rcs_terrain.h']
 MAX_LINE=110
 MARKER=re.compile(r'^/\* (?:RCS REGION DEFAULT |RCS GENERATED SHA256 |USER CODE (?:BEGIN|END) )')
 
@@ -114,7 +114,7 @@ def main():
     sys.stdout.reconfigure(encoding='utf-8')
     if len(sys.argv)>1:
         folder=Path(sys.argv[1]);names=CORE+['rcs_config.h'] if (folder/'rcs_chassis.c').exists() else ROUTE
-        files={name:(folder/name).read_text(encoding='utf-8-sig') for name in names}
+        files={name:(folder/name).read_text(encoding='utf-8-sig') for name in names if name not in ['rcs_terrain.c','rcs_terrain.h'] or (folder/name).is_file()}
     else:
         from settings import config_header,DEFAULTS
         files={name:(ROOT/'firmware'/name).read_text(encoding='utf-8-sig') for name in CORE}

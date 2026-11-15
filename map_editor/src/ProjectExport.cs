@@ -32,13 +32,14 @@ namespace RcsMap {
             binding.Preflight();
             Exporter.Export(document, binding.RouteDirectory);
             RevisionGuard.Bind(binding);
+            string format = ProjectBinding.RequiredRouteFiles(binding.RouteDirectory, false).Length == 8 ? "4C4H" : "3C3H";
             try {
                 var projects = binding.Projects();
                 if (projects.Count == 0 || !ProjectBinding.HasChassis(ProjectBinding.ReadXml(projects[0])))
-                    return "已导出路径3C3H到：\r\n" + binding.RouteDirectory +
+                    return "已导出路径" + format + "到：\r\n" + binding.RouteDirectory +
                         "\r\n尚未生成含底盘的Keil工程。重新打开.ioc并Generate Code，生成后工具会自动加入路径文件和包含目录。";
                 foreach (string project in projects) global::KeilHeaders.Fix(project, message => { });
-                return "已导出路径3C3H，并自动加入Keil工程和包含目录：\r\n" + binding.RouteDirectory +
+                return "已导出路径" + format + "，并自动加入Keil工程和包含目录：\r\n" + binding.RouteDirectory +
                     "\r\nKeil已打开时请重新加载工程；CubeMX再次生成会自动补回。任务调用仍写在自己的任务文件中。";
             } catch (Exception error) {
                 throw new IOException("路径文件已导出并保留，但Keil登记尚未完成：" + binding.RouteDirectory +

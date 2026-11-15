@@ -10,6 +10,13 @@ static void fault_stop(void)
     if (saved_chassis_fault == RCS_OK)
         saved_chassis_fault = RCS_Fault();
     rcs_nav_stop(&navigator);
+#ifdef RCS_TERRAIN_ENABLED
+    /* 真实驱动若接受保持请求，则继续周期续期；未接受时仍按原保护锁定。
+     * 不能为驻坡绕过RCS_FAULT；零电流也不代表坡上已静止。
+     */
+    if (rcs_terrain_request_hold(&navigator.terrain))
+        return;
+#endif
     RCS_Lock();
 }
 int RobotRoute_Init(void)
@@ -40,6 +47,13 @@ int RobotRoute_Start(void)
 void RobotRoute_Stop(void)
 {
     rcs_nav_stop(&navigator);
+#ifdef RCS_TERRAIN_ENABLED
+    /* 真实驱动若接受保持请求，则继续周期续期；未接受时仍按原保护锁定。
+     * 不能为驻坡绕过RCS_FAULT；零电流也不代表坡上已静止。
+     */
+    if (rcs_terrain_request_hold(&navigator.terrain))
+        return;
+#endif
     RCS_Lock();
 }
 void RobotRoute_Tick(const int32_t delta[4], uint8_t fresh, float dt)
@@ -54,6 +68,10 @@ void RobotRoute_Tick(const int32_t delta[4], uint8_t fresh, float dt)
         return;
     }
     if (navigator.state != RCS_NAV_RUNNING) {
+#ifdef RCS_TERRAIN_ENABLED
+        if (rcs_terrain_request_hold(&navigator.terrain))
+            return;
+#endif
         RCS_Lock();
         return;
     }

@@ -12,13 +12,13 @@ def main():
  checks=int(re.search(r'PASS (\d+)',(area/'terrain-selftest.txt').read_text()).group(1));assert checks>=95
  drag_checks=int(re.search(r'PASS (\d+)',(area/'drag-selftest.txt').read_text()).group(1));assert drag_checks>=38
  demo=area/'terrain.rcsmap.json';run('--terrain-demo',demo);before=demo.read_bytes()
- # Nonplanar routes are rejected before any output can be written or registered.
+ # Task waypoints on ramps remain unsupported; reject before output mutations.
  destination=area/'owned-export';destination.mkdir();sentinel=destination/'user.txt';sentinel.write_bytes(b'preserve')
  run('--export',demo,destination,expected=2);assert list(destination.iterdir())==[sentinel] and sentinel.read_bytes()==b'preserve'
  assert demo.read_bytes()==before
  for view in range(3):run('--render-terrain',view,ui/('terrain'+str(view)+'.png'))
  run('--render-phases',ui/'phases.png');run('--render-editor',ui/'editor.png');run('--render-terrain-main',ui/'terrain-main.png')
  assert all(p.stat().st_size>12000 for p in ui.glob('*.png'))
- (R/'build/terrain_validation.json').write_text(json.dumps({'passed':True,'editor_sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'checks':checks,'actual_drag_checks':drag_checks,'nonplanar_export_refused_before_mutation':True,'terrain_map_unchanged':True,'actual_WinForms_renderings':6,'area':str(area)},indent=2),encoding='utf-8')
- print('PASS',checks,'terrain/action UI checks; nonplanar C/H export refused without file changes; 6 actual UI renders')
+ (R/'build/terrain_validation.json').write_text(json.dumps({'passed':True,'editor_sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'checks':checks,'actual_drag_checks':drag_checks,'unsupported_ramp_stop_export_refused_before_mutation':True,'terrain_map_unchanged':True,'actual_WinForms_renderings':6,'area':str(area)},indent=2),encoding='utf-8')
+ print('PASS',checks,'terrain/action UI checks; unsupported ramp-stop export refused without file changes; 6 actual UI renders')
 if __name__=='__main__':main()

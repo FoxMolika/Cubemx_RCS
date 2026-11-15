@@ -67,7 +67,7 @@ namespace RcsMap {
     if(s.BindingReady&&!s.Ready)throw new Exception("已绑定的定位源须声明独立反馈、地图坐标对齐及真实读取函数。");
    }
    var actions=new HashSet<string>();foreach(var p in d.Points){var list=Items(p).ToList();if(list.Count>32||list.Any(c=>c==null))throw new Exception("每个航点最多32个纠错模板。");foreach(var c in list)if(!GuidId(c.Id)||!actions.Add(c.Id))throw new Exception("纠错模板ID无效或重复。");}
-   if((Sources(d).Any()||d.Points.Any(p=>Items(p).Any()))&&d.Version!=5)throw new Exception("含硬件/纠错模板的地图必须使用v5，避免旧版忽略配置。");
+   if((Sources(d).Any()||d.Points.Any(p=>Items(p).Any()))&&d.Version!=5&&d.Version!=6)throw new Exception("含硬件/纠错模板的地图必须使用v5，避免旧版忽略配置。");
   }
   public static List<string> Validate(MapDocument d){var e=new List<string>();for(int i=0;i<d.Points.Count;i++)foreach(var c in Items(d.Points[i])){
     var s=Sources(d).FirstOrDefault(x=>x.Id==c.SourceId);string prefix="P"+i+"纠错模板：";if(String.IsNullOrWhiteSpace(c.Name)||c.Name.Length>64)e.Add(prefix+"名称须为1～64字符。");if(c.Kind<0||c.Kind>2||c.Axes!=3&&c.Axes!=4&&c.Axes!=7)e.Add(prefix+"类型/观测轴无效。");
@@ -76,6 +76,6 @@ namespace RcsMap {
     double[] values={c.Timeout,c.MaxAgeMs,c.MinQuality,c.MaxJumpMm,c.MaxJumpDeg,c.Speed,c.MaxWz,c.ToleranceMm,c.ToleranceDeg,c.SettleMs};if(values.Any(v=>!MapDocument.Finite(v))||c.Timeout<=0||c.Timeout>3600||c.MaxAgeMs<1||c.MaxAgeMs>500||c.MinQuality<0||c.MinQuality>1||c.MaxJumpMm<1||c.MaxJumpMm>1000||c.MaxJumpDeg<=0||c.MaxJumpDeg>180||c.Speed<=0||c.Speed>d.Settings.MaxSpeed||c.MaxWz<=0||c.MaxWz>d.Settings.MaxWz||c.ToleranceMm<1||c.ToleranceMm>200||c.ToleranceDeg<=0||c.ToleranceDeg>30||c.SettleMs<1||c.SettleMs>10000)e.Add(prefix+"参数范围无效。");
    }return e;}
   public static List<HardwareSource> ParseProfile(string text){if(text==null||text.Length>65536)throw new Exception("硬件档案最大64KB。");HardwareProfile p;using(var stream=new MemoryStream(Encoding.UTF8.GetBytes(text)))p=(HardwareProfile)new DataContractJsonSerializer(typeof(HardwareProfile),new DataContractJsonSerializerSettings{MaxItemsInObjectGraph=4096}).ReadObject(stream);if(p==null||p.Version!=1||p.Sources==null)throw new Exception("硬件档案版本或Sources缺失。");var d=new MapDocument{Version=5,HardwareSources=p.Sources};Structure(d);return p.Sources;}
-  public static void Import(MapDocument d,string text){var sources=ParseProfile(text);var combined=Sources(d).ToList();foreach(var s in sources){var old=combined.FirstOrDefault(x=>x.Id==s.Id);if(old!=null)throw new Exception("定位源ID已存在，请先移除旧配置或使用新的ID；未覆盖现有绑定。");combined.Add(s);}var copy=d.Clone();copy.HardwareSources=combined;copy.Version=5;Structure(copy);d.HardwareSources=combined;d.Version=5;}
+  public static void Import(MapDocument d,string text){var sources=ParseProfile(text);var combined=Sources(d).ToList();foreach(var s in sources){var old=combined.FirstOrDefault(x=>x.Id==s.Id);if(old!=null)throw new Exception("定位源ID已存在，请先移除旧配置或使用新的ID；未覆盖现有绑定。");combined.Add(s);}var copy=d.Clone();copy.HardwareSources=combined;copy.Version=d.Version==6?6:5;Structure(copy);d.HardwareSources=combined;d.Version=copy.Version;}
  }
 }

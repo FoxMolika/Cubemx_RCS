@@ -109,6 +109,7 @@ namespace RcsMap {
   public Obstacle(){} public Obstacle(double x,double y,double w,double h){X=x;Y=y;Width=w;Height=h;}
  }
  [DataContract] public class MapDocument {
+  [DataMember(EmitDefaultValue=false)] public TerrainDriveSettings TerrainDrive {get;set;}
   [DataMember(EmitDefaultValue=false)] public List<HardwareSource> HardwareSources {get;set;}
   [DataMember(EmitDefaultValue=false)] public TerrainMap Terrain {get;set;}
   [DataMember] public int Version {get;set;}
@@ -140,7 +141,8 @@ namespace RcsMap {
     }d.Version=3;}d.StructuralCheck();return d;}}
   static string LegacyId(string point,string kind){using(var sha=System.Security.Cryptography.SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes((point??"")+":"+kind))).Replace("-","").Substring(0,32).ToLowerInvariant();}
   public MapDocument Clone(){return Parse(Json());}
-  public void StructuralCheck(){if((Version!=3&&Version!=4&&Version!=5)||Settings==null||Points==null||Obstacles==null||Points.Count>512||Obstacles.Count>256||Points.Any(p=>p==null)||Obstacles.Any(o=>o==null))throw new Exception("地图格式/版本不正确，或元素过多。");
+  public void StructuralCheck(){if((Version!=3&&Version!=4&&Version!=5&&Version!=6)||Settings==null||Points==null||Obstacles==null||Points.Count>512||Obstacles.Count>256||Points.Any(p=>p==null)||Obstacles.Any(o=>o==null))throw new Exception("地图格式/版本不正确，或元素过多。");
+   TerrainMotionRules.Structure(this);
    CorrectionRules.Structure(this);
    var terrainErrors=TerrainGeometry.Structure(this);if(terrainErrors.Count>0)throw new Exception(String.Join(" / ",terrainErrors.ToArray()));
    if(ProjectIoc!=null&&(ProjectIoc.Length>2048||ProjectIoc.IndexOf('\0')>=0))throw new Exception("关联工程路径不正确或过长。");

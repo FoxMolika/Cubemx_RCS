@@ -19,6 +19,97 @@ internal sealed class ProjectBinding {
     internal static readonly string[] RouteFiles = {
         "rcs_route.c", "rcs_route.h", "rcs_nav.c", "rcs_nav.h", "rcs_actions.c", "rcs_actions.h"
     };
+    internal static readonly string[] TerrainFiles = { "rcs_terrain.c", "rcs_terrain.h" };
+    internal static string[] RouteNames(bool terrain) { return terrain ? RouteFiles.Concat(TerrainFiles).ToArray() : RouteFiles; }
+    internal static bool DeclaresTerrain(string text) {
+        return Regex.IsMatch(text ?? "", @"(?m)^[ \t]*#[ \t]*include[ \t]*""rcs_terrain\.h""");
+    }
+    // The generated nav declaration is authoritative even when BOTH terrain files were deleted.
+    internal static string[] RequiredRouteFiles(string directory, bool allowEmpty) {
+        NoLink(directory);
+        foreach (string name in RouteNames(true)) NoLink(Path.Combine(directory, name));
+        int basic = RouteFiles.Count(n => File.Exists(Path.Combine(directory, n)));
+        int terrain = TerrainFiles.Count(n => File.Exists(Path.Combine(directory, n)));
+        if (basic == 0 && terrain == 0 && allowEmpty) return new string[0];
+        if (basic != RouteFiles.Length) throw new IOException("路径目录不完整，须重新导出完整3C3H或4C4H。");
+        foreach (string name in new[] { "rcs_nav.c", "rcs_nav.h" })
+            if (new FileInfo(Path.Combine(directory, name)).Length > 2 * 1024 * 1024)
+                throw new IOException("导航文件超过2MB，保留原内容：" + name);
+        bool declared = DeclaresTerrain(File.ReadAllText(Path.Combine(directory, "rcs_nav.h"), new UTF8Encoding(false, true))) ||
+                        DeclaresTerrain(File.ReadAllText(Path.Combine(directory, "rcs_nav.c"), new UTF8Encoding(false, true)));
+        if (declared && terrain != TerrainFiles.Length)
+            throw new IOException("导航声明使用坡道模块，但rcs_terrain.c/.h缺失；保留工程，请重新导出完整4C4H。");
+        if (!declared && terrain != 0)
+            throw new IOException("平地导航旁存在未匹配的坡道文件，保留原内容；请通过编辑器完成安全升级或降级。");
+        return RouteNames(declared);
+    }
+    static string TextHash(string text) { using (var sha = SHA256.Create()) return
+        BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(text))).Replace("-", "").ToLowerInvariant(); }
+    internal static string GeneratedHash(string path) { return GeneratedHash(path, false); }
+    // Same ownership contract as UserRegions: only stable USER CODE bodies may differ.
+    internal static string GeneratedHash(string path, bool requireUnmodified) {
+        NoLink(path);
+        if (!File.Exists(path) || new FileInfo(path).Length > 2 * 1024 * 1024)
+            throw new IOException("生成文件缺失或超过2MB：" + path);
+        string text = File.ReadAllText(path, new UTF8Encoding(false, true)).TrimStart('\ufeff').Replace("\r\n", "\n").Replace("\r", "\n");
+        const string marker = "/* RCS GENERATED SHA256 ";
+        int at = text.LastIndexOf(marker, StringComparison.Ordinal);
+        if (at < 0) throw new IOException("文件缺少生成器归属标识，保留原文件：" + path);
+        var footer = Regex.Match(text.Substring(at), @"\A/\* RCS GENERATED SHA256 ([0-9a-f]{64}) \*/\n?\z");
+        if (!footer.Success) throw new IOException("生成文件校验标识无效：" + path);
+        string body = text.Substring(0, at);
+        var starts = Regex.Matches(body, @"(?m)^/\* USER CODE BEGIN ([A-Z0-9_]+) \*/\n");
+        if (starts.Count != Regex.Matches(body, @"/\* USER CODE BEGIN ").Count ||
+            starts.Count != Regex.Matches(body, @"/\* USER CODE END ").Count)
+            throw new IOException("用户区域标记无效：" + path);
+        var ranges = new List<int[]>(); var keys = new HashSet<string>();
+        var defaults = new Dictionary<string, string>();
+        foreach (Match meta in Regex.Matches(body, @"(?m)^/\* RCS REGION DEFAULT ([A-Z0-9_]+) ([0-9a-f]{64}) \*/$")) {
+            if (defaults.ContainsKey(meta.Groups[1].Value)) throw new IOException("用户区域归属记录重复：" + path);
+            defaults.Add(meta.Groups[1].Value, meta.Groups[2].Value);
+        }
+        foreach (Match start in starts) {
+            string key = start.Groups[1].Value, endMarker = "/* USER CODE END " + key + " */";
+            int from = start.Index + start.Length, end = body.IndexOf(endMarker, from, StringComparison.Ordinal);
+            if (!keys.Add(key) || end < 0 || body.IndexOf("/* USER CODE BEGIN ", from, end - from, StringComparison.Ordinal) >= 0)
+                throw new IOException("用户区域嵌套、重复或缺失：" + path);
+            string defaultHash;
+            if (!defaults.TryGetValue(key, out defaultHash)) throw new IOException("用户区域缺少归属记录：" + path);
+            if (requireUnmodified && TextHash(body.Substring(from, end - from)) != defaultHash)
+                throw new IOException("将移除的坡道模块包含用户修改，已保留；请先另存该代码：" + path);
+            ranges.Add(new[] { from, end - from });
+        }
+        foreach (var range in ranges.OrderByDescending(r => r[0])) body = body.Remove(range[0], range[1]);
+        if (TextHash(body) != footer.Groups[1].Value)
+            throw new IOException("生成区域在USER CODE外被修改，保留原文件：" + path);
+        return footer.Groups[1].Value;
+    }
+    internal static void RecordGeneratedFiles(XElement receipt, string directory) {
+        var manifest = new XElement("GeneratedFiles");
+        foreach (string name in RequiredRouteFiles(directory, false)) manifest.Add(new XElement("File",
+            new XAttribute("Name", name), new XAttribute("Sha256", GeneratedHash(Path.Combine(directory, name)))));
+        var previous = receipt.Element("GeneratedFiles"); if (previous != null) previous.Remove();
+        receipt.Add(manifest);
+    }
+    internal static void CheckGeneratedFiles(XElement receipt, string directory) {
+        string[] required = RequiredRouteFiles(directory, false);
+        if (receipt.Elements("GeneratedFiles").Count() > 1) throw new IOException("路线版本清单重复，请重新导出。");
+        var manifest = receipt.Element("GeneratedFiles");
+        if (manifest == null) {
+            if (required.Length != RouteFiles.Length) throw new IOException("坡道路线缺少完整版本清单，请重新导出4C4H。");
+            return; // Old flat receipts remain readable until the next export.
+        }
+        var entries = manifest.Elements().ToList();
+        if (entries.Any(e => e.Name != "File") || entries.Count != required.Length ||
+            !entries.Select(e => (string)e.Attribute("Name")).OrderBy(n => n, StringComparer.Ordinal)
+                .SequenceEqual(required.OrderBy(n => n, StringComparer.Ordinal)))
+            throw new IOException("路线版本清单不完整或重复，请重新导出。");
+        foreach (var entry in entries) {
+            string name = (string)entry.Attribute("Name");
+            if (GeneratedHash(Path.Combine(directory, name)) != (string)entry.Attribute("Sha256"))
+                throw new IOException("路线生成模块与最近导出不一致：" + name + "；请检查并重新导出。");
+        }
+    }
     internal string Root, IocName, ProjectName;
     internal string RouteDirectory { get { return Inside(Root, RouteRelative); } }
     internal string Marker { get { return Path.Combine(Root, FileName); } }
@@ -47,7 +138,7 @@ internal sealed class ProjectBinding {
     internal void CheckPaths() {
         NoLink(Root); NoLink(Marker); NoLink(Path.Combine(Root, IocName));
         NoLink(Path.Combine(Root, "Application")); NoLink(RouteDirectory);
-        foreach (string name in RouteFiles) NoLink(Path.Combine(RouteDirectory, name));
+        foreach (string name in RouteNames(true)) NoLink(Path.Combine(RouteDirectory, name));
     }
     internal static ProjectBinding Plan(string ioc, string content) {
         var binding = new ProjectBinding { Root = Path.GetDirectoryName(Path.GetFullPath(ioc)), IocName = Path.GetFileName(ioc) };
@@ -107,26 +198,25 @@ internal sealed class ProjectBinding {
     }
     internal int UpdateRoute(XDocument document, string project, bool preview) {
         CheckPaths(); string dir = Path.GetDirectoryName(Path.GetFullPath(project));
-        if (!preview) {
-            int count = RouteFiles.Count(n => File.Exists(Path.Combine(RouteDirectory, n)));
-            if (count == 0) return 0; // Chassis-only projects remain valid until the first map export.
-            if (count != RouteFiles.Length) throw new IOException("路径目录不完整，未修改Keil工程。请重新导出完整3C3H。");
-        }
+        string[] required = RequiredRouteFiles(RouteDirectory, true);
+        if (!preview && required.Length == 0) return 0;
+        foreach (string name in required) GeneratedHash(Path.Combine(RouteDirectory, name));
+        if (required.Length == 0) required = RouteFiles;
         int changed = 0; bool eligible = false;
         foreach (var target in document.Descendants("Target")) {
             var all = target.Descendants("File").ToList();
             if (!all.Any(f => String.Equals((string)f.Element("FileName"), "rcs_chassis.c", StringComparison.OrdinalIgnoreCase))) continue;
             eligible = true;
             var missing = new List<string>();
-            foreach (string name in RouteFiles) {
+            foreach (string name in RouteNames(true)) {
                 var matches = all.Where(f => String.Equals((string)f.Element("FileName"), name, StringComparison.OrdinalIgnoreCase)).ToList();
                 if (matches.Count > 1) throw new IOException("工程已有重复路径文件登记，未修改：" + name);
-                if (matches.Count == 0) missing.Add(name);
-                else {
+                if (matches.Count > 0) {
                     string value = (string)matches[0].Element("FilePath");
                     if (String.IsNullOrWhiteSpace(value) || !Same(FilePath(dir, value), Path.Combine(RouteDirectory, name)))
                         throw new IOException("工程已引用其他目录的同名路径模块，未覆盖：" + name);
-                }
+                    if (!required.Contains(name) && !preview) { matches[0].Remove(); changed++; }
+                } else if (required.Contains(name)) missing.Add(name);
             }
             var options = target.Descendants("Cads").Elements("VariousControls").SingleOrDefault();
             if (options == null) throw new IOException("Keil目标缺少C编译选项，保留原工程。");
@@ -158,14 +248,14 @@ internal sealed class ProjectBinding {
         return changed;
     }
     internal int EnsureBuildGuard(XElement target,string project) {
-        string receipt=Path.Combine(Root,"foxmolika_Tools_070","route-build.xml");
+        string receipt=Path.Combine(Root,"foxmolika_Tools_080","route-build.xml");
         if(!File.Exists(receipt))return 0;
         var common=target.Descendants("TargetCommonOption").FirstOrDefault();
         if(common==null)throw new IOException("Keil缺少目标构建选项，无法登记路线版本检查。");
         var before=common.Element("BeforeMake");
         if(before==null){before=new XElement("BeforeMake");common.Add(before);}
         string dir=Path.GetDirectoryName(project);
-        string tool=Relative(dir,Path.Combine(Root,"foxmolika_Tools_070","foxmolika_PostGenerate.exe"));
+        string tool=Relative(dir,Path.Combine(Root,"foxmolika_Tools_080","foxmolika_PostGenerate.exe"));
         string relativeRoot=Relative(dir,Root+Path.DirectorySeparatorChar).TrimEnd('/','\\');
         string command="\""+tool.Replace('/', '\\')+"\" --check-route \""+relativeRoot+"\"";
         for(int slot=1;slot<=2;slot++) {
@@ -189,7 +279,7 @@ internal sealed class ProjectBinding {
         return BitConverter.ToString(h.ComputeHash(s)).Replace("-","").ToLowerInvariant(); }
     internal static string CheckRouteVersion(string root) {
         root=Path.GetFullPath(root);
-        string receipt=Path.Combine(root,"foxmolika_Tools_070","route-build.xml");NoLink(receipt);
+        string receipt=Path.Combine(root,"foxmolika_Tools_080","route-build.xml");NoLink(receipt);
         var xml=ReadXml(receipt).Root;
         if(xml==null||xml.Name!="FoxmolikaExport"||(string)xml.Attribute("Schema")!="1" ||
            (string)xml.Attribute("Route")!=RouteRelative)throw new IOException("路线版本记录无效，请重新导出地图。");
@@ -200,6 +290,7 @@ internal sealed class ProjectBinding {
             throw new IOException("地图已修改或移动。请在foxmolika编辑器中保存并重新导出C/H，然后再编译。");
         if(FileHash(Inside(root,RouteRelative+"/rcs_route.c"))!=(string)xml.Attribute("RouteSha256"))
             throw new IOException("路线配置源码与最近导出不一致，请检查并重新导出。");
+        CheckGeneratedFiles(xml, Inside(root, RouteRelative));
         return "PASS foxmolika route revision "+(string)xml.Attribute("Revision");
     }
     internal void Preflight() {

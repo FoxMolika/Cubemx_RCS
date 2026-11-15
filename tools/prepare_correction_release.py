@@ -1,4 +1,4 @@
-"""One-time integration of the 0.7.0 release workflow and hardware guides."""
+"""One-time integration of the 0.8.0 release workflow and hardware guides."""
 from pathlib import Path
 import base64,hashlib,json,re
 R=Path(__file__).resolve().parents[1]
@@ -12,7 +12,7 @@ def main():
   a=s.index(" legacy,lioc,luv,lmap=fixture('upgrade060')");b=s.index(' report=',a)
   return s[:b]+s[a:b].replace('060','061').replace('0.6.0','0.6.1')+s[b:]
  edit('tools/test_revision_guard.py',upgrade)
- edit('tools/accept_070.py',lambda s:s.replace("['tools/check_guides.py'],", "['tools/check_guides.py'],['tools/test_corrections.py'],"))
+ edit('tools/accept_080.py',lambda s:s.replace("['tools/check_guides.py'],", "['tools/check_guides.py'],['tools/test_corrections.py'],"))
  edit('tools/test_install_permissions.py',lambda s:s.replace(" assert root_files==", " invoke(dest/'foxmolika_MapEditor.exe',['--correction-selftest',area/'installed-correction-tests']);assert 'PASS ' in (area/'installed-correction-tests/correction-selftest.txt').read_text()\n assert root_files==").replace("'installed_workspace_checks':41,", "'installed_workspace_checks':41,'installed_correction_report':(area/'installed-correction-tests/correction-selftest.txt').read_text().strip(),"))
  edit('suite/tools/verify.py',lambda s:s.replace(' workspace_report=', " invoke(dest/'foxmolika_MapEditor.exe',['--correction-selftest',area/'installed-correction-tests'],env)\n correction_report=(area/'installed-correction-tests/correction-selftest.txt').read_text(encoding='utf-8').strip()\n workspace_report=").replace("'installed_workspace_report':workspace_report,", "'installed_correction_report':correction_report,'installed_workspace_report':workspace_report,"))
  def course(s):
@@ -32,8 +32,8 @@ def main():
   s=s.replace("'delegated_review':'parallel DeepSeek design/edge-case reviews plus bounded topology review; Codex implemented, checked actual geometry/state/UI and ran installed/native regression'", "'delegated_review':'two parallel DeepSeek reviews of independent-observation runtime and UI/data migration; Codex implemented, ran actual generated C/WinForms/installed/native checks'")
   s=s.replace("'encoder-only correction cannot observe all real slip'", "'drive-encoder odometry alone cannot enable correction; declared independent adapters require real hardware integration and calibration'")
   return s
- edit('tools/release_070.py',release)
- edit('tools/check_guides.py',lambda s:s.replace("'0.7.0','启动", "'纠错模板','定位硬件','空模板','独立观测','v5','0.7.0','启动"))
+ edit('tools/release_080.py',release)
+ edit('tools/check_guides.py',lambda s:s.replace("'0.8.0','启动", "'纠错模板','定位硬件','空模板','独立观测','v5','0.8.0','启动"))
  # Ship a deliberately UNBOUND profile; enabling requires a real adapter and coordinate alignment.
  profile={'Version':1,'Sources':[{'Id':'9a5175a1ee5f4dfb9ad406e426260701','Name':'外部XY定位接入示例','Kind':'external_pose','Axes':3,'Reference':'absolute','Independent':True,'MapAligned':False,'BindingReady':False,'DriverHeader':'foxmolika_observation_adapter.h','ReadFunction':'TeamGps_ReadObservation'}]}
  (R/'map_editor/examples/定位硬件档案示例.json').write_text(json.dumps(profile,ensure_ascii=False,indent=2),encoding='utf-8')
@@ -77,7 +77,7 @@ int TeamGps_ReadObservation(rcs_observation *sample)
         payload['examples/'+name]=ROOT/'examples'/name
     setup=dist/'''))
  edit('suite/tools/build.py',lambda s:s.replace(" manifest=E.Element(", " for name in ['定位硬件档案示例.json','foxmolika_observation_adapter.c','foxmolika_observation_adapter.h']:\n  payload['examples/'+name]=PROJECT/'map_editor/examples'/name\n payload['定位硬件接入.md']=PROJECT/'docs/定位硬件接入.md'\n manifest=E.Element("))
- section='''<section><h2>0.7.0：由独立观测支持的可选纠错模板</h2>
+ section='''<section><h2>0.8.0：由独立观测支持的可选纠错模板</h2>
 <p><strong>没有独立定位硬件时，空模板不纠错。</strong>正常轮速闭环、里程计到点、反馈失联停机和看门狗保留。旧“独立纠偏”设置只保留迁移记录，不参与新生成路线；默认CorrectionMode为0。</p>
 <ol><li>主工具栏点<strong>定位硬件</strong>，导入硬件档案JSON。rcs_config.h仍只导入底盘参数；CubeMX启用UART/CAN/I²C不代表安装了定位设备。</li>
 <li>硬件档案声明类型、有效轴、relative/absolute参考、独立反馈、地图坐标对齐及真实驱动读取函数。IMU仅相对朝向，独立码盘仅相对XY；驱动电机编码器不能用作纠错源。未完成对齐/绑定的源仅可保存禁用模板。</li>
@@ -90,7 +90,7 @@ int TeamGps_ReadObservation(rcs_observation *sample)
 </section>'''
  for name in ['docs/使用说明.html','suite/docs/使用说明.html','map_editor/docs/使用说明.html','docs/地图编辑器说明.html','suite/docs/地图编辑器说明.html']:
   edit(name,lambda s:s.replace('<body>','<body>'+section).replace('0.5.2/0.6.0 生成后','0.5.2/0.6.0/0.6.1 生成后'))
- (R/'docs/定位硬件接入.md').write_text('''# 0.7.0 定位硬件与纠错模板
+ (R/'docs/定位硬件接入.md').write_text('''# 0.8.0 定位硬件与纠错模板
 
 默认空模板，不纠错。导入硬件只提供可选模板，不会自动启用。当前导入的是显式JSON能力档案，不是扫描总线或自动识别传感器；rcs_config.h仅含底盘参数。
 
@@ -109,8 +109,8 @@ ReadFunction的C签名为 int Name(rcs_observation *sample)。DriverHeader可填
 带硬件或纠错模板的地图使用v5，防止旧编辑器忽略它们；旧v3/v4源地图不自动改写。用户自定义机构区和观测区以稳定ID保存。动态预览中的纠错只是占位，不能视为硬件验证。仍不生成坡道控制固件；本版重点是纠错模板，不改变现有运动库或硬件驱动支持范围。
 ''',encoding='utf-8')
  edit('map_editor/src/PhaseTools.cs',lambda s:s.replace('两个动作框各自排序；纠错重试不会重放已经完成的到达动作。','三组按顺序执行；定位刷新不会重放已经完成的到达动作。').replace('[DisplayName("纠错速度 mm/s")]', '[Browsable(false),DisplayName("旧纠错速度（不执行）")]').replace('[DisplayName("纠错超时 s")]', '[Browsable(false),DisplayName("旧纠错超时（不执行）")]').replace('[DisplayName("最大纠错次数")]', '[Browsable(false),DisplayName("旧纠错次数（不执行）")]'))
- edit('README.md',lambda s:s.replace('\n两个航点之间', '\n**0.7.0新增可选纠错模板：没有独立观测时留空，不自动纠错。** 主窗口“定位硬件”导入能力档案，航点流程中间添加支持的模板；导入不自动启用。刷新估计和驱动对齐明确分开。旧自动纠错仅作记录，详细接入见 docs/定位硬件接入.md。\n\n两个航点之间'))
- (R/'变更说明_0.7.0.md').write_text('''# 0.7.0 可选硬件纠错模板
+ edit('README.md',lambda s:s.replace('\n两个航点之间', '\n**0.8.0新增可选纠错模板：没有独立观测时留空，不自动纠错。** 主窗口“定位硬件”导入能力档案，航点流程中间添加支持的模板；导入不自动启用。刷新估计和驱动对齐明确分开。旧自动纠错仅作记录，详细接入见 docs/定位硬件接入.md。\n\n两个航点之间'))
+ (R/'变更说明_0.8.0.md').write_text('''# 0.8.0 可选硬件纠错模板
 
 航点流程新增独立纠错列表；导入硬件档案后按有效轴提供刷新估计、XY移动对齐和朝向旋转对齐。没有独立观测时空组直接跳过，旧默认位置纠错和目标朝向二次补偿不再由生成器执行。旧CorrectionMode保留查看，v3/v4原地图不改写；新硬件地图v5避免旧版忽略。
 

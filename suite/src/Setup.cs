@@ -13,8 +13,8 @@ using System.Windows.Forms;
 using System.Xml.Linq;
 [assembly:AssemblyTitle("foxmolika CubeMX Suite Setup")]
 [assembly:AssemblyProduct("foxmolika Chassis and Waypoint Suite")]
-[assembly:AssemblyVersion("0.7.0.0")]
-[assembly:AssemblyFileVersion("0.7.0.0")]
+[assembly:AssemblyVersion("0.8.0.0")]
+[assembly:AssemblyFileVersion("0.8.0.0")]
 namespace RcsSuite {
  static class Payload {
   internal static XDocument Manifest {get{using(var s=Assembly.GetExecutingAssembly().GetManifestResourceStream("payload/manifest.xml"))return XDocument.Load(s);}}
@@ -50,7 +50,7 @@ namespace RcsSuite {
    new XElement("Pending",new XAttribute("Home",home),new XAttribute("Cube",cube),new XAttribute("Isolated",isolated),new XAttribute("PackDirectory",packDir),new XAttribute("NewlyIntroduced",newly)).Save(pending);
    PackService.Install(cube,home,isolated,dir,newly,report);
    foreach(var f in Payload.AppFiles)if(Payload.HashFile(Payload.In(dir,(string)f.Attribute("Name")))!=(string)f.Attribute("Sha256"))throw new Exception("安装文件核验失败。");
-   new XElement("VerifiedInstallation",new XAttribute("Version",PackService.Version),new XAttribute("PackVersion",PackService.Version),new XAttribute("EditorVersion","0.7.0"),new XAttribute("Cube",cube),new XAttribute("Home",home),new XAttribute("PackDirectory",PackService.PackDir(home)),new XAttribute("Registered",PackService.Registered(home)),new XAttribute("FilesVerified",PackService.FilesMatch(PackService.PackDir(home))),new XAttribute("IsolatedTest",isolated),new XAttribute("Utc",DateTime.UtcNow.ToString("o"))).Save(success);
+   new XElement("VerifiedInstallation",new XAttribute("Version",PackService.Version),new XAttribute("PackVersion",PackService.Version),new XAttribute("EditorVersion","0.8.0"),new XAttribute("Cube",cube),new XAttribute("Home",home),new XAttribute("PackDirectory",PackService.PackDir(home)),new XAttribute("Registered",PackService.Registered(home)),new XAttribute("FilesVerified",PackService.FilesMatch(PackService.PackDir(home))),new XAttribute("IsolatedTest",isolated),new XAttribute("Utc",DateTime.UtcNow.ToString("o"))).Save(success);
    var verified=XElement.Load(success);verified.Add(InstallAccess.Token());verified.Save(success);
    if(File.Exists(pending))File.Delete(pending);report("安装成功：编辑器已就绪，底盘包已自动导入并核验。无需手动导入 .pack。");
   }

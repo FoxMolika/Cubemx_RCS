@@ -54,13 +54,13 @@ namespace RcsMap {
    leg=new TerrainLeg{From=sa,To=sb,Horizontal=h,Length=spans.Sum(s=>s.Length),Z0=sa.HeightAt(a.X,a.Y),Z1=sb.HeightAt(b.X,b.Y),Handoff=spans.Count>1?spans[0].T1:0,Slope=Math.Atan2(sb.HeightAt(b.X,b.Y)-sa.HeightAt(a.X,a.Y),h)*180/Math.PI,Spans=spans};return true;
   }
   public static List<double[]> Vertices(Waypoint a,Waypoint b,TerrainLeg leg){var result=new List<double[]>();foreach(var s in leg.Spans){if(result.Count==0)result.Add(new[]{s.T0,a.X+(b.X-a.X)*s.T0,a.Y+(b.Y-a.Y)*s.T0,s.Z0});result.Add(new[]{s.T1,a.X+(b.X-a.X)*s.T1,a.Y+(b.Y-a.Y)*s.T1,s.Z1});}return result;}
-  static bool Covered(double ax,double ay,double bx,double by,List<TerrainSurface> allowed){var intervals=new List<double[]>();foreach(var s in allowed){double lo,hi;if(Interval(s,ax,ay,bx,by,out lo,out hi))intervals.Add(new[]{lo,hi});}double reach=0;foreach(var range in intervals.OrderBy(x=>x[0])){if(range[0]>reach+1e-7)return false;reach=Math.Max(reach,range[1]);if(reach>=1-1e-7)return true;}return false;}
-  static bool LegFits(MapDocument d,Waypoint a,Waypoint b,TerrainLeg leg,double r){for(int i=0;i<leg.Spans.Count;i++){var span=leg.Spans[i];var s=span.Surface;double ax=a.X+(b.X-a.X)*span.T0,ay=a.Y+(b.Y-a.Y)*span.T0,bx=a.X+(b.X-a.X)*span.T1,by=a.Y+(b.Y-a.Y)*span.T1;
-    if(s.Kind==SurfaceKind.沿X直坡道&&(Math.Min(ay,by)-r<s.Y-1e-6||Math.Max(ay,by)+r>s.Y+s.Depth+1e-6))return false;
-    if(s.Kind==SurfaceKind.沿Y直坡道&&(Math.Min(ax,bx)-r<s.X-1e-6||Math.Max(ax,bx)+r>s.X+s.Width+1e-6))return false;
-    var allowed=new List<TerrainSurface>{s};if(i>0)allowed.Add(leg.Spans[i-1].Surface);if(i+1<leg.Spans.Count)allowed.Add(leg.Spans[i+1].Surface);
-    foreach(double x in new[]{-r,r})foreach(double y in new[]{-r,r})if(!Covered(ax+x,ay+y,bx+x,by+y,allowed))return false;
-    foreach(double[] p in new[]{new[]{ax,ay},new[]{bx,by}})foreach(double v in new[]{-r,r})if(!Covered(p[0]-r,p[1]+v,p[0]+r,p[1]+v,allowed)||!Covered(p[0]+v,p[1]-r,p[0]+v,p[1]+r,allowed))return false;
+  public static bool LegFits(MapDocument d,Waypoint a,Waypoint b,TerrainLeg leg,double r){double dx=b.X-a.X,dy=b.Y-a.Y,norm=Math.Sqrt(dx*dx+dy*dy),ux=norm>1e-9?dx/norm:1,uy=norm>1e-9?dy/norm:0;
+   for(int i=0;i<leg.Spans.Count;i++){var span=leg.Spans[i];var surface=span.Surface;double ax=a.X+dx*span.T0,ay=a.Y+dy*span.T0,bx=a.X+dx*span.T1,by=a.Y+dy*span.T1;
+    var sweep=SurfaceOutline.Hull(new[]{new TerrainVertex(ax-r,ay-r),new TerrainVertex(ax+r,ay-r),new TerrainVertex(ax+r,ay+r),new TerrainVertex(ax-r,ay+r),new TerrainVertex(bx-r,by-r),new TerrainVertex(bx+r,by-r),new TerrainVertex(bx+r,by+r),new TerrainVertex(bx-r,by+r)});
+    var covers=new List<List<TerrainVertex>>();for(int j=Math.Max(0,i-1);j<=Math.Min(leg.Spans.Count-1,i+1);j++){var neighbor=leg.Spans[j];var polygon=SurfaceOutline.Points(neighbor.Surface);
+     if(surface.Id!=Ground&&neighbor.Surface.Id==Ground&&norm>1e-9){if(j<i){double endx=a.X+dx*neighbor.T1,endy=a.Y+dy*neighbor.T1;polygon=SurfaceOutline.HalfPlane(polygon,-ux,-uy,-ux*endx-uy*endy);}else if(j>i){double startx=a.X+dx*neighbor.T0,starty=a.Y+dy*neighbor.T0;polygon=SurfaceOutline.HalfPlane(polygon,ux,uy,ux*startx+uy*starty);}}
+     covers.Add(polygon);
+    }if(!SurfaceOutline.CoveredByUnion(sweep,covers))return false;
    }return true;
   }
   public static bool ObstacleHits(MapDocument d,Waypoint a,Waypoint b,Obstacle o){if(d.Terrain==null)return MapDocument.SegmentHits(a.X,a.Y,b.X,b.Y,o,d.Settings.Radius+d.Settings.PositionTolerance);TerrainLeg leg;string error;if(!TryLeg(d,a,b,out leg,out error))return Key(o.SurfaceId)==Key(a.SurfaceId)&&MapDocument.SegmentHits(a.X,a.Y,b.X,b.Y,o,d.Settings.Radius+d.Settings.PositionTolerance);
@@ -69,11 +69,11 @@ namespace RcsMap {
   static List<string> ClearanceErrors(MapDocument d){var errors=new List<string>();if(d.Terrain==null)return errors;double required=d.Terrain.BodyHeight+d.Terrain.ClearanceMargin,r=d.Settings.Radius+d.Settings.PositionTolerance;
    for(int i=0;i<d.Points.Count;i++){var b=d.Points[i];var a=i==0?b:d.Points[i-1];TerrainLeg leg;string ignored;if(!TryLeg(d,a,b,out leg,out ignored))continue;
     for(int k=0;k<leg.Spans.Count;k++){var span=leg.Spans[k];var floor=span.Surface;double ax=a.X+(b.X-a.X)*span.T0,ay=a.Y+(b.Y-a.Y)*span.T0,bx=a.X+(b.X-a.X)*span.T1,by=a.Y+(b.Y-a.Y)*span.T1;
-     foreach(var top in d.Terrain.Surfaces){if(top.Id==floor.Id)continue;var expanded=new TerrainSurface{X=top.X-r,Y=top.Y-r,Width=top.Width+2*r,Depth=top.Depth+2*r};double lo,hi;if(!Interval(expanded,ax,ay,bx,by,out lo,out hi))continue;
+     foreach(var top in d.Terrain.Surfaces){if(top.Id==floor.Id)continue;var expanded=SurfaceOutline.Expanded(top,r);double lo,hi;if(!SurfaceOutline.Interval(expanded,ax,ay,bx,by,out lo,out hi))continue;
       bool adjacent=k>0&&leg.Spans[k-1].Surface.Id==top.Id||k+1<leg.Spans.Count&&leg.Spans[k+1].Surface.Id==top.Id;
       bool connected=d.Terrain.Connections.Any(c=>Key(c.A)==floor.Id&&Key(c.B)==top.Id||Key(c.B)==floor.Id&&Key(c.A)==top.Id);
       if(connected&&(adjacent||floor.Id!=Ground&&top.Id!=Ground))continue;
-      double gradient=top.Kind==SurfaceKind.水平平台?0:Math.Abs(top.Z1-top.Z0)/(top.Kind==SurfaceKind.沿X直坡道?top.Width:top.Depth);
+      var g=SurfaceOutline.Gradient(top);double gradient=Math.Abs(g[0])+Math.Abs(g[1]);
       double u0=top.HeightAt(ax+(bx-ax)*lo,ay+(by-ay)*lo)-floor.HeightAt(ax+(bx-ax)*lo,ay+(by-ay)*lo),u1=top.HeightAt(ax+(bx-ax)*hi,ay+(by-ay)*hi)-floor.HeightAt(ax+(bx-ax)*hi,ay+(by-ay)*hi),allowance=top.Thickness+r*gradient;
       if(Math.Max(u0,u1)+r*gradient>1e-6&&Math.Min(u0,u1)-allowance<required-1e-6)errors.Add("P"+Math.Max(0,i-1)+"→P"+i+"在“"+top.Name+"”下方净空不足（计入向下厚度、车体高度及余量）。");
      }
