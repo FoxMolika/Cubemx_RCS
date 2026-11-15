@@ -11,7 +11,7 @@
 @GLOBALS_REGION@
 /* 动作配置 ------------------------------------------------------------------------------------------*/
 
-/* Actions are described by rcs_route_plan; dispatch IDs identify custom actions. */
+/* 动作配置由rcs_route_plan描述；分发编号标识自定义机构动作。 */
 
 /* 航点私有动作 --------------------------------------------------------------------------------------*/
 @FUNCTIONS@
@@ -36,3 +36,5 @@ rcs_action_result rcs_route_action(void *context, size_t point,
         return RCS_ACTION_ERROR;
     }
 }
+
+@OBSERVER_SOURCE@

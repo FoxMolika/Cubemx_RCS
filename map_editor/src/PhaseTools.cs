@@ -31,31 +31,31 @@ namespace RcsMap {
   public void RefreshList(int selected=-1){int i=selected<0?List.SelectedIndex:selected;List.Items.Clear();foreach(var a in actions)List.Items.Add(a);if(actions.Count>0)List.SelectedIndex=Math.Max(0,Math.Min(i,actions.Count-1));}
  }
  public sealed class PhaseDialog:Form {
-  string includes;public readonly ActionGroupBox ArrivalBox,DepartureBox;
+  string includes;public readonly ActionGroupBox ArrivalBox,DepartureBox;public readonly CorrectionBox CorrectionBox;
   public string SharedIncludes {get{return includes;}}
-  public PhaseDialog(Waypoint point,string shared){includes=shared;Text="航点流程 · 到达航点后 → 位置纠错 → 离开航点前";Size=new Size(1130,720);MinimumSize=new Size(1020,650);StartPosition=FormStartPosition.CenterParent;Font=new Font("Microsoft YaHei UI",10);
+  public PhaseDialog(Waypoint point,string shared,MapDocument document=null){if(document==null){document=new MapDocument();document.Points.Add(point);}includes=shared;Text="航点流程 · 到达航点后 → 纠错模板 → 离开航点前";Size=new Size(1130,720);MinimumSize=new Size(1020,650);StartPosition=FormStartPosition.CenterParent;Font=new Font("Microsoft YaHei UI",10);
    var root=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=3,RowCount=3,Padding=new Padding(12)};root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,36));root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,28));root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,36));root.RowStyles.Add(new RowStyle(SizeType.Absolute,54));root.RowStyles.Add(new RowStyle(SizeType.Percent,100));root.RowStyles.Add(new RowStyle(SizeType.Absolute,52));Controls.Add(root);
-   var note=new Label{Text="同一航点按从左到右执行：到达航点后动作 → 独立位置纠错 → 离开航点前动作。\r\n两个动作框各自排序；纠错重试不会重放已经完成的到达动作。",Dock=DockStyle.Fill};root.Controls.Add(note,0,0);root.SetColumnSpan(note,3);
+   var note=new Label{Text="同一航点按从左到右执行：到达航点后动作 → 可选纠错模板 → 离开航点前动作。\r\n三组按顺序执行；定位刷新不会重放已经完成的到达动作。",Dock=DockStyle.Fill};root.Controls.Add(note,0,0);root.SetColumnSpan(note,3);
    ArrivalBox=new ActionGroupBox("① 到达航点后",point.ArrivalActions,Edit);DepartureBox=new ActionGroupBox("③ 离开航点前",point.DepartureActions,Edit);root.Controls.Add(ArrivalBox,0,1);root.Controls.Add(DepartureBox,2,1);
-   var correction=new GroupBox{Text="② 位置纠错",Dock=DockStyle.Fill,Padding=new Padding(8,25,8,8)};var grid=new PropertyGrid{Dock=DockStyle.Fill,SelectedObject=new PointOptions(point),ToolbarVisible=false,HelpVisible=true,PropertySort=PropertySort.NoSort};correction.Controls.Add(grid);root.Controls.Add(correction,1,1);
+   CorrectionBox=new CorrectionBox(document,point);root.Controls.Add(CorrectionBox,1,1);
    var bottom=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.RightToLeft,Padding=new Padding(0,9,0,0)};var ok=new Button{Text="确定",DialogResult=DialogResult.OK,Width=100,Height=32};var cancel=new Button{Text="取消",DialogResult=DialogResult.Cancel,Width=100,Height=32};bottom.Controls.Add(ok);bottom.Controls.Add(cancel);root.Controls.Add(bottom,0,2);root.SetColumnSpan(bottom,3);AcceptButton=ok;CancelButton=cancel;}
   bool Edit(RouteAction a){using(var dialog=new ActionProperties(a,includes)){if(dialog.ShowDialog(this)!=DialogResult.OK)return false;includes=dialog.SharedIncludes;return true;}}
  }
  public sealed class PointOptions {
   Waypoint p;public PointOptions(Waypoint v){p=v;}
   [DisplayName("纠错模式"),Description("到达后动作完成后执行；结束后才开始离开前动作。")]
-  public CorrectionChoice 纠偏模式_0关闭1位置2位置朝向3验收 {get{return (CorrectionChoice)p.CorrectionMode;}set{p.CorrectionMode=(int)value;}}
+  public string 旧纠错配置 {get{return ((CorrectionChoice)p.CorrectionMode).ToString()+"（仅记录，不执行）";}}
   [DisplayName("到达半径 mm")]
   public double 到达半径_mm {get{return p.ArrivalRadius;}set{p.ArrivalRadius=value;}}
-  [DisplayName("纠错速度 mm/s")]
+  [Browsable(false),DisplayName("旧纠错速度（不执行）")]
   public double 纠偏速度_mm_s {get{return p.CorrectionSpeed;}set{p.CorrectionSpeed=value;}}
   [DisplayName("停稳时间 ms")]
   public double 停稳时间_ms {get{return p.SettleMs;}set{p.SettleMs=value;}}
   [DisplayName("漂移上限 mm")]
   public double 漂移上限_mm {get{return p.DriftLimit;}set{p.DriftLimit=value;}}
-  [DisplayName("纠错超时 s")]
+  [Browsable(false),DisplayName("旧纠错超时（不执行）")]
   public double 纠偏超时_s {get{return p.CorrectionTimeout;}set{p.CorrectionTimeout=value;}}
-  [DisplayName("最大纠错次数")]
+  [Browsable(false),DisplayName("旧纠错次数（不执行）")]
   public int 最大纠偏次数 {get{return p.CorrectionPasses;}set{p.CorrectionPasses=value;}}
   [DisplayName("终点执行离开组"),Description("终点默认跳过离开航点前动作；启用后执行该组，再结束任务。")]
   public bool 终点也执行起步前动作 {get{return p.RunFinalDeparture;}set{p.RunFinalDeparture=value;}}

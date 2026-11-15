@@ -44,6 +44,9 @@ def main():
   'examples/立体地图示例.rcsmap.json':PROJECT/'map_editor/examples/立体地图示例.rcsmap.json',
   'sdk/rcs_chassis.c':PROJECT/'firmware/rcs_chassis.c','sdk/rcs_chassis.h':PROJECT/'firmware/rcs_chassis.h',
   'validation/WorkspacePreferencesFactory.class':build/'java/WorkspacePreferencesFactory.class','validation/WorkspacePreferencesFactory$MemoryPreferences.class':build/'java/WorkspacePreferencesFactory$MemoryPreferences.class'}
+ for name in ['定位硬件档案示例.json','foxmolika_observation_adapter.c','foxmolika_observation_adapter.h']:
+  payload['examples/'+name]=PROJECT/'map_editor/examples'/name
+ payload['定位硬件接入.md']=PROJECT/'docs/定位硬件接入.md'
  manifest=E.Element('Suite',Version=VERSION,PackSha256=sha(pack.read_bytes()));app=E.SubElement(manifest,'AppFiles');pf=E.SubElement(manifest,'PackFiles')
  for name,p in payload.items():E.SubElement(app,'File',Name=name,Sha256=sha(p.read_bytes()))
  for name,b in sorted(packdata.items()):E.SubElement(pf,'File',Name=name,Sha256=sha(b))

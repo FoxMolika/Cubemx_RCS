@@ -1,6 +1,6 @@
 /** @file rcs_nav.c
- * @brief Phased waypoint engine: move, settle, arrival, correction, departure.
- * @note Single task, nonblocking. No HAL calls. Feedback watchdog remains caller-owned.
+ * @brief 航点阶段引擎：行驶、停稳、到达动作、显式纠错、离开动作。
+ * @note 单任务非阻塞，不调用HAL；底盘反馈看门狗仍由调用者维护。
  */
 #include "rcs_nav.h"
 #include <math.h>
@@ -105,7 +105,12 @@ int rcs_nav_init(rcs_navigator *n, const rcs_nav_config *c, const rcs_waypoint *
 static void stage(rcs_navigator *n, rcs_nav_stage value)
 {
     n->stage = value;
+    if (value == RCS_STAGE_DEPARTURE) {
+        n->anchor_x = n->x_m;
+        n->anchor_y = n->y_m;
+    }
     n->stage_s = 0;
+    n->correction_started = 0;
     n->settled_s = 0;
     n->action_index = 0;
     n->action_active = 0;
@@ -125,7 +130,7 @@ static rcs_point_plan plan_for(const rcs_navigator *n)
     p.correction_timeout_s = n->cfg.max_leg_s;
     p.settle_s = .05f;
     p.drift_limit_m = fmaxf(.05f, 2 * n->cfg.position_tolerance_m);
-    p.correction_mode = 2;
+    p.correction_mode = 0;
     p.correction_retries = 2;
     p.departure_at_end = 1;
     return p;
@@ -219,6 +224,7 @@ int rcs_nav_reset(rcs_navigator *n, float x, float y, float yaw)
     n->heading_target = n->yaw_rad;
     n->target = 0;
     n->pose_set = 1;
+    n->observation_seen = 0;
     n->feedback_seen = 0;
     n->state = RCS_NAV_IDLE;
     n->fault = RCS_NAV_OK;
@@ -408,6 +414,145 @@ static int run_group(rcs_navigator *n, const rcs_point_plan *p, const float vel[
     return 0;
 }
 /**
+ * @brief 绑定独立观测纠错表；空组直接跳过，不执行旧隐式纠错
+ * @note 表和回调须保持有效。回调返回1表示样本可用，0表示读取失败。
+ */
+int rcs_nav_bind_corrections(rcs_navigator *n, const rcs_correction_group *groups,
+                             size_t count, rcs_observer_fn observer, void *context)
+{
+    if (!n || !n->initialized || n->state != RCS_NAV_IDLE)
+        return 0;
+    if (!groups || count != n->count)
+        return fail(n, RCS_NAV_OBSERVATION_CONFIG);
+    for (size_t i = 0; i < count; i++) {
+        const rcs_correction_group *g = groups + i;
+        if (g->count > 32 || (g->count && (!g->steps || !observer)))
+            return fail(n, RCS_NAV_OBSERVATION_CONFIG);
+        for (size_t j = 0; j < g->count; j++) {
+            const rcs_correction *c = g->steps + j;
+            if (c->source >= 32 || c->kind > 2 ||
+                (c->axes != 3 && c->axes != 4 && c->axes != 7) ||
+                (c->kind == 1 && c->axes != 3) || (c->kind == 2 && c->axes != 4) ||
+                !positive(c->timeout_s) || c->timeout_s > 3600 ||
+                !positive(c->max_age_s) || c->max_age_s > .5f ||
+                !isfinite(c->min_quality) || c->min_quality < 0 || c->min_quality > 1 ||
+                !positive(c->max_jump_m) || c->max_jump_m > 1 ||
+                !positive(c->max_jump_rad) || c->max_jump_rad > PI ||
+                !positive(c->speed_mps) || c->speed_mps > n->cfg.max_speed_mps ||
+                !positive(c->max_wz_radps) || c->max_wz_radps > n->cfg.max_wz_radps ||
+                !positive(c->position_tolerance_m) || !positive(c->yaw_tolerance_rad) ||
+                c->yaw_tolerance_rad > PI || !positive(c->settle_s))
+                return fail(n, RCS_NAV_OBSERVATION_CONFIG);
+        }
+    }
+    n->corrections = groups;
+    n->observer = observer;
+    n->observer_context = context;
+    n->observation_seen = 0;
+    return 1;
+}
+
+/**
+ * @brief 检查独立样本；重复序号只能在有效期内沿用，不重复更新定位
+ */
+static int observe(rcs_navigator *n, const rcs_correction *c, float dt, int *fresh)
+{
+    rcs_observation o = {0};
+    uint32_t bit = (uint32_t)1u << c->source;
+    (void)dt;
+    *fresh = 0;
+    if (!n->observer || n->observer(n->observer_context, c->source, &o) != 1 ||
+        (o.axes != 3 && o.axes != 4 && o.axes != 7) ||
+        (o.axes & c->axes) != c->axes || !isfinite(o.x_m) || !isfinite(o.y_m) ||
+        !isfinite(o.yaw_rad) || fabsf(o.yaw_rad) > 2 * PI || !isfinite(o.age_s) || o.age_s < 0 ||
+        o.age_s > c->max_age_s || !isfinite(o.quality) || o.quality < c->min_quality ||
+        o.quality > 1 || fabsf(o.x_m) > 1000 || fabsf(o.y_m) > 1000)
+        return fail(n, RCS_NAV_OBSERVATION);
+    if (n->observation_seen & bit) {
+        uint32_t advance = o.sequence - n->observation_sequence[c->source];
+        if (advance == 0) {
+            if (n->observation_age[c->source] > c->max_age_s)
+                return fail(n, RCS_NAV_OBSERVATION);
+            return 1;
+        }
+        if (advance > 0x7fffffffu)
+            return fail(n, RCS_NAV_OBSERVATION);
+    }
+    float yaw_delta = wrap(o.yaw_rad - n->yaw_rad);
+    if (((c->axes & 3u) && hypotf(o.x_m - n->x_m, o.y_m - n->y_m) > c->max_jump_m) ||
+        ((c->axes & 4u) && fabsf(yaw_delta) > c->max_jump_rad))
+        return fail(n, RCS_NAV_OBSERVATION_JUMP);
+    if (c->axes & 3u) {
+        n->x_m = o.x_m;
+        n->y_m = o.y_m;
+    }
+    if (c->axes & 4u) {
+        n->yaw_unwrapped += yaw_delta;
+        n->yaw_rad = wrap(n->yaw_unwrapped);
+    }
+    n->observation_sequence[c->source] = o.sequence;
+    n->observation_age[c->source] = o.age_s;
+    n->observation_seen |= bit;
+    *fresh = 1;
+    return 1;
+}
+
+/**
+ * @brief 顺序执行显式纠错；刷新估计不运动，位置与朝向分别对齐
+ */
+static int correct(rcs_navigator *n, const float vel[3], float dt)
+{
+    const rcs_correction_group *group = n->corrections + n->target;
+    if (n->action_index >= group->count)
+        return 1;
+    const rcs_correction *c = group->steps + n->action_index;
+    int fresh, complete = 0;
+    n->action_s += dt;
+    if (n->action_s > c->timeout_s)
+        return fail(n, RCS_NAV_TIMEOUT), -1;
+    if (!observe(n, c, dt, &fresh))
+        return -1;
+    if (!n->correction_started) {
+        n->correction_origin_x = n->x_m;
+        n->correction_origin_y = n->y_m;
+        n->correction_started = 1;
+    }
+    rcs_point_plan point_plan = plan_for(n);
+    if (c->kind != 0 &&
+        hypotf(n->x_m - n->correction_origin_x, n->y_m - n->correction_origin_y) >
+        point_plan.drift_limit_m)
+        return fail(n, RCS_NAV_ACTION_DRIFT), -1;
+    if (c->kind == 0) {
+        zeros(n->command_world);
+        complete = fresh;
+    } else if (c->kind == 1) {
+        const rcs_waypoint *p = n->points + n->target;
+        float dx = p->x_m - n->x_m, dy = p->y_m - n->y_m;
+        int within = hypotf(dx, dy) <= c->position_tolerance_m;
+        translate(n, within ? 0 : dx, within ? 0 : dy, within ? 0 : c->speed_mps, dt);
+        complete = settle(n, within && stopped(vel) &&
+                          hypotf(n->command_world[0], n->command_world[1]) < 1e-5f,
+                          dt, c->settle_s) && fresh;
+    } else {
+        float error = wrap(n->heading_target - n->yaw_rad);
+        float w = fabsf(error) <= c->yaw_tolerance_rad ? 0 :
+                  clamp(n->cfg.yaw_kp * error, -c->max_wz_radps, c->max_wz_radps);
+        n->command_world[0] = n->command_world[1] = 0;
+        n->command_world[2] += clamp(w - n->command_world[2],
+                                  -n->cfg.alpha_radps2 * dt, n->cfg.alpha_radps2 * dt);
+        complete = settle(n, fabsf(error) <= c->yaw_tolerance_rad && stopped(vel) &&
+                          fabsf(n->command_world[2]) < 1e-5f, dt, c->settle_s) && fresh;
+    }
+    if (complete) {
+        n->action_index++;
+        n->action_s = n->settled_s = 0;
+        n->correction_started = 0;
+        zeros(n->command_world);
+    }
+    return 0;
+}
+
+/**
  * @brief 持续更新里程计并推进当前独立阶段
  */
 int rcs_nav_update(rcs_navigator *n, const int32_t delta[4], uint8_t fresh, float dt, float out[3])
@@ -452,6 +597,9 @@ int rcs_nav_update(rcs_navigator *n, const int32_t delta[4], uint8_t fresh, floa
     if (!isfinite(n->x_m) || !isfinite(n->y_m) || !isfinite(n->yaw_rad) || fabsf(n->x_m) > 1000 ||
         fabsf(n->y_m) > 1000)
         return fail(n, RCS_NAV_POSE);
+    for (unsigned i = 0; i < 32; i++)
+        if (n->observation_seen & ((uint32_t)1u << i))
+            n->observation_age[i] += dt;
     if (n->state != RCS_NAV_RUNNING)
         return 1;
     const rcs_waypoint *point = n->points + n->target;
@@ -482,10 +630,20 @@ int rcs_nav_update(rcs_navigator *n, const int32_t delta[4], uint8_t fresh, floa
         if (result > 0) {
             if (n->stage == RCS_STAGE_ARRIVAL) {
                 n->correction_pass = 0;
-                stage(n, RCS_STAGE_CORRECT_XY);
+                if (n->corrections)
+                    stage(n, n->corrections[n->target].count ?
+                          RCS_STAGE_CORRECTION : RCS_STAGE_DEPARTURE);
+                else
+                    stage(n, RCS_STAGE_CORRECT_XY);
             } else
                 stage(n, RCS_STAGE_EXIT);
         }
+    } else if (n->stage == RCS_STAGE_CORRECTION) {
+        int result = correct(n, vel, dt);
+        if (result < 0)
+            return 0;
+        if (result > 0)
+            stage(n, RCS_STAGE_DEPARTURE);
     } else if (n->stage == RCS_STAGE_CORRECT_XY) {
         if (n->stage_s > p.correction_timeout_s)
             return fail(n, RCS_NAV_TIMEOUT);
@@ -523,7 +681,9 @@ int rcs_nav_update(rcs_navigator *n, const int32_t delta[4], uint8_t fresh, floa
         if (n->stage_s > p.correction_timeout_s)
             return fail(n, RCS_NAV_TIMEOUT);
         float tolerance = p.correction_mode ? n->cfg.position_tolerance_m : p.arrival_radius_m;
-        if (dist > tolerance || fabsf(wrap(n->heading_target - n->yaw_rad)) > n->cfg.yaw_tolerance_rad)
+        if (n->corrections ?
+            hypotf(n->x_m - n->anchor_x, n->y_m - n->anchor_y) > p.drift_limit_m :
+            (dist > tolerance || fabsf(wrap(n->heading_target - n->yaw_rad)) > n->cfg.yaw_tolerance_rad))
             return fail(n, RCS_NAV_POSE);
         if (settle(n, stopped(vel), dt, p.settle_s) && (n->plans || n->stage_s >= point->dwell_s)) {
             n->target++;

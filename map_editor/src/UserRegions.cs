@@ -26,11 +26,16 @@ namespace RcsMap {
   static string Skeleton(string s){foreach(var r in Regions(s).OrderByDescending(r=>r.Start))s=s.Remove(r.Start,r.Length);return s;}
   static string Unsigned(string text){string s=LF(text);int at=s.LastIndexOf(Digest,StringComparison.Ordinal);if(at<0)throw new Exception("旧文件缺少可保留式更新标识，请导出新目录。");string body=s.Substring(0,at);var m=Regex.Match(s.Substring(at),@"\A/\* RCS GENERATED SHA256 ([0-9a-f]{64}) \*/\n?\z");if(!m.Success||Hash(Skeleton(body))!=m.Groups[1].Value)throw new Exception("生成区域在 USER CODE 外被修改，保留原文件；请导出新目录。");return body;}
   public static string Seal(string text){string s=LF(text);return s+Digest+Hash(Skeleton(s))+" */\n";}
+  // 仅兼容已知默认注释翻译。表达式或其他代码变化仍然触发双边冲突保护。
+  static bool SameDefault(Region previous,Region next){if(previous.Default==next.Default)return true;
+   if(next.Key.EndsWith("_POLL",StringComparison.Ordinal))return previous.Default==Hash(next.Body.Replace("/* 设置complete；机构故障返回RCS_ACTION_ERROR。 */","/* Set complete, or return RCS_ACTION_ERROR for a mechanism fault. */"));
+   if(next.Key=="RCS_ACTION_GLOBALS")return previous.Default==Hash(next.Body.Replace("/* 公共机构状态或action_context类型。 */","/* Shared state or your action_context type. */"));return false;
+  }
   public static string Merge(string oldText,string newText){
    string old=Unsigned(oldText),fresh=Unsigned(newText);var previous=Regions(old);var next=Regions(fresh);
    foreach(var r in previous.Where(r=>Hash(r.Body)!=r.Default)){
     var n=next.FirstOrDefault(x=>x.Key==r.Key);if(n==null)throw new Exception("被删除的航点仍有自定义 USER CODE，代码已保留。请先另存旧代码或导出新目录："+r.Key);
-    if(r.Default!=n.Default&&Hash(r.Body)!=Hash(n.Body))throw new Exception("地图和 .c 的同一用户区域都被修改，请先统一或导出新目录："+r.Key);
+    if(!SameDefault(r,n)&&Hash(r.Body)!=Hash(n.Body))throw new Exception("地图和 .c 的同一用户区域都被修改，请先统一或导出新目录："+r.Key);
    }
    foreach(var n in next.OrderByDescending(r=>r.Start)){var oldRegion=previous.FirstOrDefault(r=>r.Key==n.Key);if(oldRegion!=null&&Hash(oldRegion.Body)!=oldRegion.Default)fresh=fresh.Remove(n.Start,n.Length).Insert(n.Start,oldRegion.Body);}
    return Seal(fresh);

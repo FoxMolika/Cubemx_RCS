@@ -24,10 +24,10 @@ int main(void)
   CHECK(rcs_nav_update(&n,delta,(uint8_t)mask,.01f,cmd));
   CHECK(hypotf(cmd[0],cmd[1])*fabsf(cmd[2])<1e-7f);stages|=1u<<n.stage;
  }
- CHECK(n.state==RCS_NAV_DONE);CHECK(stages==127);
+ CHECK(n.state==RCS_NAV_DONE);CHECK(stages==((1u<<RCS_STAGE_MOVE)|(1u<<RCS_STAGE_SETTLE)|(1u<<RCS_STAGE_ARRIVAL)|(1u<<RCS_STAGE_DEPARTURE)|(1u<<RCS_STAGE_EXIT)));
  for(unsigned j=0;j<3;j++)CHECK(audit_enter[j]==1&&audit_done[j]==1&&audit_cancel[j]==0);
  CHECK(n.yaw_unwrapped < -4.6f && n.yaw_unwrapped > -4.8f);
- CHECK(hypotf(n.x_m-rcs_route_points[2].x_m,n.y_m-rcs_route_points[2].y_m)<=n.cfg.position_tolerance_m*1.01f);
+ CHECK(hypotf(n.x_m-rcs_route_points[2].x_m,n.y_m-rcs_route_points[2].y_m)<=rcs_route_plan[2].arrival_radius_m*1.01f);
  printf("PASS layout%d actual export: %u assertions, %u cycles, actions once, CW360, all stages, no mixed motion\n",n.cfg.geometry.layout,checks,i);
  return 0;
 }

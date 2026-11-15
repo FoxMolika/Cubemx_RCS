@@ -8,22 +8,22 @@ def page(title,body):return '<!doctype html><html lang="zh-CN"><meta charset="ut
 def main():
  body='''<p>2026-11-15 · STM32F407 HAL / CubeMX / Keil MDK · 独立 C/H 生成</p>
 <section><h2>1. 安装与打开编辑器</h2><ol>
-<li>保存并关闭 CubeMX。运行单文件 <code>foxmolika_CubeMX_Setup_0.6.1_win-x64.exe</code>，安装器自动寻找 CubeMX、导入内嵌软件包并核验注册，不需要手动导入 .pack，也不需要安装 Python。</li>
+<li>保存并关闭 CubeMX。运行单文件 <code>foxmolika_CubeMX_Setup_0.7.0_win-x64.exe</code>，安装器自动寻找 CubeMX、导入内嵌软件包并核验注册，不需要手动导入 .pack，也不需要安装 Python。</li>
 <li>目标电脑需要已有完整 STM32CubeMX；本次本机验收版本为 6.18.1。其他 CubeMX 版本没有自动视为已验收。</li>
 <li>安装后点击安装器的<strong>启动地图编辑器</strong>。以后可运行安装目录的 <code>foxmolika_MapEditor.exe</code>。</li>
-<li>默认安装目录为 <code>%LOCALAPPDATA%\\foxmolika_CubeMX_Suite_0.6.1</code>。安装器允许选择其他目录。编辑器是与 CubeMX 配套的独立窗口，不能在 CubeMX 画布里寻找地图入口。</li></ol>
+<li>默认安装目录为 <code>%LOCALAPPDATA%\\foxmolika_CubeMX_Suite_0.7.0</code>。安装器允许选择其他目录。编辑器是与 CubeMX 配套的独立窗口，不能在 CubeMX 画布里寻找地图入口。</li></ol>
 <p class="note">0.3.7、旧安装目录与旧工程不会被本次发布目录覆盖。建议复制工程后再迁移，保留能够工作的固件。</p></section>
 <section><h2>1.1 普通用户安装与“访问被拒绝”</h2>
 <p>本版保留0.5.2对发布EXE继承Low完整性标签的修复。普通用户应以<strong>Medium、非管理员</strong>运行；当前账号自己的<code>AppData/Local</code>通常可写。Low级别程序会被Windows禁止写入普通用户数据目录，即使文件夹DACL允许该账号写入。</p>
-<p>正常双击本版EXE即可。若外部目录重新给文件加了Low标签，安装器会明确提示；也提供<code>foxmolika_CubeMX_Installer_0.6.1.zip</code>，可在正常用户目录解压后运行其中的单个EXE。压缩包是兼容的分发方式，不需要手动导入.pack。</p>
+<p>正常双击本版EXE即可。若外部目录重新给文件加了Low标签，安装器会明确提示；也提供<code>foxmolika_CubeMX_Installer_0.7.0.zip</code>，可在正常用户目录解压后运行其中的单个EXE。压缩包是兼容的分发方式，不需要手动导入.pack。</p>
 <p>安装前实际检查工具目录、暂存父目录、所需CubeMX仓库与注册路径的写权限；导入工作目录和临时文件在工具自己的目录，不再写CubeMX程序目录。真正不可写时会显示完整路径，可以用“浏览…”更换工具目录；若是CubeMX仓库不可写，则需在CubeMX改为当前用户可写仓库，或在确有权限需求时处理该仓库权限。安装器不自动修改ACL或改动仓库位置。</p>
 <p>错误报告默认保存到当前用户<code>%LOCALAPPDATA%/foxmolika/InstallerReports</code>，失败时依次尝试临时目录及安装器旁，并在弹窗中给出实际保存路径。报告记录异常、路径和实际Windows令牌状态，不上传。不同权限实例冲突会提示先关闭已有安装器。</p></section>
 <section><h2>2. CubeMX 选择组件，并主动关联工程</h2><ol>
-<li>打开 F407 的 .ioc，Select Components 中选择 <code>RCS.foxmolika 0.6.1</code>，在 foxmolika 页启用 Robotics/foxmolika 模式并配置底盘参数。</li>
+<li>打开 F407 的 .ioc，Select Components 中选择 <code>RCS.foxmolika 0.7.0</code>，在 foxmolika 页启用 Robotics/foxmolika 模式并配置底盘参数。</li>
 <li>保存并关闭 .ioc。点击安装器或地图编辑器顶部绿色栏的<strong>关联工程…</strong>，主动选择该 .ioc。仅安装软件不会自动关联任何工程。</li>
 <li>重新打开 .ioc，Generate Code，然后在 Keil 重载工程。生成后工具自动补齐底盘头文件。</li>
 <li>CAN 引脚、时钟、位时序、滤波、接收中断、启动和任务调用仍须按硬件完成。关联仅保证 HAL 依赖及文件登记，不等于已经接好电机。</li></ol>
-<p>关联记录在工程内，工具目录为 <code>foxmolika_Tools_061</code>。官方 0.3.6/0.3.7/0.4.0/0.4.1/0.5.0/0.5.1/0.5.2 生成后工具经哈希检查后可升级；旧工具保留。未知自定义生成后命令会保留并提示合并。</p></section>
+<p>关联记录在工程内，工具目录为 <code>foxmolika_Tools_070</code>。官方 0.3.6/0.3.7/0.4.0/0.4.1/0.5.0/0.5.1/0.5.2 生成后工具经哈希检查后可升级；旧工具保留。未知自定义生成后命令会保留并提示合并。</p></section>
 <section><h2>3. 航点流程：平移、动作、纠偏分开</h2>
 <pre>平移到点 → 停稳 → 到达后动作 → 独立纠偏 → 起步前动作 → 离开验收 → 下一点</pre>
 <p>选择一个点，点<strong>航点流程…</strong>。窗口同时显示<strong>① 到达航点后</strong>与<strong>③ 离开航点前</strong>两个独立动作框，中间是<strong>② 位置纠错</strong>。两个框各有添加、编辑、上移、下移和删除按钮，不再通过下拉框切换。主窗口表格也分成“到达后”和“离开前”两列，双击任一列即可打开流程。</p>
@@ -56,7 +56,7 @@ def main():
 <p>默认位置：<code>%LOCALAPPDATA%\\foxmolika\\CrashReports</code>。ZIP 包含异常堆栈、版本、运行环境与有限操作记录，不附地图、用户代码、工程、Keil 编译日志或许可证。恢复地图单独保存在本地，原文件不覆盖；下次启动可选择恢复。</p>
 <p>打包失败时显示原始日志的实际路径；落盘全部失败则明确提示。强制结束或断电不能保证当场报告，下次启动可补收未正常结束的会话记录。自动快照之后的最后修改可能丢失。</p></section>
 <section><h2>7. 主窗口一体编辑：航点、平台、坡道与连接</h2>
-<p><strong>0.6.1不再通过模态地形窗口编辑。</strong>地形和航点使用同一份地图、同一个保存入口和同一套撤销/重做；没有“应用地形”门槛。路线没连完时可以直接存草稿、重新打开继续编辑。</p>
+<p><strong>0.7.0不再通过模态地形窗口编辑。</strong>地形和航点使用同一份地图、同一个保存入口和同一套撤销/重做；没有“应用地形”门槛。路线没连完时可以直接存草稿、重新打开继续编辑。</p>
 <table><tr><th>位置</th><th>入口</th></tr><tr><td>上方米色工具栏</td><td>＋平台、＋坡道、移动表面、连接、检查、立体示例、当前层、拖动时携带本面对象、显示其他层、网格吸附、显示夹角</td></tr><tr><td>左侧常驻页</td><td>底盘参数 / 平台/坡道 / 连接；选中表面后直接编辑坐标、尺寸、高度、限速和向下厚度</td></tr><tr><td>中间视图页</td><td>俯视编辑 / 路线侧视 / 三维预览 / 分段参考 / 检查结果</td></tr><tr><td>右侧航点表与属性</td><td>航点顺序、所属表面下拉框、派生Z、到达后和离开前动作；下方直接编辑XY、速度、纠错，P0还能编辑初始朝向</td></tr></table>
 <h3>在地面与平台之间补坡道过渡点</h3>
 <ol><li>在左侧或右表中选中前一个航点，例如P1。用上方<strong>当前层</strong>下拉框选择上坡道；切层会保留插入位置，不会更改P1自己的归属。</li>
@@ -81,12 +81,12 @@ def main():
   image=R/'build/ui'/name
   if not image.exists():image=R/'map_editor/docs'/name
   if image.exists():body+='<section><h2>'+label+'</h2><img alt="'+label+'" src="data:image/png;base64,'+base64.b64encode(image.read_bytes()).decode()+'"></section>'
- full=page('foxmolika 0.6.1 安装与使用教程',body)
+ full=page('foxmolika 0.7.0 安装与使用教程',body)
  for name in ['docs/使用说明.html','suite/docs/使用说明.html']:(R/name).write_text(full,encoding='utf-8')
  image=R/'map_editor/docs/editor_ui.png'
  preview='<p>界面以已安装版本为准。</p>'
  if image.exists():preview='<img alt="foxmolika0.4地图编辑器实际界面" src="data:image/png;base64,'+base64.b64encode(image.read_bytes()).decode()+'">'
- editor=page('foxmolika 0.6.1 地图、动作与量角器',preview+body)
+ editor=page('foxmolika 0.7.0 地图、动作与量角器',preview+body)
  (R/'map_editor/docs/使用说明.html').write_text(editor,encoding='utf-8')
  (R/'docs/地图编辑器说明.html').write_text(editor,encoding='utf-8')
  (R/'suite/docs/地图编辑器说明.html').write_text(editor,encoding='utf-8')
@@ -96,5 +96,5 @@ def main():
  # whose targets are intentionally not separate files in its small installation.
  standalone=editor.replace('<p><a href="地图编辑器说明.html">地图编辑器说明</a> · <a href="底盘接入说明.md">底盘接入接口</a></p>','')
  (R/'map_editor/docs/使用说明.html').write_text(standalone,encoding='utf-8')
- print('Wrote synchronized 0.6.1 Chinese tutorials')
+ print('Wrote synchronized 0.7.0 Chinese tutorials')
 if __name__=='__main__':main()

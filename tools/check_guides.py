@@ -15,7 +15,7 @@ def main():
   file=ROOT/rel;text=file.read_text(encoding='utf-8');page=Page();page.feed(text)
   for phrase in ['拖动表面','携带本面航点/障碍','Shift','右键','撤销','三维视图拖动用于旋转视角']:assert phrase in text,(rel,phrase)
   for phrase in ['Low完整性标签','Medium','InstallerReports','访问被拒绝']:assert phrase in text,(rel,phrase)
-  for phrase in ['连续跨平台','入段表面链','保持起点层','不必在每个坡道或交界处放航点','不是自动绕路','0.6.1','启动地图编辑器','foxmolika_MapEditor.exe','关联工程…','到达后动作','起步前动作','独立纠偏','量角器','CrashReports','ZIP','导出到关联工程','Application/foxmolikaRoute','3C3H','构建前','到达航点后','离开航点前','主窗口一体编辑','所属表面','向下厚度','拒绝导出','v4','保存草稿','当前层','＋航点','未接合']:
+  for phrase in ['连续跨平台','入段表面链','保持起点层','不必在每个坡道或交界处放航点','不是自动绕路','纠错模板','定位硬件','空模板','独立观测','v5','0.7.0','启动地图编辑器','foxmolika_MapEditor.exe','关联工程…','到达后动作','起步前动作','独立纠偏','量角器','CrashReports','ZIP','导出到关联工程','Application/foxmolikaRoute','3C3H','构建前','到达航点后','离开航点前','主窗口一体编辑','所属表面','向下厚度','拒绝导出','v4','保存草稿','当前层','＋航点','未接合']:
    assert phrase in text,(rel,phrase)
   for link in page.hrefs:
    if link.startswith('#'):assert link[1:] in page.ids,(rel,link)

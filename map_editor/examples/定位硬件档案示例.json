@@ -1,0 +1,17 @@
+{
+  "Version": 1,
+  "Sources": [
+    {
+      "Id": "9a5175a1ee5f4dfb9ad406e426260701",
+      "Name": "外部XY定位接入示例",
+      "Kind": "external_pose",
+      "Axes": 3,
+      "Reference": "absolute",
+      "Independent": true,
+      "MapAligned": false,
+      "BindingReady": false,
+      "DriverHeader": "foxmolika_observation_adapter.h",
+      "ReadFunction": "TeamGps_ReadObservation"
+    }
+  ]
+}

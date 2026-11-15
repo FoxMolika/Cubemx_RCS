@@ -6,8 +6,8 @@ using System.Reflection;
 using System.Threading;
 [assembly: AssemblyTitle("foxmolika Waypoint Map Editor")]
 [assembly: AssemblyProduct("foxmolika CubeMX Map Companion")]
-[assembly: AssemblyVersion("0.6.1.0")]
-[assembly: AssemblyFileVersion("0.6.1.0")]
+[assembly: AssemblyVersion("0.7.0.0")]
+[assembly: AssemblyFileVersion("0.7.0.0")]
 namespace RcsMap {
  static class Program {
   static bool Is(string[] args,string option,int count){return args.Length==count&&args[0]==option;}
@@ -43,6 +43,8 @@ namespace RcsMap {
     if(args.Length==2&&args[0]=="--export-linked"){RevisionGuard.SourceMapFile=args[1];var document=MapDocument.Parse(File.ReadAllText(args[1]));string ioc=ProjectExport.Resolve(document,args[1]);if(ioc==null)throw new IOException("请先关联工程。");Console.WriteLine(ProjectExport.Export(document,ioc));return 0;}
     if(args.Length==3&&args[0]=="--save-as-map"){ProjectExport.Save(MapDocument.Parse(File.ReadAllText(args[1])),args[1],args[2]);return 0;}
     if(args.Length==2&&args[0]=="--demo"){File.WriteAllText(args[1],MapDocument.Demo().Json(),new UTF8Encoding(false));return 0;}
+    if(Is(args,"--correction-selftest",2)){Styles();CorrectionTests.Run(args[1]);return 0;}
+    if(Is(args,"--correction-fixture",2)){CorrectionTests.WriteFixture(args[1]);return 0;}
     if(Is(args,"--continuous-demo",2)){File.WriteAllText(args[1],ContinuousTests.Demo().Json(),new UTF8Encoding(false));return 0;}
     if(Is(args,"--continuous-selftest",2)){Styles();ContinuousTests.Run(args[1]);return 0;}
     if(Is(args,"--terrain-demo",2)){File.WriteAllText(args[1],TerrainGeometry.Demo().Json(),new UTF8Encoding(false));return 0;}
@@ -53,6 +55,8 @@ namespace RcsMap {
     if(Is(args,"--render-terrain",3)){using(var editor=new Editor())editor.RenderWorkspaceImage(Int32.Parse(args[1]),args[2]);return 0;}
     if(Is(args,"--render-terrain-main",2)){using(var editor=new Editor())editor.RenderTerrainMainImage(args[1]);return 0;}
     if(Is(args,"--render-course-angles",2)){using(var editor=new Editor())editor.RenderCourseAnglesImage(args[1]);return 0;}
+    if(Is(args,"--render-hardware",2)){RenderWindow(new HardwareDialog(CorrectionTests.Fixture()),args[1]);return 0;}
+    if(Is(args,"--render-corrections",2)){var d=CorrectionTests.Fixture();RenderWindow(new PhaseDialog(d.Points[0],d.ActionIncludes,d),args[1]);return 0;}
     if(Is(args,"--render-phases",2)){var d=MapDocument.Demo();RenderWindow(new PhaseDialog(d.Points[2],d.ActionIncludes),args[1]);return 0;}
     if(Is(args,"--render-protractor",2)){var d=MapDocument.Demo();RenderWindow(new ProtractorDialog(d,0,()=>{},(x,y)=>{}),args[1]);return 0;}
     if(args.Length==2&&args[0]=="--render"){using(var editor=new Editor())editor.RenderPreview(args[1]);return 0;}

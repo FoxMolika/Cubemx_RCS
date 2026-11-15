@@ -45,6 +45,7 @@ const rcs_segment rcs_route_segments[RCS_ROUTE_SEGMENT_COUNT] = {
 
 const char rcs_route_revision[] = "@REVISION@";
 @PLAN_ARRAYS@
+@CORRECTION_ARRAYS@
 const rcs_point_plan rcs_route_plan[RCS_ROUTE_POINT_COUNT] = {
 @PLAN_ROWS@};
 
@@ -62,6 +63,10 @@ int rcs_route_init(rcs_navigator *navigator, void *action_context)
         return 0;
     }
 
-    return rcs_nav_bind_plan(navigator, rcs_route_plan, RCS_ROUTE_POINT_COUNT,
-                                rcs_route_action, action_context);
+    if (!rcs_nav_bind_plan(navigator, rcs_route_plan, RCS_ROUTE_POINT_COUNT,
+                           rcs_route_action, action_context)) {
+        return 0;
+    }
+    return rcs_nav_bind_corrections(navigator, route_corrections, RCS_ROUTE_POINT_COUNT,
+                                   rcs_route_observe, action_context);
 }

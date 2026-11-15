@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 namespace RcsMap {
- static class TemplateGenerator {
+ static partial class TemplateGenerator {
   static string F(double value) {
    if (!MapDocument.Finite(value)) throw new Exception("非有限数值不能导出。");
    string text=value.ToString("G9",CultureInfo.InvariantCulture);
@@ -60,7 +60,7 @@ namespace RcsMap {
         {"INDEX",i.ToString(CultureInfo.InvariantCulture)},{"ID",id},{"NAME",Name(action.Name)},
         {"CANCEL_REGION",UserRegions.Block(key+"_CANCEL",action.Cancel)},
         {"ENTER_REGION",UserRegions.Block(key+"_ENTER",action.Start)},
-        {"POLL_REGION",UserRegions.Block(key+"_POLL","/* Set complete, or return RCS_ACTION_ERROR for a mechanism fault. */\n complete = ("+expr+") ? 1 : 0;")},
+        {"POLL_REGION",UserRegions.Block(key+"_POLL","/* 设置complete；机构故障返回RCS_ACTION_ERROR。 */\n complete = ("+expr+") ? 1 : 0;")},
         {"DONE_REGION",UserRegions.Block(key+"_DONE",action.Done)}}));
        cases.Append("    case "+customIndex+"u:\n        return action_"+id+"(context, phase, elapsed_s);\n");customIndex++;
       }
@@ -70,15 +70,16 @@ namespace RcsMap {
      }
      if(list.Count>0)arrays.Append("};\n");
     }
-    plans.Append("    { "+pointers[0]+", "+counts[0]+"u, "+pointers[1]+", "+counts[1]+"u, "+String.Join(", ",new[]{F(p.ArrivalRadius/1000),F(p.CorrectionSpeed/1000),F(p.CorrectionTimeout),F(p.SettleMs/1000),F(p.DriftLimit/1000)})+", "+p.CorrectionMode+"u, "+p.CorrectionPasses+"u, "+(p.RunFinalDeparture?"1u":"0u")+" },\n");
+    plans.Append("    { "+pointers[0]+", "+counts[0]+"u, "+pointers[1]+", "+counts[1]+"u, "+String.Join(", ",new[]{F(p.ArrivalRadius/1000),F(p.CorrectionSpeed/1000),F(p.CorrectionTimeout),F(p.SettleMs/1000),F(p.DriftLimit/1000)})+", "+0+"u, "+p.CorrectionPasses+"u, "+(p.RunFinalDeparture?"1u":"0u")+" },\n");
     if(i>0){var seg=SegmentInfo.Calculate(s,doc.Points[i-1],p,i-1);segments.Append("    {\n        "+String.Join(", ",new[]{F(seg.Distance),F(seg.Turn),F(seg.Seconds)})+",\n        { "+String.Join(", ",seg.Counts.Select(F).ToArray())+" }\n    },\n");}
    }
+   Corrections(doc,values);
    values["PLAN_ARRAYS"]=arrays.ToString();values["PLAN_ROWS"]=plans.ToString();
    values["REVISION"]=RouteRevision(doc);
    values["POINT_ROWS"]=points.ToString();values["SEGMENT_ROWS"]=segments.ToString();values["SPEC_ROWS"]=specs.ToString();
    values["FUNCTIONS"]=functions.ToString();values["CASES"]=cases.ToString();
    values["INCLUDES_REGION"]=UserRegions.Block("RCS_ACTION_INCLUDES",doc.ActionIncludes);
-   values["GLOBALS_REGION"]=UserRegions.Block("RCS_ACTION_GLOBALS","/* Shared state or your action_context type. */");
+   values["GLOBALS_REGION"]=UserRegions.Block("RCS_ACTION_GLOBALS","/* 公共机构状态或action_context类型。 */");
    var files=new Dictionary<string,string>();
    foreach(string name in new[]{"rcs_route.c","rcs_route.h","rcs_actions.c","rcs_actions.h"})files[name]=Render(name+".tpl",values);
    files["rcs_nav.c"]=Exporter.Resource("rcs_nav.c");files["rcs_nav.h"]=Exporter.Resource("rcs_nav.h");

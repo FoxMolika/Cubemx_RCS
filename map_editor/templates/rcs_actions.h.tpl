@@ -12,7 +12,7 @@ extern "C" {
 
 /* 导出配置 ------------------------------------------------------------------------------------------*/
 
-/* Typed action descriptions are in rcs_route_plan. */
+/* 动作类型和顺序由rcs_route_plan描述。 */
 
 /* 导出函数 ------------------------------------------------------------------------------------------*/
 
@@ -27,6 +27,10 @@ extern "C" {
 rcs_action_result rcs_route_action(void *context, size_t point,
                                    rcs_action_phase phase, float elapsed_s);
 
+/**
+ * @brief 读取已导入硬件的独立定位，返回1有效、0失败
+ */
+int rcs_route_observe(void *context, unsigned source, rcs_observation *sample);
 #ifdef __cplusplus
 }
 #endif

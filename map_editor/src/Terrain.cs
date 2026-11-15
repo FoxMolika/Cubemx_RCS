@@ -51,15 +51,15 @@ namespace RcsMap {
   public static double Height(MapDocument d,Waypoint p){var s=Surface(d,p.SurfaceId);return s==null?Double.NaN:s.HeightAt(p.X,p.Y);}
   public static bool HasRelief(MapDocument d){if(d.Terrain==null)return false;if(d.Points.Any(p=>{var s=Surface(d,p.SurfaceId);return s==null||s.Kind!=SurfaceKind.水平平台||Math.Abs(s.Z0)>1e-6;}))return true;
    for(int i=1;i<d.Points.Count;i++){TerrainLeg leg;string error;if(TryLeg(d,d.Points[i-1],d.Points[i],out leg,out error)&&leg.Spans.Any(s=>s.Surface.Kind!=SurfaceKind.水平平台||Math.Abs(s.Z0)>1e-6||Math.Abs(s.Z1)>1e-6))return true;}return false;}
-  public static void RequireFlat(MapDocument d){if(HasRelief(d))throw new InvalidOperationException("此路线包含高台/坡道：0.6.1仅支持立体地图编辑、几何预览与检查，尚无实车坡道控制。不能导出平地C/H或运行平地动态预览。请保留立体地图，使用独立平地路线接入现有固件。");}
+  public static void RequireFlat(MapDocument d){if(HasRelief(d))throw new InvalidOperationException("此路线包含高台/坡道：0.7.0仅支持立体地图编辑、几何预览与检查，尚无实车坡道控制。不能导出平地C/H或运行平地动态预览。请保留立体地图，使用独立平地路线接入现有固件。");}
   // A draft may have disconnected routes or unfinished assignments. It still
   // needs bounded finite drawing data and valid base settings before opening.
-  public static bool CanOpenDraft(MapDocument d){if(d.Terrain==null)return false;try{d.StructuralCheck();var settings=d.Clone();settings.Version=3;settings.Terrain=null;settings.Points.Clear();settings.Obstacles.Clear();if(settings.Validate(false).Count>0)return false;
+  public static bool CanOpenDraft(MapDocument d){if(d.Terrain==null)return false;try{d.StructuralCheck();var settings=d.Clone();settings.Version=3;settings.Terrain=null;settings.HardwareSources=null;settings.Points.Clear();settings.Obstacles.Clear();if(settings.Validate(false).Count>0)return false;
     Func<double,bool> number=v=>MapDocument.Finite(v)&&Math.Abs(v)<=1000000;
     return d.Points.All(p=>new[]{p.X,p.Y,p.Yaw,p.Speed,p.Dwell}.All(number))&&d.Obstacles.All(o=>new[]{o.X,o.Y,o.Width,o.Height}.All(number)&&o.Width>0&&o.Height>0)&&d.Terrain.Surfaces.All(s=>new[]{s.X,s.Y,s.Width,s.Depth,s.Z0,s.Z1,s.Thickness,s.SpeedLimit}.All(number)&&s.Width>0&&s.Depth>0);
    }catch{return false;}}
   public static List<string> Structure(MapDocument d){var e=new List<string>();if(d.Terrain==null){if(d.Version==4)e.Add("v4地图缺少地形数据。");if(d.Points.Any(p=>Key(p.SurfaceId)!=Ground)||d.Obstacles.Any(o=>Key(o.SurfaceId)!=Ground))e.Add("表面引用缺少地形数据。");return e;}
-   var t=d.Terrain;if(d.Version!=4)e.Add("立体地图必须保存为v4格式，防止旧编辑器忽略地形。");if(t.Surfaces==null||t.Connections==null||t.Surfaces.Count>64||t.Connections.Count>256||t.Surfaces.Any(s=>s==null)||t.Connections.Any(c=>c==null)){e.Add("地形数据无效或超过64表面/256连接。");return e;}
+   var t=d.Terrain;if(d.Version!=4&&d.Version!=5)e.Add("立体地图必须保存为v4格式，防止旧编辑器忽略地形。");if(t.Surfaces==null||t.Connections==null||t.Surfaces.Count>64||t.Connections.Count>256||t.Surfaces.Any(s=>s==null)||t.Connections.Any(c=>c==null)){e.Add("地形数据无效或超过64表面/256连接。");return e;}
    var ids=new HashSet<string>{Ground};foreach(var s in t.Surfaces)if(s.Id==null||!System.Text.RegularExpressions.Regex.IsMatch(s.Id,@"\A[0-9a-f]{32}\z")||!ids.Add(s.Id))e.Add("表面ID无效或重复。");
    foreach(var p in d.Points)if(!ids.Contains(Key(p.SurfaceId)))e.Add("航点引用了不存在的表面。");foreach(var o in d.Obstacles)if(!ids.Contains(Key(o.SurfaceId)))e.Add("障碍物引用了不存在的表面。");
    var pairs=new HashSet<string>();foreach(var c in t.Connections){string a=Key(c.A),b=Key(c.B);if(!ids.Contains(a)||!ids.Contains(b)||a==b)e.Add("表面连接端点无效。");if(!pairs.Add(String.CompareOrdinal(a,b)<0?a+":"+b:b+":"+a))e.Add("表面连接重复。");}return e;
@@ -73,7 +73,7 @@ namespace RcsMap {
    foreach(var o in d.Obstacles){var s=Surface(d,o.SurfaceId);if(!s.Contains(o.X,o.Y)||!s.Contains(o.X+o.Width,o.Y+o.Height))e.Add("障碍物超出所属表面。");}
    foreach(var c in t.Connections){var a=Surface(d,c.A);var b=Surface(d,c.B);if(!SurfacesMeet(a,b))e.Add("连接“"+a.Name+" ↔ "+b.Name+"”没有等高接合边（上下重叠不能直接通行）。");}
    for(int i=0;i<d.Points.Count;i++){var p=d.Points[i];var s=Surface(d,p.SurfaceId);if(!s.Contains(p.X,p.Y))e.Add("P"+i+"不在所属表面内。");
-    if(s.Kind!=SurfaceKind.水平平台&&(p.CorrectionMode!=0||p.ArrivalActions.Any(a=>a.Enabled)||p.DepartureActions.Any(a=>a.Enabled)))e.Add("P"+i+"位于坡道：请将停车动作和位置纠错移到平地端点。");
+    if(s.Kind!=SurfaceKind.水平平台&&(CorrectionRules.Items(p).Any(c=>c.Enabled)||p.ArrivalActions.Any(a=>a.Enabled)||p.DepartureActions.Any(a=>a.Enabled)))e.Add("P"+i+"位于坡道：请将停车动作和位置纠错移到平地端点。");
     if(i==0||i==d.Points.Count-1){if(s.Kind!=SurfaceKind.水平平台)e.Add("起点和终点必须在水平平台。");else if(!s.Contains(p.X,p.Y,r))e.Add("端点车体包络超出所属平台。");}
     if(i>0){TerrainLeg leg;string error;if(!TryLeg(d,d.Points[i-1],p,out leg,out error))e.Add("P"+(i-1)+"→P"+i+"："+error);else{if(p.Speed>leg.SpeedLimit)e.Add("P"+i+"段速度超过所属表面限速。");if(!LegFits(d,d.Points[i-1],p,leg,r))e.Add("P"+(i-1)+"→P"+i+"：车体包络超出通行表面/坡道侧边。");}}
    }

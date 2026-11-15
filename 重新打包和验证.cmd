@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-python tools\write_guides_061.py
+python tools\write_guides_070.py
 if errorlevel 1 goto failed
 python map_editor\tools\build.py
 if errorlevel 1 goto failed
@@ -23,7 +23,7 @@ python map_editor\tools\verify_phases.py --no-build
 if errorlevel 1 goto failed
 python map_editor\tools\test_crash.py
 if errorlevel 1 goto failed
-python tools\test_migration_061.py
+python tools\test_migration_070.py
 if errorlevel 1 goto failed
 python tools\test_revision_guard.py
 if errorlevel 1 goto failed
@@ -43,7 +43,7 @@ python tools\test_keil_guard.py
 if errorlevel 1 goto failed
 python suite\tools\finish_tests.py
 if errorlevel 1 goto failed
-python tools\release_061.py
+python tools\release_070.py
 if errorlevel 1 goto failed
 echo Verified release ready in dist.
 pause

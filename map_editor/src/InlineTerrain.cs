@@ -6,8 +6,8 @@ using System.Windows.Forms;
 
 namespace RcsMap {
  public static class DraftRules {
-  public static void Check(MapDocument d){d.StructuralCheck();var view=d.Clone();if(view.Terrain==null){view.Terrain=new TerrainMap();view.Version=4;}if(!TerrainGeometry.CanOpenDraft(view))throw new InvalidOperationException("地图含不可安全编辑的数据：请检查场地设置、有限坐标和正数尺寸。路线未连接等几何问题可以保存为草稿。");}
-  public static void Terrain(MapDocument d){if(d.Terrain==null)d.Terrain=new TerrainMap();d.Version=4;}
+  public static void Check(MapDocument d){d.StructuralCheck();var view=d.Clone();if(view.Terrain==null){view.Terrain=new TerrainMap();view.Version=view.HardwareSources!=null||view.Points.Any(p=>CorrectionRules.Items(p).Any())?5:4;}if(!TerrainGeometry.CanOpenDraft(view))throw new InvalidOperationException("地图含不可安全编辑的数据：请检查场地设置、有限坐标和正数尺寸。路线未连接等几何问题可以保存为草稿。");}
+  public static void Terrain(MapDocument d){if(d.Terrain==null)d.Terrain=new TerrainMap();d.Version=d.HardwareSources!=null||d.Points.Any(p=>CorrectionRules.Items(p).Any())?5:4;}
  }
  public class PointInspector {
   protected readonly MapDocument document;protected readonly Waypoint point;
@@ -21,7 +21,7 @@ namespace RcsMap {
   [DisplayName("入段表面链"),ReadOnly(true)] public string Chain {get{int i=document.Points.IndexOf(point);if(i<1)return "起点";TerrainLeg leg;string error;if(!TerrainGeometry.TryLeg(document,document.Points[i-1],point,out leg,out error))return error;return String.Join(" → ",leg.Spans.Select(s=>s.Surface.Name).ToArray())+"；限速 "+leg.SpeedLimit.ToString("0")+" mm/s";}}
   [DisplayName("速度 mm/s")] public double Speed {get{return point.Speed;}set{point.Speed=Number(value);}}
   [DisplayName("计划出发朝向 °"),ReadOnly(true)] public string Heading {get{double value;return CourseAngles.TryHeading(document,document.Points.IndexOf(point),out value)?value.ToString("0.##"):"朝向无效";}}
-  [DisplayName("纠错模式")] public CorrectionChoice Correction {get{return (CorrectionChoice)point.CorrectionMode;}set{point.CorrectionMode=(int)value;}}
+  [DisplayName("纠错模板"),ReadOnly(true)] public string Correction {get{return CorrectionRules.Items(point).Count(c=>c.Enabled)+" 个启用；在航点流程中编辑";}}
  }
  public sealed class InitialPointInspector:PointInspector {
   public InitialPointInspector(MapDocument d):base(d,0){}
