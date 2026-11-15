@@ -45,8 +45,8 @@ def first():
     custom='project setCustomFWPath "C:/Users/FoxMolia/STM32Cube/Repository/STM32Cube_FW_F4_V1.28.3"'
     run(script('native_baseline',['config load "'+baseline.as_posix()+'"',custom,'project generate']),home=HOME)
     lines=['config load "'+path.as_posix()+'"',custom,
-      'set ip parameters RCS.Chassis.'+VERSION+' RCS_LAYOUT 0',
-      'set ip parameters RCS.Chassis.'+VERSION+' RCS_WHEEL_DIAMETER_MM 120',
+      'set ip parameters RCS.foxmolika.'+VERSION+' RCS_LAYOUT 0',
+      'set ip parameters RCS.foxmolika.'+VERSION+' RCS_WHEEL_DIAMETER_MM 120',
       'config save','project generate']
     output=run(script('native_first',lines),home=HOME)
     digest=check_files(active,0,120)
@@ -59,8 +59,8 @@ def remaining():
     for layout,diameter in [(1,160),(2,200)]:
         output=run(script('native_layout_'+str(layout),[
           'config load "'+ioc.as_posix()+'"',
-          'set ip parameters RCS.Chassis.'+VERSION+' RCS_LAYOUT '+str(layout),
-          'set ip parameters RCS.Chassis.'+VERSION+' RCS_WHEEL_DIAMETER_MM '+str(diameter),
+          'set ip parameters RCS.foxmolika.'+VERSION+' RCS_LAYOUT '+str(layout),
+          'set ip parameters RCS.foxmolika.'+VERSION+' RCS_WHEEL_DIAMETER_MM '+str(diameter),
           'config save','project generate']),home=HOME)
         digest=check_files(active,layout,diameter)
         assert digest==(AREA/'main.sha256').read_text()

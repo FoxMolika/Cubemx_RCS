@@ -33,7 +33,7 @@ namespace RcsSuite {
    foreach(var p in before){string dest=Payload.In(to,p.Key);Directory.CreateDirectory(Path.GetDirectoryName(dest));File.Copy(Payload.In(from,p.Key),dest);}
    if(!SameInventory(before,Inventory(from))||!SameInventory(before,Inventory(to)))throw new IOException("复制校验失败或源目录发生变化；源和目标均已保留。");
   }
-  static string AreaRoot(string h){return Path.Combine(PackService.Repo(h),".rcs-chassis-transactions");}
+  static string AreaRoot(string h){return Path.Combine(PackService.Repo(h),".foxmolika-tx");}
   PackTransaction(string h,string w,XElement e){
    home=Full(h);work=Full(w);journal=Path.Combine(work,JournalName);record=e;
    Guid id;string text=(string)e.Attribute("Id");if(!Guid.TryParseExact(text,"N",out id)||(string)e.Attribute("Version")!=PackService.Version||!Same(home,(string)e.Attribute("Home")))throw new IOException("恢复记录版本/用户不匹配，文件已保留。");

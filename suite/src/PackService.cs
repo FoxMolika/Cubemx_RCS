@@ -7,19 +7,19 @@ using System.Text;
 using System.Xml.Linq;
 namespace RcsSuite {
  static class PackService {
-  internal const string Version="0.3.5";
+  internal const string Version="0.3.6";
   internal static readonly Encoding Utf8=new UTF8Encoding(false);
   internal static string Q(string s){if(s.IndexOf('"')>=0||s.IndexOf('\n')>=0||s.IndexOf('\r')>=0)throw new Exception("路径含不支持的字符。");return "\""+s+"\"";}
   internal static string Repo(string home){string ini=Path.Combine(home,@".stm32cubemx\plugins\updater\updater.ini");if(File.Exists(ini))foreach(string raw in File.ReadAllLines(ini)){
     string s=raw.Trim().TrimStart('\uFEFF');int at=s.IndexOf('=');if(at<0||!s.Substring(0,at).Trim().Equals("RepositoryPath",StringComparison.OrdinalIgnoreCase))continue;
     string p=Environment.ExpandEnvironmentVariables(s.Substring(at+1).Trim().Trim('"'));if(!String.IsNullOrEmpty(p))return Path.IsPathRooted(p)?Path.GetFullPath(p):Path.GetFullPath(Path.Combine(home,p));}
    return Path.Combine(home,@"STM32Cube\Repository");}
-  internal static string PackDir(string home){return Path.Combine(Repo(home),@"Packs\RCS\Chassis",Version);}
-  // Other RCS.Chassis versions stay installed for old projects; the user is told about them.
-  internal static List<string> OtherVersions(string home){string root=Path.Combine(Repo(home),@"Packs\RCS\Chassis");if(!Directory.Exists(root))return new List<string>();
+  internal static string PackDir(string home){return Path.Combine(Repo(home),@"Packs\RCS\foxmolika",Version);}
+  // Other RCS.foxmolika versions stay installed for old projects; the user is told about them.
+  internal static List<string> OtherVersions(string home){string root=Path.Combine(Repo(home),@"Packs\RCS\foxmolika");if(!Directory.Exists(root))return new List<string>();
    return Directory.GetDirectories(root).Select(Path.GetFileName).Where(v=>!String.Equals(v,Version,StringComparison.OrdinalIgnoreCase)).OrderBy(v=>v).ToList();}
   internal static bool Registered(string home){string path=Path.Combine(home,@".stm32cubemx\thirdparties\db\updaterThirdParties.xml");if(!File.Exists(path))return false;
-   return XDocument.Load(path).Descendants().Any(e=>e.Name.LocalName=="ThirdParty"&&(string)e.Attribute("Vendor")=="RCS"&&(string)e.Attribute("Name")=="Chassis"&&e.Elements().Any(p=>p.Name.LocalName=="PackDescription"&&(string)p.Attribute("Release")==Version));}
+   return XDocument.Load(path).Descendants().Any(e=>e.Name.LocalName=="ThirdParty"&&(string)e.Attribute("Vendor")=="RCS"&&(string)e.Attribute("Name")=="foxmolika"&&e.Elements().Any(p=>p.Name.LocalName=="PackDescription"&&(string)p.Attribute("Release")==Version));}
   internal static bool FilesMatch(string dir){if(!Directory.Exists(dir))return false;var allowed=Payload.Manifest.Root.Element("PackFiles").Elements("File").Select(f=>Payload.In(dir,(string)f.Attribute("Name"))).ToList();foreach(var f in Payload.Manifest.Root.Element("PackFiles").Elements("File")){
    string path=Payload.In(dir,(string)f.Attribute("Name"));if(!File.Exists(path)||Payload.HashFile(path)!=(string)f.Attribute("Sha256"))return false;}
    // CubeMX adds this generated local package description during import.
@@ -68,7 +68,7 @@ namespace RcsSuite {
   // bounded retry for slow machines where the local updater plugin is still
   // starting; each attempt runs in a new JVM with the same isolated profile.
   internal static void Import(string cube,string home,bool isolated,string work,Action<string> report){
-   string cmd="swmgr install "+Q(Path.Combine(work,"RCS.Chassis."+Version+".pack").Replace('\\','/'))+" accept";
+   string cmd="swmgr install "+Q(Path.Combine(work,"RCS.foxmolika."+Version+".pack").Replace('\\','/'))+" accept";
    for(int attempt=1;;attempt++){
     Run(cube,home,isolated,work,cmd,"import-pack",report);
     if(Registered(home)&&FilesMatch(PackDir(home)))return;
@@ -81,7 +81,7 @@ namespace RcsSuite {
    }
   }
   internal static void Install(string cube,string home,bool isolated,string work,bool newly,Action<string> report){RequireClosed();string dir=PackDir(home);
-   if(Directory.Exists(dir)&&!FilesMatch(dir))throw new Exception("RCS.Chassis "+Version+" 已存在但内容不同。已保留旧文件，安装未完成。请使用新发行版本，或核对该版本文件。");
+   if(Directory.Exists(dir)&&!FilesMatch(dir))throw new Exception("RCS.foxmolika "+Version+" 已存在但内容不同。已保留旧文件，安装未完成。请使用新发行版本，或核对该版本文件。");
    if(!FilesMatch(dir)||!Registered(home)){
     var transaction=PackTransaction.Begin(home,work);
     try{transaction.BackupOriginal();Import(cube,home,isolated,work,report);
@@ -96,7 +96,7 @@ namespace RcsSuite {
    var receipt=new XElement("CubePack",new XAttribute("Version",Version),new XAttribute("Cube",cube),new XAttribute("Home",home),new XAttribute("Isolated",isolated),new XAttribute("NewlyIntroduced",newly),new XAttribute("PackDirectory",dir),new XAttribute("VerifiedUtc",DateTime.UtcNow.ToString("o")));
    receipt.Save(Path.Combine(work,"cube-pack-receipt.xml"));report("已核验 CubeMX 注册及全部包文件："+dir);
    var others=OtherVersions(home);
-   if(others.Count>0)report("注意：仓库里还有 RCS.Chassis "+String.Join("、",others.ToArray())+"。旧工程会继续使用旧版本；新工程请在 Select Components 中选择 "+Version+"，旧版本可在 CubeMX 的 Embedded Software Packages Manager 中移除。");
+   if(others.Count>0)report("注意：仓库里还有 RCS.foxmolika "+String.Join("、",others.ToArray())+"。旧工程会继续使用旧版本；新工程请在 Select Components 中选择 "+Version+"，旧版本可在 CubeMX 的 Embedded Software Packages Manager 中移除。");
   }
   internal static void Remove(string work,Action<string> report){string r=Path.Combine(work,"cube-pack-receipt.xml"),pending=Path.Combine(work,"cube-pack-pending.xml");if(!File.Exists(r)&&!File.Exists(pending))return;var e=XElement.Load(File.Exists(r)?r:pending);
    RecoverPending((string)e.Attribute("Home"),work,report);
@@ -106,7 +106,7 @@ namespace RcsSuite {
    if(!String.Equals(Path.GetFullPath(dir),Path.GetFullPath(PackDir(home)),StringComparison.OrdinalIgnoreCase))throw new Exception("安装记录的包目录与当前仓库不同，保留该包。");
    if(Directory.Exists(dir)&&!FilesMatch(dir))throw new Exception("CubeMX 包已被修改，已保留它。卸载未完成。");
    if(!CubeLocator.Valid(cube))throw new Exception("原 CubeMX 路径已变化，请先安装/修复，重新指定 CubeMX 后再卸载。");
-   RequireClosed();Run(cube,home,Boolean.Parse((string)e.Attribute("Isolated")),work,"swmgr remove RCS.Chassis."+Version,"remove-pack",report);
+   RequireClosed();Run(cube,home,Boolean.Parse((string)e.Attribute("Isolated")),work,"swmgr remove RCS.foxmolika."+Version,"remove-pack",report);
    // CubeMX retains the version in its catalog as Status=Manual even after a
    // successful uninstall. That catalog row is not an installed-file record.
    if(Directory.Exists(dir))throw new Exception("CubeMX 尚未移除包文件，保留安装记录。");

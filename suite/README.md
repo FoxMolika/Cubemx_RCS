@@ -1,9 +1,9 @@
-# RCS 合并安装器 0.3.5
+# RCS 合并安装器 0.3.6
 
-单文件 EXE 内嵌底盘包 0.3.5、地图编辑器 0.2.1、工程关联/头文件工具与更新后的网页教程。交付在根目录 dist/，完整操作见 [使用说明](docs/使用说明.html)。
+单文件 EXE 内嵌底盘包 0.3.6、地图编辑器 0.2.2、工程关联/头文件工具与更新后的网页教程。交付在根目录 dist/，完整操作见 [使用说明](docs/使用说明.html)。
 
 安装完成后，每个工程需主动点击“关联工程…”→“选择 .ioc 并关联 / 升级”；保存关闭后关联，重开 .ioc 再 Generate Code。Keil 重载显示底盘4H。
 
-地图从安装器“启动地图编辑器”或安装目录 RCS_MapEditor.exe 打开，是独立窗口。默认目录 %LOCALAPPDATA%\RCS_CubeMX_Suite_0.3.5。
+地图从安装器“启动地图编辑器”或安装目录 foxmolika_MapEditor.exe 打开，是独立窗口。默认目录 %LOCALAPPDATA%\foxmolika_CubeMX_Suite_0.3.6。
 
 源码构建和实际验收由根目录“重新打包和验证.cmd”统一组织。build/acceptance.json、transactions.json 记录实际测试二进制哈希；发布脚本拒绝未通过或哈希不一致的工件。详见根 README 和 docs/验证记录.md。

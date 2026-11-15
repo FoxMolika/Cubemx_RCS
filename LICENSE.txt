@@ -1,4 +1,4 @@
-Copyright (c) 2026 RCS Chassis prototype contributors
+Copyright (c) 2026 foxmolika Chassis prototype contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -23,7 +23,7 @@ class PackManager {
     static bool Registered(string home,string version) {
         string p=Path.Combine(home,@".stm32cubemx\thirdparties\db\updaterThirdParties.xml");
         if(!File.Exists(p))return false;
-        return XDocument.Load(p).Descendants("ThirdParty").Any(e=>(string)e.Attribute("Name")=="Chassis" && (string)e.Attribute("Vendor")=="RCS" && e.Elements("PackDescription").Any(v=>(string)v.Attribute("Release")==version));
+        return XDocument.Load(p).Descendants("ThirdParty").Any(e=>(string)e.Attribute("Name")=="foxmolika" && (string)e.Attribute("Vendor")=="RCS" && e.Elements("PackDescription").Any(v=>(string)v.Attribute("Release")==version));
     }
     static bool FilesMatch(string dir,XDocument manifest) {
         if(!Directory.Exists(dir))return false;
@@ -81,14 +81,14 @@ class PackManager {
             string action=a.Length>0?a[0]:"install";
             string receipt=Path.Combine(Here,"install-receipt.xml");
             var manifest=XDocument.Load(Path.Combine(Here,"payload-manifest.xml"));
-            string version=(string)manifest.Root.Attribute("Version"),pack=Path.Combine(Here,"RCS.Chassis."+version+".pack");
+            string version=(string)manifest.Root.Attribute("Version"),pack=Path.Combine(Here,"RCS.foxmolika."+version+".pack");
             string cube=Path.GetFullPath(Option(a,"--cube",Environment.GetEnvironmentVariable("STM32CubeMX_PATH")??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Programs/STM32CubeMX")));
             bool isolated=Array.IndexOf(a,"--test-home")>=0;
             string home=Path.GetFullPath(Option(a,"--test-home",Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)));
             if(action=="install") {
                 if(Hash(pack)!=(string)manifest.Root.Attribute("PackSha256"))throw new Exception("内嵌扩展包校验失败。");
                 CheckRunning(cube);
-                string repo=Repository(home),dir=Path.Combine(repo,@"Packs\RCS\Chassis",version);
+                string repo=Repository(home),dir=Path.Combine(repo,@"Packs\RCS\foxmolika",version);
                 bool existed=Directory.Exists(dir),newlyIntroduced=!existed;
                 if(existed && !FilesMatch(dir,manifest))throw new Exception("同版本扩展包已存在且内容不同；安装器不会覆盖它。请在 CubeMX 中检查旧包后重试。");
                 if(File.Exists(receipt)) {
@@ -102,11 +102,11 @@ class PackManager {
                     File.WriteAllText(script,"swmgr install "+Q(pack.Replace('\\','/'))+" accept\nexit\n",Utf8);
                     RunCube(cube,home,isolated,script,Path.Combine(Here,"install-cubemx.log"));
                 }
-                repo=Repository(home);dir=Path.Combine(repo,@"Packs\RCS\Chassis",version);
+                repo=Repository(home);dir=Path.Combine(repo,@"Packs\RCS\foxmolika",version);
                 if(!FilesMatch(dir,manifest)||!Registered(home,version))throw new Exception("未通过扩展包文件与 CubeMX 注册记录的双重核验。请查看日志，或按使用说明从本地导入 .pack。");
                 new XDocument(new XElement("Installation",new XAttribute("Version",version),new XAttribute("CubeDirectory",cube),new XAttribute("Home",home),new XAttribute("Isolated",isolated),new XAttribute("PackDirectory",dir),new XAttribute("NewlyIntroduced",newlyIntroduced?"true":"false"))).Save(receipt);
                 File.WriteAllText(Path.Combine(Here,"install-success.txt"),"VERIFIED\nVersion="+version+"\nPackDirectory="+dir+"\n",Utf8);
-                Console.WriteLine("已确认：RCS.Chassis "+version+" 已安装并注册到 CubeMX。");
+                Console.WriteLine("已确认：RCS.foxmolika "+version+" 已安装并注册到 CubeMX。");
                 return 0;
             }
             if(action=="uninstall") {
@@ -119,7 +119,7 @@ class PackManager {
                 if(!FilesMatch(dir,manifest))throw new Exception("包文件已变化，已保留它们。请在 CubeMX 中按版本手动管理。");
                 CheckRunning(cube);
                 string script=Path.Combine(Here,"remove-pack.script");
-                File.WriteAllText(script,"swmgr remove RCS.Chassis."+version+"\nexit\n",Utf8);
+                File.WriteAllText(script,"swmgr remove RCS.foxmolika."+version+"\nexit\n",Utf8);
                 RunCube(cube,home,isolated,script,Path.Combine(Here,"remove-cubemx.log"));
                 if(Directory.Exists(dir))throw new Exception("CubeMX 尚未移除该版本，保留安装记录供检查。");
                 Console.WriteLine("已通过 CubeMX 移除此安装器引入的包版本。");return 0;

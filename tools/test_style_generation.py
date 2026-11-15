@@ -28,7 +28,7 @@ def main():
  p=old/'rcs_chassis.c';text=p.read_text(encoding='utf-8');assert '        return 0u;' in text;p.write_text(text.replace('        return 0u;','  return 0u;',1),encoding='utf-8')
  assert not candidate.check(old),'candidate example should demonstrate the missing indentation rule';assert check_source('rcs_chassis.c',p.read_text(encoding='utf-8'));checks.append('candidate checker false-pass reproduced: 2-space indent')
  # Use the actual old and new managed binaries to test in-place upgrade of generated files.
- old_exe=ROOT.parent/'RCS_Chassis_CubeMX_0.3.4/map_editor/dist/RCS_MapEditor.exe';new_exe=ROOT/'map_editor/dist/RCS_MapEditor.exe';mapfile=area/'upgrade.rcsmap.json'
+ old_exe=ROOT.parent/'RCS_Chassis_CubeMX_0.3.4/map_editor/dist/RCS_MapEditor.exe';new_exe=ROOT/'map_editor/dist/foxmolika_MapEditor.exe';mapfile=area/'upgrade.rcsmap.json'
  def run(args,expected=0):
   q=subprocess.run([str(x) for x in args],capture_output=True);assert q.returncode==expected,(args,q.returncode)
  mapfile.write_bytes((fixture/'upgrade.rcsmap.json').read_bytes());doc=json.loads(mapfile.read_text(encoding='utf-8'));out=area/'upgrade-output'
@@ -38,7 +38,7 @@ def main():
   for name,digest in provenance['files'].items():assert hashlib.sha256((fixture/'legacy-output'/name).read_bytes()).hexdigest()==digest
   shutil.copytree(fixture/'legacy-output',out);legacy_origin='hash-verified export captured from actual old 0.2.0 EXE'
  c=out/'rcs_actions.c';text=c.read_text(encoding='utf-8');text=text.replace('/* @ID@ and @POINT_COUNT@ are user text */','/* user hand edit kept: @ID@; @POINT_COUNT@ */');c.write_text(text,encoding='utf-8')
- run([new_exe,'--export',mapfile,out]);actual=c.read_text(encoding='utf-8');assert '/* user hand edit kept: @ID@; @POINT_COUNT@ */' in actual;checks.append('actual 0.2.0 -> 0.2.1 in-place export preserves handwritten code and literal template tokens')
+ run([new_exe,'--export',mapfile,out]);actual=c.read_text(encoding='utf-8');assert '/* user hand edit kept: @ID@; @POINT_COUNT@ */' in actual;checks.append('actual 0.2.0 -> 0.2.2 in-place export preserves handwritten code and literal template tokens')
  before={p.name:p.read_bytes() for p in out.iterdir()};run([new_exe,'--export',mapfile,out]);assert all(p.read_bytes()==before[p.name] for p in out.iterdir());checks.append('new template regeneration is byte-idempotent')
  errors=check_files({p.name:p.read_text(encoding='utf-8') for p in out.iterdir()});assert not errors,errors;checks.append('upgraded route outputs pass full style gate')
  doc['Points'][0]['ActionStart']='/* conflict changed in GUI */';mapfile.write_text(json.dumps(doc,ensure_ascii=False),encoding='utf-8');run([new_exe,'--export',mapfile,out],2);assert all(p.read_bytes()==before[p.name] for p in out.iterdir());checks.append('dual edit conflicts still refuse without overwriting')

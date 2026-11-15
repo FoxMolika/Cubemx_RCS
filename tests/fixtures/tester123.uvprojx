@@ -341,7 +341,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F407xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Chassis;../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/RCS_Robotics/RCS_Chassis</IncludePath>
+              <IncludePath>../Chassis;../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/foxmolika_Robotics/foxmolika</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -493,22 +493,22 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>Middlewares/Chassis/Robotics/Chassis</GroupName>
+          <GroupName>Middlewares/foxmolika/Robotics/foxmolika</GroupName>
           <Files>
             <File>
               <FileName>rcs_chassis.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Middlewares/Third_Party/RCS_Robotics/RCS_Chassis/rcs_chassis.c</FilePath>
+              <FilePath>../Middlewares/Third_Party/RCS_Robotics/RCS_foxmolika/rcs_chassis.c</FilePath>
             </File>
             <File>
               <FileName>rcs_control.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Middlewares/Third_Party/RCS_Robotics/RCS_Chassis/rcs_control.c</FilePath>
+              <FilePath>../Middlewares/Third_Party/RCS_Robotics/RCS_foxmolika/rcs_control.c</FilePath>
             </File>
             <File>
               <FileName>rcs_hal.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Middlewares/Third_Party/RCS_Robotics/RCS_Chassis/rcs_hal.c</FilePath>
+              <FilePath>../Middlewares/Third_Party/RCS_Robotics/RCS_foxmolika/rcs_hal.c</FilePath>
             </File>
           </Files>
         </Group>

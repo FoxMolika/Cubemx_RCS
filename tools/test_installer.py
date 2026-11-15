@@ -24,7 +24,7 @@ def run_install():
     assert receipt.attrib['Isolated'].lower()=='true'
     packdir=Path(receipt.attrib['PackDirectory'])
     assert packdir.is_relative_to(AREA)
-    assert (packdir/('CubeMX/RCS.Chassis.'+VERSION+'_Modes.xml')).is_file()
+    assert (packdir/('CubeMX/RCS.foxmolika.'+VERSION+'_Modes.xml')).is_file()
     return packdir
 
 if __name__=='__main__':

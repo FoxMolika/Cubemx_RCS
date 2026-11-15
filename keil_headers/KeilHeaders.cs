@@ -10,9 +10,9 @@ using System.Reflection;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
-[assembly: AssemblyTitle("RCS Keil Header Fix")]
-[assembly: AssemblyVersion("0.3.5.0")]
-[assembly: AssemblyFileVersion("0.3.5.0")]
+[assembly: AssemblyTitle("foxmolika Keil Header Fix")]
+[assembly: AssemblyVersion("0.3.6.0")]
+[assembly: AssemblyFileVersion("0.3.6.0")]
 static class KeilHeaders {
  static readonly string[] Module={"rcs_chassis.h","rcs_control.h","rcs_hal.h"};
  static string Norm(string p){return p.Replace('\\','/').Trim();}
@@ -52,7 +52,7 @@ static class KeilHeaders {
      present.Add(full);added++;}
    }
   }
-  if(!anyGroup)throw new Exception("工程中没有包含 rcs_chassis.c 的分组。请先在 CubeMX 中启用 RCS 底盘组件并 Generate Code："+project);
+  if(!anyGroup)throw new Exception("工程中没有包含 rcs_chassis.c 的分组。请先在 CubeMX 中启用 foxmolika 底盘组件并 Generate Code："+project);
   if(added==0){say("已是最新，无需修改："+project);return 0;}
   string backup=project+".rcs-backup";if(!File.Exists(backup))File.Copy(project,backup);
   string temp=project+".rcs-tmp";

@@ -15,8 +15,8 @@ def main():
  paths=['docs/使用说明.html','suite/docs/使用说明.html','map_editor/docs/使用说明.html']
  for rel in paths:
   text=(ROOT/rel).read_text(encoding='utf-8');p=Page();p.feed(text)
-  for phrase in ['关联工程…','选择 .ioc 并关联 / 升级','启动地图编辑器','RCS_MapEditor.exe',
-                 '%LOCALAPPDATA%\\RCS_CubeMX_Suite_0.3.5','0.2.1','RCS_Tools_035/headers-result.txt']:
+  for phrase in ['关联工程…','选择 .ioc 并关联 / 升级','启动地图编辑器','foxmolika_MapEditor.exe',
+                 '%LOCALAPPDATA%\\foxmolika_CubeMX_Suite_0.3.6','0.2.2','foxmolika_Tools_036/headers-result.txt']:
    assert phrase in text,(rel,phrase)
   for link in p.hrefs:
    if link.startswith('#'):assert link[1:] in p.ids,(rel,link)

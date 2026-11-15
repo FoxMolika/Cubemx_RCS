@@ -14,7 +14,7 @@ def main():
         p=(project.parent/f.findtext('FilePath').replace('\\','/')).resolve()
         assert p.exists(),str(p)
         if p.suffix.lower()=='.c':sources.append(p)
-    generated=sample/'Middlewares/Third_Party/RCS_Robotics/RCS_Chassis'
+    generated=sample/'Middlewares/Third_Party/foxmolika_Robotics/foxmolika'
     for p in (ROOT/'firmware').glob('*'):
         assert (generated/p.name).read_bytes()==p.read_bytes(),p.name+' was not regenerated from current source'
     header=(sample/'Inc/rcs_config.h').read_text(encoding='utf-8')
@@ -22,7 +22,7 @@ def main():
     definitions=dict(re.findall(r'^#define (RCS_\w+) ([^\r\n]+)',header,re.M))
     properties=dict(line.split('=',1) for line in (sample/'native.ioc').read_text().splitlines() if '=' in line)
     for key,default in DEFAULTS.items():
-        expected=float(properties.get('RCS.Chassis.0.1.0.'+key,default))
+        expected=float(properties.get('RCS.foxmolika.0.1.0.'+key,default))
         assert float(definitions[key])==expected,key
     mainc=(sample/'Src/main.c').read_text(encoding='utf-8')
     for token in ['RCS_REGEN_PRESERVATION_SENTINEL','RCS_Init(&hcan1)','RCS_Process();','HAL_CAN_RxFifo0MsgPendingCallback','#include "rcs_hal.h"','#include "rcs_config.h"']:

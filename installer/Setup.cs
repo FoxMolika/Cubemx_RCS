@@ -9,23 +9,23 @@ using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
 
-[assembly: AssemblyTitle("RCS Chassis CubeMX Setup")]
-[assembly: AssemblyProduct("RCS Chassis CubeMX Extension")]
-[assembly: AssemblyDescription("Installs the RCS.Chassis native STM32CubeMX code-generation pack")]
+[assembly: AssemblyTitle("foxmolika Chassis CubeMX Setup")]
+[assembly: AssemblyProduct("foxmolika Chassis CubeMX Extension")]
+[assembly: AssemblyDescription("Installs the RCS.foxmolika native STM32CubeMX code-generation pack")]
 [assembly: AssemblyVersion("0.2.0.0")]
 [assembly: AssemblyFileVersion("0.2.0.0")]
 
 class Setup {
-    internal static readonly string[] Names={"RcsPackManager.exe","payload-manifest.xml","RCS.Chassis.0.2.0.pack","使用说明.html","LICENSE.txt","validation/WorkspacePreferencesFactory.class","validation/WorkspacePreferencesFactory$MemoryPreferences.class"};
+    internal static readonly string[] Names={"RcsPackManager.exe","payload-manifest.xml","RCS.foxmolika.0.2.0.pack","使用说明.html","LICENSE.txt","validation/WorkspacePreferencesFactory.class","validation/WorkspacePreferencesFactory$MemoryPreferences.class"};
     internal static string CubeDefault=Environment.GetEnvironmentVariable("STM32CubeMX_PATH")??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Programs/STM32CubeMX");
     internal static string DirDefault=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RCS_Chassis_CubeMX");
     static string Q(string p){return "\""+p+"\"";}
     static string Option(string[] a,string name,string fallback){string found=a.FirstOrDefault(s=>s.StartsWith(name+"=",StringComparison.OrdinalIgnoreCase));return found==null?fallback:found.Substring(name.Length+1);}
     static void Extract(string dir) {
         string marker=Path.Combine(dir,"rcs-installer-owned.txt");
-        if(Directory.Exists(dir)&&Directory.EnumerateFileSystemEntries(dir).Any() && (!File.Exists(marker)||File.ReadAllText(marker)!="RCS.Chassis.Setup"))
+        if(Directory.Exists(dir)&&Directory.EnumerateFileSystemEntries(dir).Any() && (!File.Exists(marker)||File.ReadAllText(marker)!="RCS.foxmolika.Setup"))
             throw new Exception("请选择空目录，或本安装程序已有的安装目录。");
-        Directory.CreateDirectory(dir);File.WriteAllText(marker,"RCS.Chassis.Setup");
+        Directory.CreateDirectory(dir);File.WriteAllText(marker,"RCS.foxmolika.Setup");
         foreach(string name in Names) {
             string path=Path.Combine(dir,name.Replace('/',Path.DirectorySeparatorChar));Directory.CreateDirectory(Path.GetDirectoryName(path));
             using(var source=Assembly.GetExecutingAssembly().GetManifestResourceStream("payload/"+name)) {
@@ -57,7 +57,7 @@ class Setup {
         }
         if(action=="install") {
             if(!File.Exists(Path.Combine(dir,"install-success.txt")))throw new Exception("缺少成功核验记录。");
-            report("安装成功。请打开 CubeMX，选择 RCS.Chassis 0.2.0。 ");
+            report("安装成功。请打开 CubeMX，选择 RCS.foxmolika 0.2.0。 ");
         } else {
             foreach(string name in Names.Concat(new[]{"install-success.txt","install-receipt.xml","install-pack.script","remove-pack.script","install-cubemx.log","remove-cubemx.log","rcs-installer-owned.txt","setup-manager.log","manager-error.log","setup-error.txt"})){
                 string path=Path.Combine(dir,name.Replace('/',Path.DirectorySeparatorChar));if(File.Exists(path))File.Delete(path);
@@ -83,7 +83,7 @@ class Setup {
 class Wizard:Form {
     TextBox cube,dir,log;Button install,remove,guide;
     public Wizard(string cubePath,string installPath) {
-        Text="RCS 底盘 · CubeMX 安装程序 0.2.0";ClientSize=new Size(780,550);MinimumSize=Size;StartPosition=FormStartPosition.CenterScreen;
+        Text="foxmolika 底盘 · CubeMX 安装程序 0.2.0";ClientSize=new Size(780,550);MinimumSize=Size;StartPosition=FormStartPosition.CenterScreen;
         Font=new Font("Microsoft YaHei UI",10);BackColor=Color.White;
         Controls.Add(new Label{Text="在 CubeMX 中配置并生成底盘代码",Font=new Font(Font.FontFamily,19,FontStyle.Bold),AutoSize=true,Location=new Point(24,22)});
         Controls.Add(new Label{Text="STM32CubeMX 6.18.1 · STM32F407 HAL · 独立 .c/.h · 无需 Python",AutoSize=true,Location=new Point(26,66),ForeColor=Color.DimGray});
@@ -97,7 +97,7 @@ class Wizard:Form {
         install=new Button{Text="安装到 CubeMX",Location=new Point(26,283),Size=new Size(168,39),BackColor=Color.FromArgb(225,238,255)};install.Click+=(s,e)=>Work("install");Controls.Add(install);
         remove=new Button{Text="卸载此扩展",Location=new Point(207,283),Size=new Size(145,39)};remove.Click+=(s,e)=>Work("uninstall");Controls.Add(remove);
         guide=new Button{Text="查看使用说明",Location=new Point(365,283),Size=new Size(145,39)};guide.Click+=(s,e)=>OpenGuide();Controls.Add(guide);
-        log=new TextBox{Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Location=new Point(26,340),Size=new Size(726,180),BackColor=Color.FromArgb(245,248,252),Text="安装后：Software Packs → Select Components → RCS.Chassis\r\n选择组件后，还要在 Chassis 页面启用 Robotics Chassis 模式。"};Controls.Add(log);
+        log=new TextBox{Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Location=new Point(26,340),Size=new Size(726,180),BackColor=Color.FromArgb(245,248,252),Text="安装后：Software Packs → Select Components → RCS.foxmolika\r\n选择组件后，还要在 Chassis 页面启用 Robotics foxmolika 模式。"};Controls.Add(log);
         FormClosing+=(s,e)=>{if(!install.Enabled){e.Cancel=true;MessageBox.Show(this,"CubeMX 操作正在进行，请等待本次核验完成。");}};
     }
     void Browse(TextBox box){using(var d=new FolderBrowserDialog{SelectedPath=box.Text,Description="选择目录"})if(d.ShowDialog()==DialogResult.OK)box.Text=d.SelectedPath;}

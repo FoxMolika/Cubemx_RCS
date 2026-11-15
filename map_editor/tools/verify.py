@@ -9,7 +9,7 @@ def run(args):
 def main():
     if '--no-build' not in sys.argv:run([sys.executable,ROOT/'tools/build.py'])
     area=ROOT/'build'/('验收 空间_'+uuid.uuid4().hex[:8]);area.mkdir(parents=True)
-    exe=ROOT/'dist/RCS_MapEditor.exe'
+    exe=ROOT/'dist/foxmolika_MapEditor.exe'
     run([exe,'--selftest',area]);print((area/'editor-test-report.txt').read_text(encoding='utf-8').strip())
     results=[]
     for layout in range(3):

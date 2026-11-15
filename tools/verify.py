@@ -82,18 +82,18 @@ def main():
         shutil.rmtree(folder,ignore_errors=True)
     evidence.append('PASS configuration validation, numeric preview, read-only IOC check, export overwrite protection; export is exactly 3 C + 4 H files and existing main.c stays byte-identical')
     pack=build();first=hashlib.sha256(pack.read_bytes()).hexdigest();build();assert hashlib.sha256(pack.read_bytes()).hexdigest()==first
-    with zipfile.ZipFile(ROOT/('dist/RCS.Chassis.C_H.'+VERSION+'.zip')) as z:
+    with zipfile.ZipFile(ROOT/('dist/RCS.foxmolika.C_H.'+VERSION+'.zip')) as z:
         assert set(z.namelist())==expected
         assert z.read('rcs_config.h')==config_header(DEFAULTS).encode('utf-8')
     with zipfile.ZipFile(pack) as z:
         names=set(z.namelist());assert all(not n.startswith('/') and '..' not in Path(n).parts for n in names)
-        pd=E.fromstring(z.read('RCS.Chassis.pdsc'))
+        pd=E.fromstring(z.read('RCS.foxmolika.pdsc'))
         for f in pd.findall('.//file'):assert f.attrib['name'] in names,f.attrib
         for f in names:
             if f.endswith('.xml'):E.fromstring(z.read(f))
         ns={'x':'http://mcd.rou.st.com/modules.php?name=mcu'}
-        modes=E.fromstring(z.read('CubeMX/RCS.Chassis.'+VERSION+'_Modes.xml'))
-        config=E.fromstring(z.read('CubeMX/RCS.Chassis.'+VERSION+'_Configs.xml'))
+        modes=E.fromstring(z.read('CubeMX/RCS.foxmolika.'+VERSION+'_Modes.xml'))
+        config=E.fromstring(z.read('CubeMX/RCS.foxmolika.'+VERSION+'_Configs.xml'))
         refs={p.attrib['Name'] for p in modes.findall('x:RefParameter',ns)}
         assert set(DEFAULTS)<=refs
         assert {p.attrib['Name'] for p in config.findall('.//x:Argument',ns)}==set(DEFAULTS)

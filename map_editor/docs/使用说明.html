@@ -1,17 +1,17 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RCS 位点地图编辑器 · 使用说明</title>
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>foxmolika 位点地图编辑器 · 使用说明</title>
 <style>body{font:16px/1.8 "Microsoft YaHei",sans-serif;color:#263c52;background:#f0f5fa;margin:0}main{max-width:1000px;margin:32px auto;padding:36px 48px;background:white;border-radius:14px}h1,h2{line-height:1.4;color:#153656}h1{font-size:32px}h2{margin-top:38px;font-size:23px}code,pre{font-family:Consolas,monospace;background:#edf3f9}pre{padding:18px;overflow:auto;border-radius:8px;font-size:14px;line-height:1.6}.callout{background:#eaf5f1;padding:16px 20px;border-left:4px solid #168d76}.note{background:#fff5e6;padding:16px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #d4dfe9;text-align:left;padding:9px}img{width:100%;border:1px solid #d9e2ec;border-radius:8px}li{margin:8px 0}a{color:#1668ad}</style>
-<main><h1>RCS 位点地图编辑器</h1><p>0.2.1 · Windows 原生配套扩展 · 麦轮 / 三全向 / 四全向 · 编码器闭环路径执行（本套件搭配 RCS.Chassis 0.3.5）</p>
-<div class="callout">绘制场地、障碍物和行驶位点，自动计算编码器运动参考值，导出独立的 <b>rcs_route.c/h + rcs_nav.c/h + rcs_actions.c/h</b>。配合现有 RCS.Chassis CubeMX 扩展使用。此版绘图界面是独立 Windows 程序，未嵌入 CubeMX 窗口。</div>
+<main><h1>foxmolika 位点地图编辑器</h1><p>0.2.2 · Windows 原生配套扩展 · 麦轮 / 三全向 / 四全向 · 编码器闭环路径执行（本套件搭配 RCS.foxmolika 0.3.6）</p>
+<div class="callout">绘制场地、障碍物和行驶位点，自动计算编码器运动参考值，导出独立的 <b>rcs_route.c/h + rcs_nav.c/h + rcs_actions.c/h</b>。配合现有 RCS.foxmolika CubeMX 扩展使用。此版绘图界面是独立 Windows 程序，未嵌入 CubeMX 窗口。</div>
 <h2 id="open">1. 安装后，从哪里打开地形编辑器？</h2>
-<div class="callout"><b>地形／地图／路径编辑器是同一个程序。</b>在合并安装器中点击 <b>“启动地图编辑器”</b>；或者在资源管理器地址栏输入 <code>%LOCALAPPDATA%\RCS_CubeMX_Suite_0.3.5</code>，双击 <code>RCS_MapEditor.exe</code>。安装时改过目录的，请使用自己选择的目录。当前是独立窗口，未嵌入 CubeMX。</div>
-<ol><li>使用单文件 <code>RCS_CubeMX_Suite_Setup_0.3.5_win-x64.exe</code> 完成“安装 / 修复”；编辑器 0.2.1 已包含在里面，无需另装或手动导入 .pack。</li>
-<li>需要 Windows 的 .NET Framework 4.x，运行不需要 Python 或 clang-format。单独便携版也可直接运行 <code>RCS_MapEditor.exe</code>。</li>
-<li><b>底盘工程每个都要主动关联一次：</b>在 CubeMX 选择并启用 RCS.Chassis 0.3.5，保存 .ioc 并关闭工程 → 合并安装器最右侧 <b>“关联工程…”</b> → <b>“选择 .ioc 并关联 / 升级”</b> → 重新打开 .ioc 再 Generate Code。Keil 重载后会显示底盘的 4 个 .h。结果日志在 <code>RCS_Tools_035/headers-result.txt</code>。</li>
+<div class="callout"><b>地形／地图／路径编辑器是同一个程序。</b>在合并安装器中点击 <b>“启动地图编辑器”</b>；或者在资源管理器地址栏输入 <code>%LOCALAPPDATA%\foxmolika_CubeMX_Suite_0.3.6</code>，双击 <code>foxmolika_MapEditor.exe</code>。安装时改过目录的，请使用自己选择的目录。当前是独立窗口，未嵌入 CubeMX。</div>
+<ol><li>使用单文件 <code>foxmolika_CubeMX_Setup_0.3.6_win-x64.exe</code> 完成“安装 / 修复”；编辑器 0.2.2 已包含在里面，无需另装或手动导入 .pack。</li>
+<li>需要 Windows 的 .NET Framework 4.x，运行不需要 Python 或 clang-format。单独便携版也可直接运行 <code>foxmolika_MapEditor.exe</code>。</li>
+<li><b>底盘工程每个都要主动关联一次：</b>在 CubeMX 选择并启用 RCS.foxmolika 0.3.6，保存 .ioc 并关闭工程 → 合并安装器最右侧 <b>“关联工程…”</b> → <b>“选择 .ioc 并关联 / 升级”</b> → 重新打开 .ioc 再 Generate Code。Keil 重载后会显示底盘的 4 个 .h。结果日志在 <code>foxmolika_Tools_036/headers-result.txt</code>。</li>
 <li>上述关联不负责添加地图导出的 3C3H；仍须按本页第4节加入路径文件和自己的任务。地图保存为 <code>.rcsmap.json</code>，与 .ioc 分开保存。</li></ol>
-<h2>2. 画地图和路线</h2><ol><li>启动后显示一条示例路线。点击“新建”可以清空地图。左栏输入场地宽、高和网格间距，单位均为 mm。</li><li>点击“＋ 位点”，在画布上依次点击；P0 是起点，后面的编号就是行驶顺序。点击“选择 / 拖动”移动点。右侧表格可以精确输入 X、Y、朝向、目标速度及停留秒数。</li><li>朝向是<b>世界坐标中的车头角度</b>：0° 向右，90° 向上，正角度逆时针。界面 Y 轴向上；底盘输出接口则使用车体 X 向前、Y 向左。</li><li>点击“▧ 障碍”，在画布上拖出矩形；在“矩形障碍”表格中修改尺寸。选择模式可拖动整个障碍物。</li><li>滚轮缩放，中键平移，“适配画布”恢复全图。“吸附网格”控制对齐。选中位点后可上移、下移；Delete 删除画布选中元素。Ctrl+Z / Ctrl+Y 撤销重做，Ctrl+S 保存，Ctrl+Shift+S 另存。</li><li>保存为 .rcsmap.json，可以继续编辑。路线预览是理想匀速动画，未模拟电机、加减速、定位误差或打滑。</li></ol>
+<p>旧 RCS 工程需先在 CubeMX 取消旧组件并启用 foxmolika；如有旧 RCS 生成后操作，先清除该旧工具再用本版关联。公开 RCS_* 接口和 .rcsmap.json 格式继续兼容。</p><h2>2. 画地图和路线</h2><ol><li>启动后显示一条示例路线。点击“新建”可以清空地图。左栏输入场地宽、高和网格间距，单位均为 mm。</li><li>点击“＋ 位点”，在画布上依次点击；P0 是起点，后面的编号就是行驶顺序。点击“选择 / 拖动”移动点。右侧表格可以精确输入 X、Y、朝向、目标速度及停留秒数。</li><li>朝向是<b>世界坐标中的车头角度</b>：0° 向右，90° 向上，正角度逆时针。界面 Y 轴向上；底盘输出接口则使用车体 X 向前、Y 向左。</li><li>点击“▧ 障碍”，在画布上拖出矩形；在“矩形障碍”表格中修改尺寸。选择模式可拖动整个障碍物。</li><li>滚轮缩放，中键平移，“适配画布”恢复全图。“吸附网格”控制对齐。选中位点后可上移、下移；Delete 删除画布选中元素。Ctrl+Z / Ctrl+Y 撤销重做，Ctrl+S 保存，Ctrl+Shift+S 另存。</li><li>保存为 .rcsmap.json，可以继续编辑。路线预览是理想匀速动画，未模拟电机、加减速、定位误差或打滑。</li></ol>
 <p class="note">此版由你指定路线，不自动绕障。检查按“车体包络半径＋到点位置容差”膨胀障碍矩形，角部为保守的方形膨胀。相切也判冲突。车体半径必须覆盖外壳、轮子和外伸机构，不能只填车体中心到轮中心的距离。它是设计时几何检查，不能保证实车跟踪中不会偏出走廊。</p>
 <!--PREVIEW-->
-<h2>3. 底盘与编码器参数</h2><p>建议点击“导入 CubeMX 的 rcs_config.h”，选择现有 CubeMX 工程生成的头文件。会导入轮型、轮径、轮距、全向轮半径及 W0 位置角、减速比、电机端最大 RPM；0.2.1 还会读取底盘命令超时。再次更改 CubeMX 底盘配置后，请重新导入并重新生成路径文件，两个模块的几何参数必须一致。</p>
+<h2>3. 底盘与编码器参数</h2><p>建议点击“导入 CubeMX 的 rcs_config.h”，选择现有 CubeMX 工程生成的头文件。会导入轮型、轮径、轮距、全向轮半径及 W0 位置角、减速比、电机端最大 RPM；0.2.2 还会读取底盘命令超时。再次更改 CubeMX 底盘配置后，请重新导入并重新生成路径文件，两个模块的几何参数必须一致。</p>
 <table><tr><th>参数</th><th>含义</th></tr><tr><td>轮型</td><td>0：四麦轮 X 型，W0/W1/W2/W3 = 左前/右前/左后/右后。1：三全向，2：四全向。全向轮正滚动方向为轮位置角的逆时针切向。</td></tr><tr><td>有效计数 / 电机转</td><td>填解码之后每电机转总计数。1000 线 AB 编码器四倍频应填 4000；已给“counts/rev”的数值不再乘4。所有轮假设使用同样轮径、减速比和编码器分辨率。</td></tr><tr><td>总减速比</td><td>电机转数 / 轮转数。实际测量或使用准确规格，不应凭示例默认19认定真实减速比。</td></tr><tr><td>方向 ±1</td><td>原始编码器正计数映射到该轮逻辑正方向；与驱动电机方向是两个配置，不自动复制。传给导航的是未翻转的原始增量，导航只翻转一次。</td></tr><tr><td>采样间隔、单段超时</td><td>运行时必须传真实 dt 和各轮新鲜反馈掩码。缺少任一在用轮、超时、突跳会锁定故障。示例最大间隔100ms不代表可以低频读取C620角度。“允许采样最大间隔 ms”，导出前检查它小于底盘命令超时。</td></tr></table>
 <p>例如：轮径100mm，有效计数4000/电机转，减速比2。轮行进1m所需约 <code>1/(π×0.1)×4000×2 ≈ 25465</code> 计数。减速比和四倍频各计算一次。</p>
 <p><b>C620 的角度反馈不是累计里程。</b>0～8191角度先在接收层按采样顺序解绕，再累计到本控制周期；高速下两次接收之间超过半转，单靠角度无法消除回绕歧义。应足够高频采样，检测丢帧/歧义；无法确认时给失效掩码并停车。编码器位于轮轴时，请先按减速比换算到电机端等效计数，或对整套底盘统一使用轮轴转速和减速比1。</p>
@@ -54,7 +54,7 @@ if (!rcs_nav_update(&amp;nav, delta, fresh, dt, velocity)) {
 <p class="note">fresh 不能因为“数值没变”就认为失效：新收到的零增量是有效静止反馈；反过来，旧数据不能重复声明新鲜。fresh只是一份接口声明，接收层仍需校验时间戳、序号和帧完整性。导航函数无法在“任务完全未执行”时停车，所以必须保留底盘命令超时看门狗。三全向只检查bit0～2，W3不用。</p>
 <h2>6. 执行行为与当前边界</h2><ul><li>默认停止，显式定位、获得新反馈、人工起跑后才进入运行。不能把软件重置坐标当成物理定位。停止后重新起跑需重新定位；故障锁定，需要明确重置。</li><li>采用轮式编码器里程计、常体速度精确SE(2)积分、位置/朝向比例控制，平移和旋转可同时进行，带速度与加速度限制。底盘运动学进一步按电机最大RPM同比例限幅。</li><li>每个位点要求位置和角度同时到达，速度降下来后执行启用的动作，再计时停留，然后才去下一点。支持原地转向和原地停留。最后一个点输出零速度。</li><li>表格中的编码器计数是理想直线平移＋最短角度匀速转动的积分参考，运行轨迹会受闭环、限幅和打滑影响；控制器不是按这些总计数直接停车。匀速时间不含加减速、收敛和停留。</li><li>编码器会积累误差，麦轮横向打滑尤为明显。此版无IMU融合、外部定位、动态避障或自动规划；尚未实车验证。请先架空确认每轮方向和反馈，再低速调参。</li></ul>
 
-<section id="actions"><h2>航点动作 · 地图编辑器 0.2.1 / 套件 0.3.5</h2><p>选择航点，点击工具栏“航点动作…”，或双击表格的“动作”列。勾选启用，填写名称和超时。夹爪、舵机、升降三个模板只插入注释，实际函数由你的硬件驱动提供。</p><p>每个航点有四个区域：启动一次、完成条件、完成清理、取消/故障清理。公共头文件页用于填写驱动头文件。一个航点可在启动区域调用多个机构，在完成条件中组合 `&amp;&amp;`，表示都完成后继续。</p><p>例如升降动作（函数名仅作接口示意，需替换为队内真实接口）：</p><pre>/* 公共头文件 */
+<section id="actions"><h2>航点动作 · 地图编辑器 0.2.2 / 套件 0.3.6</h2><p>选择航点，点击工具栏“航点动作…”，或双击表格的“动作”列。勾选启用，填写名称和超时。夹爪、舵机、升降三个模板只插入注释，实际函数由你的硬件驱动提供。</p><p>每个航点有四个区域：启动一次、完成条件、完成清理、取消/故障清理。公共头文件页用于填写驱动头文件。一个航点可在启动区域调用多个机构，在完成条件中组合 `&amp;&amp;`，表示都完成后继续。</p><p>例如升降动作（函数名仅作接口示意，需替换为队内真实接口）：</p><pre>/* 公共头文件 */
 #include &quot;lift.h&quot;
 
 /* 启动一次 */

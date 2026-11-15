@@ -430,7 +430,7 @@
   </Group>
 
   <Group>
-    <GroupName>Middlewares/Chassis/Robotics/Chassis</GroupName>
+    <GroupName>Middlewares/foxmolika/Robotics/foxmolika</GroupName>
     <tvExp>1</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
@@ -442,7 +442,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>../Middlewares/Third_Party/RCS_Robotics/RCS_Chassis/rcs_chassis.c</PathWithFileName>
+      <PathWithFileName>../Middlewares/Third_Party/RCS_Robotics/RCS_foxmolika/rcs_chassis.c</PathWithFileName>
       <FilenameWithoutPath>rcs_chassis.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -454,7 +454,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>../Middlewares/Third_Party/RCS_Robotics/RCS_Chassis/rcs_control.c</PathWithFileName>
+      <PathWithFileName>../Middlewares/Third_Party/RCS_Robotics/RCS_foxmolika/rcs_control.c</PathWithFileName>
       <FilenameWithoutPath>rcs_control.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -466,7 +466,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>../Middlewares/Third_Party/RCS_Robotics/RCS_Chassis/rcs_hal.c</PathWithFileName>
+      <PathWithFileName>../Middlewares/Third_Party/RCS_Robotics/RCS_foxmolika/rcs_hal.c</PathWithFileName>
       <FilenameWithoutPath>rcs_hal.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>

@@ -41,10 +41,10 @@ def export(values,out):
 def gui():
     import tkinter as tk
     from tkinter import ttk,filedialog,messagebox
-    root=tk.Tk();root.title('RCS 底盘生成器 '+VERSION+' · CubeMX 配套预览');root.geometry('1100x800')
+    root=tk.Tk();root.title('foxmolika 底盘生成器 '+VERSION+' · CubeMX 配套预览');root.geometry('1100x800')
     root.minsize(980,700)
     style=ttk.Style(root);style.theme_use('clam');style.configure('TLabel',font=('Microsoft YaHei UI',10));style.configure('TButton',font=('Microsoft YaHei UI',10),padding=6)
-    ttk.Label(root,text='RCS 底盘配置与代码预览',font=('Microsoft YaHei UI',18,'bold')).pack(anchor='w',padx=20,pady=(16,4))
+    ttk.Label(root,text='foxmolika 底盘配置与代码预览',font=('Microsoft YaHei UI',18,'bold')).pack(anchor='w',padx=20,pady=(16,4))
     ttk.Label(root,text='选择底盘、填写尺寸，生成独立 .c/.h 文件。接入接口和说明位于项目 docs 目录。').pack(anchor='w',padx=20,pady=(0,10))
     panes=ttk.Panedwindow(root,orient='horizontal');panes.pack(fill='both',expand=True,padx=16)
     left=ttk.Frame(panes);right=ttk.Frame(panes);panes.add(left,weight=3);panes.add(right,weight=2)

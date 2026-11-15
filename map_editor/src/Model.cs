@@ -147,7 +147,7 @@ namespace RcsMap {
    var v=new Dictionary<string,double>();foreach(Match m in Regex.Matches(text,@"(?m)^\s*#define\s+(RCS_\w+)\s+([-+0-9.eE]+)[fF]?\s*$")){
     double x;if(Double.TryParse(m.Groups[2].Value,NumberStyles.Float,CultureInfo.InvariantCulture,out x)&&Finite(x))v[m.Groups[1].Value]=x;}
    string[] keys={"RCS_LAYOUT","RCS_WHEEL_DIAMETER_MM","RCS_WHEELBASE_MM","RCS_TRACK_MM","RCS_OMNI_RADIUS_MM","RCS_OMNI_THETA0_DEG","RCS_GEAR_RATIO","RCS_MAX_MOTOR_RPM"};
-   if(keys.Any(k=>!v.ContainsKey(k)))throw new Exception("未找到完整的 RCS CubeMX 底盘配置宏。");
+   if(keys.Any(k=>!v.ContainsKey(k)))throw new Exception("未找到完整的 foxmolika CubeMX 底盘配置宏。");
    if(v[keys[0]]<0||v[keys[0]]>2||v[keys[0]]!=Math.Floor(v[keys[0]]))throw new Exception("底盘轮型无效。");
    var s=Settings;s.Layout=(int)v[keys[0]];s.Diameter=v[keys[1]];s.Wheelbase=v[keys[2]];s.Track=v[keys[3]];s.OmniRadius=v[keys[4]];s.Theta0=v[keys[5]];s.Gear=v[keys[6]];s.MaxRpm=v[keys[7]];
    if(v.ContainsKey("RCS_COMMAND_TIMEOUT_MS"))s.CommandTimeoutMs=v["RCS_COMMAND_TIMEOUT_MS"];
