@@ -6,8 +6,8 @@ using System.Reflection;
 using System.Threading;
 [assembly: AssemblyTitle("foxmolika Waypoint Map Editor")]
 [assembly: AssemblyProduct("foxmolika CubeMX Map Companion")]
-[assembly: AssemblyVersion("0.5.0.0")]
-[assembly: AssemblyFileVersion("0.5.0.0")]
+[assembly: AssemblyVersion("0.5.1.0")]
+[assembly: AssemblyFileVersion("0.5.1.0")]
 namespace RcsMap {
  static class Program {
   static bool Is(string[] args,string option,int count){return args.Length==count&&args[0]==option;}

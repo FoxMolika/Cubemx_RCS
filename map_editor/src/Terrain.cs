@@ -30,8 +30,8 @@ namespace RcsMap {
   [DataMember] public string B {get;set;}
  }
  [DataContract] public sealed class TerrainMap {
-  [DataMember] public List<TerrainSurface> Surfaces {get;set;}
-  [DataMember] public List<SurfaceConnection> Connections {get;set;}
+  [DataMember,Browsable(false)] public List<TerrainSurface> Surfaces {get;set;}
+  [DataMember,Browsable(false)] public List<SurfaceConnection> Connections {get;set;}
   [DataMember,DisplayName("车体总高度 mm")] public double BodyHeight {get;set;}
   [DataMember,DisplayName("净空余量 mm")] public double ClearanceMargin {get;set;}
   [DataMember,DisplayName("允许最大坡度 °"),Description("仅用于地图检查；不是已验证的爬坡能力。")] public double MaxSlope {get;set;}
@@ -47,7 +47,7 @@ namespace RcsMap {
   public static TerrainSurface Surface(MapDocument d,string id){if(Key(id)==Ground)return new TerrainSurface{Id=Ground,Name="地面",X=0,Y=0,Width=d.Settings.Width,Depth=d.Settings.Height,SpeedLimit=d.Settings.MaxSpeed};return d.Terrain==null?null:d.Terrain.Surfaces.FirstOrDefault(s=>s.Id==id);}
   public static double Height(MapDocument d,Waypoint p){var s=Surface(d,p.SurfaceId);return s==null?Double.NaN:s.HeightAt(p.X,p.Y);}
   public static bool HasRelief(MapDocument d){return d.Terrain!=null&&d.Points.Any(p=>{var s=Surface(d,p.SurfaceId);return s==null||s.Kind!=SurfaceKind.水平平台||Math.Abs(s.Z0)>1e-6;});}
-  public static void RequireFlat(MapDocument d){if(HasRelief(d))throw new InvalidOperationException("此路线包含高台/坡道：0.5.0仅支持立体地图编辑、几何预览与检查，尚无实车坡道控制。不能导出平地C/H或运行平地动态预览。请保留立体地图，使用独立平地路线接入现有固件。");}
+  public static void RequireFlat(MapDocument d){if(HasRelief(d))throw new InvalidOperationException("此路线包含高台/坡道：0.5.1仅支持立体地图编辑、几何预览与检查，尚无实车坡道控制。不能导出平地C/H或运行平地动态预览。请保留立体地图，使用独立平地路线接入现有固件。");}
   // A draft may have disconnected routes or unfinished assignments. It still
   // needs bounded finite drawing data and valid base settings before opening.
   public static bool CanOpenDraft(MapDocument d){if(d.Terrain==null)return false;try{d.StructuralCheck();var settings=d.Clone();settings.Version=3;settings.Terrain=null;settings.Points.Clear();settings.Obstacles.Clear();if(settings.Validate(false).Count>0)return false;

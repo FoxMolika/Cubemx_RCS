@@ -93,7 +93,7 @@ namespace RcsMap {
   Stack<string> undo=new Stack<string>(),redo=new Stack<string>();string pending,filename,savedJson,exportedRevision;bool refresh;PhasePreview phasePreview;int measureFirst=-1;
   public static Action<string,string> RecoverySnapshot;
   public static Action<string> Operation;
-  public Editor(){Text="foxmolika 位点地图编辑器 0.5.0 · CubeMX 配套扩展";Size=new Size(1420,900);MinimumSize=new Size(1120,720);StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",9);KeyPreview=true;BackColor=Color.White;
+  public Editor(){Text="foxmolika 位点地图编辑器 0.5.1 · CubeMX 配套扩展";Size=new Size(1420,900);MinimumSize=new Size(1120,720);StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",9);KeyPreview=true;BackColor=Color.White;
    var toolbar=new ToolStrip{GripStyle=ToolStripGripStyle.Hidden,Padding=new Padding(8,7,8,7),BackColor=Color.FromArgb(237,243,250),ImageScalingSize=new Size(20,20),Dock=DockStyle.Top};
    Button(toolbar,"新建",()=>New());Button(toolbar,"示例",()=>Replace(MapDocument.Demo(),null));Button(toolbar,"打开",LoadMap);Button(toolbar,"保存",()=>Save(false));toolbar.Items.Add(new ToolStripSeparator());
    Button(toolbar,"撤销",Undo);Button(toolbar,"重做",Redo);toolbar.Items.Add(new ToolStripSeparator());select=Button(toolbar,"选择 / 拖动",()=>SetMode(0));add=Button(toolbar,"＋ 位点",()=>SetMode(1));obstacle=Button(toolbar,"▧ 障碍",()=>SetMode(2));
@@ -146,7 +146,7 @@ namespace RcsMap {
    var errors=doc.Validate();validation.Text=errors.Count==0?"✓ 路线检查通过。灰红虚线：障碍膨胀包络。预览和计数均为理想模型。":"⚠ "+String.Join("  /  ",errors.Take(3).ToArray());validation.ForeColor=errors.Count==0?Color.FromArgb(22,126,104):Color.FromArgb(183,65,49);
    if(errors.Count==0&&!TerrainGeometry.HasRelief(doc))for(int i=1;i<doc.Points.Count;i++){var a=SegmentInfo.Calculate(doc.Settings,doc.Points[i-1],doc.Points[i],i-1);segments.Rows.Add("P"+(i-1)+"→P"+i,(a.Distance*1000).ToString("F0"),(a.Turn*180/Math.PI).ToString("F1"),a.Seconds.ToString("F2"),a.Counts[0].ToString("F0"),a.Counts[1].ToString("F0"),a.Counts[2].ToString("F0"),doc.Settings.Wheels==3?"—":a.Counts[3].ToString("F0"));}
    if(TerrainGeometry.HasRelief(doc))validation.Text="立体路线：仅地图编辑/几何预览；尚不能生成坡道控制。 "+validation.Text;
-   SelectRows();refresh=false;canvas.Invalidate();Text="foxmolika 位点地图编辑器 0.5.0 · "+(filename==null?"未命名":Path.GetFileName(filename))+(savedJson!=null&&savedJson!=doc.Json()?" *":"");
+   SelectRows();refresh=false;canvas.Invalidate();Text="foxmolika 位点地图编辑器 0.5.1 · "+(filename==null?"未命名":Path.GetFileName(filename))+(savedJson!=null&&savedJson!=doc.Json()?" *":"");
    if(RecoverySnapshot!=null)RecoverySnapshot(doc.Json(),filename);
    status.Text=(savedJson==doc.Json()?"已保存":"未保存")+" · "+(exportedRevision==TemplateGenerator.RouteRevision(doc)?"已导出当前版本":"当前版本未导出")+" · 动作/量角器可在工具栏编辑";
    try{string linked=ProjectExport.Resolve(doc,filename);projectCaption.Text=linked==null?"未关联工程：关联后，导出会自动加入路径3C3H和包含目录。":"目标工程："+linked;}catch{projectCaption.Text="关联路径无效，请重新关联工程。";}

@@ -9,11 +9,11 @@ def main():
  sys.stdout.reconfigure(encoding='utf-8')
  from check_guides import main as guides
  guides()
- setup=R/'suite/dist/foxmolika_CubeMX_Setup_0.5.0_win-x64.exe'
- editor=R/'map_editor/dist/foxmolika_MapEditor.exe';pack=R/'dist/RCS.foxmolika.0.5.0.pack'
+ setup=R/'suite/dist/foxmolika_CubeMX_Setup_0.5.1_win-x64.exe'
+ editor=R/'map_editor/dist/foxmolika_MapEditor.exe';pack=R/'dist/RCS.foxmolika.0.5.1.pack'
  accepted=read('suite/build/acceptance.json');integration=read('build/project_integration_validation.json')
  assert accepted.get('custom_empty_repository')=='pass' and accepted.get('native_package_uninstall')=='pass'
- assert accepted.get('clean_uninstall')=='pass' and accepted['installed_editor_version']=='0.5.0'
+ assert accepted.get('clean_uninstall')=='pass' and accepted['installed_editor_version']=='0.5.1'
  assert accepted['installer_sha256']==sha(setup)
  editor_checks=int(re.search(r'PASS (\d+)',accepted['installed_editor_report']).group(1));assert editor_checks>=49
  assert integration['installer_sha256']==sha(setup) and integration['installed_editor_sha256']==sha(editor)
@@ -29,11 +29,11 @@ def main():
  assert generated.read_text(encoding='utf-8').split('/* RCS GENERATED SHA256')[0].strip()==(R/'map_editor/firmware/rcs_nav.c').read_text(encoding='utf-8').strip()
  crash=read('build/crash-validation/results.json');assert crash['passed'] and crash['checks']==54
  assert crash['editor_SHA256']==sha(editor)
- migration=read('build/migration050.json');assert migration['passed'] and migration['legacy_map_unchanged']
+ migration=read('build/migration051.json');assert migration['passed'] and migration['legacy_map_unchanged']
  course=read('build/course_validation.json');assert course['passed'] and course['editor_sha256']==sha(editor)
  assert course['same_generated_six_C_H_as_040'] and course['signed_arc_pixel_oracle']
  terrain=read('build/terrain_validation.json');assert terrain['passed'] and terrain['editor_sha256']==sha(editor)
- assert terrain['checks']>=45 and terrain['nonplanar_export_refused_before_mutation'] and terrain['terrain_map_unchanged']
+ assert terrain['checks']>=95 and terrain['actual_drag_checks']>=38 and terrain['nonplanar_export_refused_before_mutation'] and terrain['terrain_map_unchanged']
  assert int(re.search(r'PASS (\d+)',accepted['installed_terrain_report']).group(1))==terrain['checks']
  route=read('build/route_project_validation.json');assert route['passed'] and route['editor_sha256']==sha(editor)
  assert route['post_helper_sha256']==sha(R/'build/foxmolika_PostGenerate.exe')
@@ -48,13 +48,15 @@ def main():
  for name,digest in previous.items():assert sha(previous_root/name)==digest,('040 changed',name)
  previous041=read('build/original_041_SHA256.json');root041=R.parent/'foxmolika_CubeMX_0.4.1'
  for name,digest in previous041.items():assert sha(root041/name)==digest,('041 changed',name)
+ previous050=read('build/original_050_SHA256.json');root050=R.parent/'foxmolika_CubeMX_0.5.0'
+ for name,digest in previous050.items():assert sha(root050/name)==digest,('050 changed',name)
  # Hash actual embedded resources, rather than relying on source assumptions.
  p=subprocess.run(['powershell','-NoProfile','-ExecutionPolicy','Bypass','-File',str(R/'tools/audit_payload.ps1')],capture_output=True,check=True)
  resources=json.loads(p.stdout.decode('utf-8-sig'))
  manifest=R/'suite/build/manifest.xml';assert resources['payload/manifest.xml']==sha(manifest)
  for f in E.parse(manifest).findall('./AppFiles/File'):assert resources['payload/'+f.attrib['Name']]==f.attrib['Sha256']
  assert resources['payload/foxmolika_MapEditor.exe']==sha(editor)
- assert resources['payload/RCS.foxmolika.0.5.0.pack']==sha(pack)
+ assert resources['payload/RCS.foxmolika.0.5.1.pack']==sha(pack)
  with zipfile.ZipFile(pack) as z:
   assert z.read('Documentation/使用说明.html')==(R/'docs/使用说明.html').read_bytes()
   for source in (R/'firmware').glob('*'):
@@ -62,19 +64,20 @@ def main():
  dist=R/'dist';shutil.copyfile(setup,dist/setup.name)
  shutil.copyfile(R/'build/ui/course_angles.png',dist/'夹角显示预览.png')
  for name,source in [('航点双动作框.png','phases.png'),('立体地图预览.png','terrain2.png'),('路线高度侧视图.png','terrain1.png')]:shutil.copyfile(R/'build/ui'/source,dist/name)
+ shutil.copyfile(R/'build/ui/terrain0.png',dist/'地形拖动界面.png')
  for name,source in [('使用说明.html','docs/使用说明.html'),('地图编辑器说明.html','map_editor/dist/使用说明.html'),('底盘接入说明.md','docs/接入说明.md')]:shutil.copyfile(R/source,dist/name)
- report={'version':'0.5.0','passed':True,'installer_sha256':sha(setup),'editor_sha256':sha(editor),'pack_sha256':sha(pack),
-  'features':['dual arrival/departure action panes','multi-surface platform/ramp/bridge authoring','linked top/profile/3D geometry views','terrain connectivity/envelope/slope/speed/clearance checks','nonplanar firmware export blocked','direct heading/path angle overlay','protractor','local crash ZIP','Keil stale-map prebuild guard'],
+ report={'version':'0.5.1','passed':True,'installer_sha256':sha(setup),'editor_sha256':sha(editor),'pack_sha256':sha(pack),
+  'features':['direct top-view platform/ramp dragging','grid snap and Shift override','optional carried waypoints/obstacles','Esc/right-click/capture-loss rollback','local terrain undo/redo','dual arrival/departure action panes','linked top/profile/3D geometry views','nonplanar firmware export blocked','local crash ZIP','Keil stale-map prebuild guard'],
   'tests':{'core_assertions':1555,'generated_layouts':3,'generated_assertions_per_layout':4205,'phase_assertions':phase_count,'editor_model_checks':editor_checks,'crash_checks':54,'route_integration_scenarios':len(route['checks']),'project_setup_scenarios':13,'revision_scenarios':len(revision['checks']),'installer_transaction_scenarios':8},
   'actual_CubeMX':'6.18.1; fresh isolated profiles, automatic import, alternate empty repository, native generate/regenerate, uninstall',
   'actual_Keil':'ARM Compiler 6.22; route/nav/actions compiled; 0 errors, 0 warnings',
   'actual_stale_map_blocks_Keil_build':True,'route_user_code_and_main_preserved':True,
-  'original_037_files_unchanged':len(snapshot),'original_040_files_unchanged':len(previous),'original_041_files_unchanged':len(previous041),'terrain_checks':terrain['checks'],'embedded_resources_verified':len(resources),
+  'original_037_files_unchanged':len(snapshot),'original_040_files_unchanged':len(previous),'original_041_files_unchanged':len(previous041),'original_050_files_unchanged':len(previous050),'terrain_checks':terrain['checks'],'actual_drag_checks':terrain['actual_drag_checks'],'embedded_resources_verified':len(resources),
   'hardware_test':False,'flashed':False,'second_physical_PC_test':False,'ui_review':'actual dual-pane action window, top/profile/3D terrain views and 1120px main editor inspected; minimum action-window layout tested',
-  'delegated_review':'two parallel DeepSeek text reviews: terrain schema/edge cases and dual-pane UI. Codex integrated, inspected actual renders and executed all local tests',
+  'delegated_review':'two parallel DeepSeek text reviews: drag interaction boundaries and event-level regression design. Codex integrated, inspected actual renders and executed local tests',
   'limitations':['nonplanar routes are geometry-only: no slope firmware export or flat dynamic preview','axis-aligned rectangular surfaces only; no steps/lifts/automatic routing/IMU fusion','3D drawing shows upper surfaces; clearance includes configured underside thickness and envelope margin','encoder-only correction cannot observe all real slip','existing hardware driver support unchanged','custom-action preview is a placeholder','hard termination/power loss cannot guarantee immediate crash ZIP']}
- validation=R/'suite/validation/release-0.5.0.json';validation.parent.mkdir(exist_ok=True);validation.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
- out=dist/'foxmolika_CubeMX_Source_0.5.0.zip'
+ validation=R/'suite/validation/release-0.5.1.json';validation.parent.mkdir(exist_ok=True);validation.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+ out=dist/'foxmolika_CubeMX_Source_0.5.1.zip'
  excluded={'build','dist','__pycache__','.git','native','repaired_project'}
  with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
   for f in sorted(R.rglob('*')):
@@ -83,7 +86,7 @@ def main():
    if any(p in excluded for p in rel.parts) or f.suffix.lower() in ['.exe','.dll','.log','.htm','.axf','.o','.crf','.hex','.pyc']:continue
    z.write(f,rel.as_posix())
  report['source_zip_sha256']=sha(out)
- (dist/'发布核验_0.5.0.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+ (dist/'发布核验_0.5.1.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
  sums=[]
  for f in sorted(dist.iterdir()):
   if f.is_file() and f.suffix in ['.exe','.zip','.pack']:sums.append(sha(f)+'  '+f.name+'\n')

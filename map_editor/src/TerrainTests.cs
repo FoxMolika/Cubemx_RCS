@@ -26,6 +26,7 @@ namespace RcsMap {
    var candidate=d.Clone();candidate.Points[0].ArrivalActions.Add(new RouteAction{Kind=0,Start="start();"});Check(d.Json()==before,"cancelled candidate leaves original unchanged");
    using(var dialog=new PhaseDialog(new Waypoint(),"")){dialog.Size=new System.Drawing.Size(1020,650);dialog.Opacity=0;dialog.ShowInTaskbar=false;dialog.Show();Application.DoEvents();Check(dialog.ArrivalBox.Visible&&dialog.DepartureBox.Visible,"both groups visible at minimum window");Check(dialog.ArrivalBox.Right<dialog.DepartureBox.Left&&dialog.ArrivalBox.Width>=300&&dialog.DepartureBox.Width>=300,"independent panes not overlapping");dialog.Close();}
    foreach(int view in new[]{0,1,2})using(var bitmap=new System.Drawing.Bitmap(900,620))using(var g=System.Drawing.Graphics.FromImage(bitmap))using(var canvas=new TerrainCanvas{Document=d,View=view}){canvas.Draw(g,new System.Drawing.Rectangle(0,0,900,620));bitmap.Save(Path.Combine(folder,"terrain-view"+view+".png"));Check(new FileInfo(Path.Combine(folder,"terrain-view"+view+".png")).Length>12000,"real view render "+view);}
+   count+=TerrainDragTests.Run(folder);
    File.WriteAllText(Path.Combine(folder,"terrain-selftest.txt"),"PASS "+count+" terrain/action UI checks\n");Console.WriteLine("PASS "+count+" terrain/action UI checks");
   }
  }
