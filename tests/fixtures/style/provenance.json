@@ -1,0 +1,12 @@
+{
+  "source": "Actual RCS_MapEditor.exe 0.2.0 from unmodified 0.3.4",
+  "editor_sha256": "05d7307fd93334badb91c9a8e53194cf35ef4467832bfab90cf39932caa2845a",
+  "files": {
+    "rcs_actions.c": "c360edcbeaf1660ea36b24d474c06667fb79963e560f92f4fc4b97ab47448c69",
+    "rcs_actions.h": "fe645a2b173838ddf9a24b2d1dabe8e5ec7ac7d39836737d85ce5d1398727885",
+    "rcs_nav.c": "463cf9e30efbefe7e93f2ed45a644b3b6aa89a33b0dcb47de9baddaee8685ddd",
+    "rcs_nav.h": "e3624163481df2dcac1bf6297c2b065e6c7df62aab3ebab4efc929bb23d5ad66",
+    "rcs_route.c": "6c5dbc7ed1eb3aa3857447860fefa5c8da77e3ac378eb20c3a905218bbfa9dd8",
+    "rcs_route.h": "38c4342f7c329fae72c0a151884ecd8e2984746323b9fecbd7eff15fe5db066c"
+  }
+}

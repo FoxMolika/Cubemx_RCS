@@ -11,8 +11,8 @@ using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 [assembly: AssemblyTitle("RCS Keil Header Fix")]
-[assembly: AssemblyVersion("0.3.4.0")]
-[assembly: AssemblyFileVersion("0.3.4.0")]
+[assembly: AssemblyVersion("0.3.5.0")]
+[assembly: AssemblyFileVersion("0.3.5.0")]
 static class KeilHeaders {
  static readonly string[] Module={"rcs_chassis.h","rcs_control.h","rcs_hal.h"};
  static string Norm(string p){return p.Replace('\\','/').Trim();}

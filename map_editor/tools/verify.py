@@ -16,6 +16,7 @@ def main():
         folder=area/f'layout{layout}';out=folder/'nav_tests.exe'
         args=['gcc','-std=c99','-O2','-Wall','-Wextra','-Werror','-pedantic','-I'+str(folder),'-I'+str(ROOT.parent/'firmware'),ROOT/'tests/test_nav.c',folder/'rcs_nav.c',folder/'rcs_route.c',ROOT.parent/'firmware/rcs_chassis.c','-lm','-o',out]
         args.insert(args.index(ROOT.parent/'firmware/rcs_chassis.c'),folder/'rcs_actions.c')
+        run([sys.executable,ROOT.parent/'tools/style_check.py',folder])
         run(args);result=run([out]);print(result.strip());results.append(result.strip())
     run([exe,'--render',ROOT/'build/map_preview.png'])
     run([exe,'--render-actions',ROOT/'build/actions_preview.png'])
@@ -23,6 +24,7 @@ def main():
     run(['gcc','-std=c99','-O2','-Wall','-Wextra','-Werror','-pedantic','-I'+str(ROOT/'tests'),'-I'+str(ROOT/'examples'),'-I'+str(folder),'-I'+str(ROOT.parent/'firmware'),ROOT/'tests/test_task.c',ROOT/'examples/robot_route_task.c',folder/'rcs_nav.c',folder/'rcs_route.c',folder/'rcs_actions.c',ROOT.parent/'firmware/rcs_chassis.c','-lm','-o',task])
     task_result=run([task]);print(task_result.strip())
     folder=area/'generated_actions';action=area/'action_test.exe'
+    run([sys.executable,ROOT.parent/'tools/style_check.py',folder])
     run(['gcc','-std=c99','-O2','-Wall','-Wextra','-Werror','-pedantic','-I'+str(folder),'-I'+str(ROOT.parent/'firmware'),ROOT/'tests/test_actions.c',folder/'rcs_nav.c',folder/'rcs_route.c',folder/'rcs_actions.c',ROOT.parent/'firmware/rcs_chassis.c','-lm','-o',action])
     action_result=run([action]);print(action_result.strip())
     report={'editor_sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'waypoint_actions':action_result.strip(),'editor_binary_selftest':(area/'editor-test-report.txt').read_text(encoding='utf-8').strip(),'c99_strict_builds_and_encoder_simulations':results,'task_adapter':task_result.strip(),'test_area':str(area),'installer':'separately validated','hardware_test':False}

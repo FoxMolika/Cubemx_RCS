@@ -13,6 +13,8 @@ def run(args):
     return p.stdout
 
 def main():
+    from style_check import main as style_main
+    assert style_main()==0,'generated C style'
     b=ROOT/'build';b.mkdir(exist_ok=True);evidence=[]
     gcc=shutil.which('gcc')
     if not gcc:raise RuntimeError('需要 GCC 主机编译器（例如本机 w64devkit）')

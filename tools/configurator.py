@@ -25,6 +25,9 @@ def module_files(values):
     files={p.name:p.read_bytes() for p in (ROOT/'firmware').iterdir()
            if p.is_file() and p.suffix in ('.c','.h')}
     files['rcs_config.h']=config_header(v).encode('utf-8')
+    from style_check import check_files
+    errors=check_files({name:data.decode('utf-8') for name,data in files.items()})
+    if errors:raise ValueError('Generated C style failed:\n'+'\n'.join(errors))
     return files
 
 def export(values,out):

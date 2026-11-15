@@ -1,71 +1,207 @@
+/**
+ * @file rcs_chassis.c
+ * @brief 麦轮 / 全向轮底盘的运动学解算
+ *
+ * 车体速度与四个电机端转速互算。输入 SI 单位，输出电机端 rpm。
+ * 所有函数在参数非法或结果非有限时返回 0，并把输出清零。
+ */
 #include "rcs_chassis.h"
+
 #include <math.h>
 #include <stddef.h>
+
+/* 私有宏 --------------------------------------------------------------------------------------------*/
+
 #define RCS_PI 3.14159265358979323846f
-static void clear(float *p, unsigned n) { if(p) for(unsigned i=0;i<n;i++) p[i]=0.0f; }
-unsigned rcs_wheel_count(const rcs_geometry *g) {
-    return !g ? 0u : g->layout==RCS_OMNI3 ? 3u :
-        (g->layout==RCS_MECANUM_X || g->layout==RCS_OMNI4) ? 4u : 0u;
+
+/* 私有函数 ------------------------------------------------------------------------------------------*/
+
+/**
+ * @brief 把数组清零
+ * @param values 目标数组，允许为 NULL
+ * @param count 元素个数
+ */
+static void rcs_zero(float *values, unsigned count)
+{
+    if (!values)
+        return;
+
+    for (unsigned i = 0; i < count; i++)
+        values[i] = 0.0f;
 }
-int rcs_geometry_valid(const rcs_geometry *g) {
-    if(!rcs_wheel_count(g) || !isfinite(g->wheel_diameter_m) || g->wheel_diameter_m<=0.0f ||
-       !isfinite(g->gear_ratio) || g->gear_ratio<=0.0f ||
-       !isfinite(g->max_motor_rpm) || g->max_motor_rpm<=0.0f) return 0;
-    if(g->layout==RCS_MECANUM_X)
-        return isfinite(g->wheelbase_m) && g->wheelbase_m>0.0f &&
-               isfinite(g->track_m) && g->track_m>0.0f;
-    return isfinite(g->omni_radius_m) && g->omni_radius_m>0.0f &&
-           isfinite(g->omni_theta0_rad);
+
+/* 导出函数 ------------------------------------------------------------------------------------------*/
+
+/**
+ * @brief 获取当前布局使用的轮子数量
+ * @param geometry 底盘几何参数
+ * @return 四麦轮 / 四全向轮返回 4，三全向轮返回 3，布局非法返回 0
+ */
+unsigned rcs_wheel_count(const rcs_geometry *geometry)
+{
+    if (!geometry)
+        return 0u;
+
+    if (geometry->layout == RCS_OMNI3)
+        return 3u;
+
+    if (geometry->layout == RCS_MECANUM_X || geometry->layout == RCS_OMNI4)
+        return 4u;
+
+    return 0u;
 }
-int rcs_inverse(const rcs_geometry *g, float vx, float vy, float wz, float rpm[4]) {
-    float v[4]={0}, peak=0, k;
-    clear(rpm,4);
-    if(!rpm || !rcs_geometry_valid(g) || !isfinite(vx) || !isfinite(vy) || !isfinite(wz)) return 0;
-    unsigned n=rcs_wheel_count(g);
-    if(g->layout==RCS_MECANUM_X) {
-        float z=(g->wheelbase_m+g->track_m)*0.5f*wz;
-        v[0]=vx-vy-z; v[1]=vx+vy+z; v[2]=vx+vy-z; v[3]=vx-vy+z;
-    } else {
-        for(unsigned i=0;i<n;i++) {
-            float a=g->omni_theta0_rad+2.0f*RCS_PI*(float)i/(float)n;
-            v[i]=-sinf(a)*vx+cosf(a)*vy+g->omni_radius_m*wz;
-        }
+
+/**
+ * @brief 检查几何参数是否可用于解算
+ * @param geometry 底盘几何参数
+ * @return 1 合法，0 非法
+ */
+int rcs_geometry_valid(const rcs_geometry *geometry)
+{
+    if (!rcs_wheel_count(geometry))
+        return 0;
+
+    if (!isfinite(geometry->wheel_diameter_m) || geometry->wheel_diameter_m <= 0.0f)
+        return 0;
+
+    if (!isfinite(geometry->gear_ratio) || geometry->gear_ratio <= 0.0f)
+        return 0;
+
+    if (!isfinite(geometry->max_motor_rpm) || geometry->max_motor_rpm <= 0.0f)
+        return 0;
+
+    if (geometry->layout == RCS_MECANUM_X) {
+        if (!isfinite(geometry->wheelbase_m) || geometry->wheelbase_m <= 0.0f)
+            return 0;
+        if (!isfinite(geometry->track_m) || geometry->track_m <= 0.0f)
+            return 0;
+        return 1;
     }
-    k=60.0f*g->gear_ratio/(RCS_PI*g->wheel_diameter_m);
-    if(!isfinite(k)) return 0;
-    for(unsigned i=0;i<n;i++) {
-        rpm[i]=v[i]*k;
-        if(!isfinite(rpm[i])) { clear(rpm,4); return 0; }
-        if(fabsf(rpm[i])>peak) peak=fabsf(rpm[i]);
-    }
-    if(peak>g->max_motor_rpm)
-        for(unsigned i=0;i<n;i++) rpm[i]*=g->max_motor_rpm/peak;
+
+    if (!isfinite(geometry->omni_radius_m) || geometry->omni_radius_m <= 0.0f)
+        return 0;
+
+    if (!isfinite(geometry->omni_theta0_rad))
+        return 0;
+
     return 1;
 }
-int rcs_forward(const rcs_geometry *g, const float rpm[4], float out[3]) {
-    float v[4]={0}, k;
-    clear(out,3);
-    if(!out || !rpm || !rcs_geometry_valid(g)) return 0;
-    unsigned n=rcs_wheel_count(g);
-    k=RCS_PI*g->wheel_diameter_m/(60.0f*g->gear_ratio);
-    if(!isfinite(k)) return 0;
-    for(unsigned i=0;i<n;i++) {
-        if(!isfinite(rpm[i])) return 0;
-        v[i]=rpm[i]*k;
-        if(!isfinite(v[i])) return 0;
-    }
-    if(g->layout==RCS_MECANUM_X) {
-        out[0]=(v[0]+v[1]+v[2]+v[3])*0.25f;
-        out[1]=(-v[0]+v[1]+v[2]-v[3])*0.25f;
-        out[2]=(-v[0]+v[1]-v[2]+v[3])/(2.0f*(g->wheelbase_m+g->track_m));
+
+/**
+ * @brief 将车体速度解算为四个电机端转速
+ * @param geometry 底盘几何参数
+ * @param vx 前进速度，m/s
+ * @param vy 左移速度，m/s
+ * @param wz 逆时针角速度，rad/s
+ * @param motor_rpm 输出电机端转速，按 W0..W3 排列
+ * @return 1 成功；参数非法或结果非有限时清零并返回 0
+ */
+int rcs_inverse(const rcs_geometry *geometry, float vx, float vy, float wz, float motor_rpm[4])
+{
+    float wheel_speed[4] = {0.0f};
+    float peak = 0.0f;
+    float scale;
+
+    rcs_zero(motor_rpm, 4);
+
+    if (!motor_rpm || !rcs_geometry_valid(geometry))
+        return 0;
+
+    if (!isfinite(vx) || !isfinite(vy) || !isfinite(wz))
+        return 0;
+
+    unsigned count = rcs_wheel_count(geometry);
+
+    if (geometry->layout == RCS_MECANUM_X) {
+        float rotation = (geometry->wheelbase_m + geometry->track_m) * 0.5f * wz;
+        wheel_speed[0] = vx - vy - rotation;
+        wheel_speed[1] = vx + vy + rotation;
+        wheel_speed[2] = vx + vy - rotation;
+        wheel_speed[3] = vx - vy + rotation;
     } else {
-        for(unsigned i=0;i<n;i++) {
-            float a=g->omni_theta0_rad+2.0f*RCS_PI*(float)i/(float)n;
-            out[0]+=-sinf(a)*v[i]*2.0f/(float)n;
-            out[1]+=cosf(a)*v[i]*2.0f/(float)n;
-            out[2]+=v[i]/((float)n*g->omni_radius_m);
+        for (unsigned i = 0; i < count; i++) {
+            float angle = geometry->omni_theta0_rad + 2.0f * RCS_PI * (float)i / (float)count;
+            wheel_speed[i] = -sinf(angle) * vx + cosf(angle) * vy + geometry->omni_radius_m * wz;
         }
     }
-    for(unsigned i=0;i<3;i++) if(!isfinite(out[i])) { clear(out,3); return 0; }
+
+    scale = 60.0f * geometry->gear_ratio / (RCS_PI * geometry->wheel_diameter_m);
+    if (!isfinite(scale))
+        return 0;
+
+    for (unsigned i = 0; i < count; i++) {
+        motor_rpm[i] = wheel_speed[i] * scale;
+
+        if (!isfinite(motor_rpm[i])) {
+            rcs_zero(motor_rpm, 4);
+            return 0;
+        }
+
+        if (fabsf(motor_rpm[i]) > peak)
+            peak = fabsf(motor_rpm[i]);
+    }
+
+    if (peak > geometry->max_motor_rpm) {
+        for (unsigned i = 0; i < count; i++)
+            motor_rpm[i] *= geometry->max_motor_rpm / peak;
+    }
+
+    return 1;
+}
+
+/**
+ * @brief 将四个电机端转速解算为车体速度
+ * @param geometry 底盘几何参数
+ * @param motor_rpm 输入电机端转速，按 W0..W3 排列
+ * @param velocity 输出车体速度 [vx, vy, wz]
+ * @return 1 成功；参数非法或结果非有限时清零并返回 0
+ */
+int rcs_forward(const rcs_geometry *geometry, const float motor_rpm[4], float velocity[3])
+{
+    float wheel_speed[4] = {0.0f};
+    float scale;
+
+    rcs_zero(velocity, 3);
+
+    if (!velocity || !motor_rpm || !rcs_geometry_valid(geometry))
+        return 0;
+
+    unsigned count = rcs_wheel_count(geometry);
+
+    scale = RCS_PI * geometry->wheel_diameter_m / (60.0f * geometry->gear_ratio);
+    if (!isfinite(scale))
+        return 0;
+
+    for (unsigned i = 0; i < count; i++) {
+        if (!isfinite(motor_rpm[i]))
+            return 0;
+
+        wheel_speed[i] = motor_rpm[i] * scale;
+
+        if (!isfinite(wheel_speed[i]))
+            return 0;
+    }
+
+    if (geometry->layout == RCS_MECANUM_X) {
+        velocity[0] = (wheel_speed[0] + wheel_speed[1] + wheel_speed[2] + wheel_speed[3]) * 0.25f;
+        velocity[1] = (-wheel_speed[0] + wheel_speed[1] + wheel_speed[2] - wheel_speed[3]) * 0.25f;
+        velocity[2] = (-wheel_speed[0] + wheel_speed[1] - wheel_speed[2] + wheel_speed[3]) /
+                      (2.0f * (geometry->wheelbase_m + geometry->track_m));
+    } else {
+        for (unsigned i = 0; i < count; i++) {
+            float angle = geometry->omni_theta0_rad + 2.0f * RCS_PI * (float)i / (float)count;
+            velocity[0] += -sinf(angle) * wheel_speed[i] * 2.0f / (float)count;
+            velocity[1] += cosf(angle) * wheel_speed[i] * 2.0f / (float)count;
+            velocity[2] += wheel_speed[i] / ((float)count * geometry->omni_radius_m);
+        }
+    }
+
+    for (unsigned i = 0; i < 3; i++) {
+        if (!isfinite(velocity[i])) {
+            rcs_zero(velocity, 3);
+            return 0;
+        }
+    }
+
     return 1;
 }

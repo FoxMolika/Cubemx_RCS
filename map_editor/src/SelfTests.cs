@@ -55,7 +55,7 @@ namespace RcsMap {
    var a=d.Clone();a.Obstacles.Clear();a.Points[0].ActionEnabled=true;a.Points[0].ActionName="夹爪 */ name";a.Points[0].ActionCondition="elapsed_s >= 0.02f";
    a.Points[0].ActionStart="/* start once */";a.Points[0].ActionDone="/* stop or hold */";a.Points[0].ActionCancel="/* cancel */";
    Check(a.Json()==a.Clone().Json(),"action JSON roundtrip");string id=a.Points[0].Id;
-   var f=Exporter.Generate(a);Check(f["rcs_route.c"].Contains("rcs_nav_bind_actions")&&f["rcs_route.c"].Contains(", 1u\n"),"required actions bound by wrapper");
+   var f=Exporter.Generate(a);Check(f["rcs_route.c"].Contains("rcs_nav_bind_actions")&&f["rcs_route.c"].Contains("rcs_route_init"),"actions bound by wrapper; required flag checked by generated C test");
    Check(f["rcs_actions.c"].Contains("WP_"+id.ToUpperInvariant()+"_ENTER")&&f["rcs_actions.c"].Contains("夹爪 * / name"),"stable regions and safe comment");
    string dir=Path.Combine(root,"actions");Exporter.Export(a,dir);string path=Path.Combine(dir,"rcs_actions.c");
    string custom=File.ReadAllText(path).Replace("/* start once */","/* user hand edit retained */");File.WriteAllText(path,custom);

@@ -27,6 +27,7 @@ static void init(rcs_navigator *n,int binding){
 static void step(rcs_navigator *n){CHECK(rcs_nav_update(n,zero,15,.01f,out));CHECK(out[0]==0&&out[1]==0&&out[2]==0);}
 static void active(rcs_navigator *n){init(n,1);CHECK(rcs_nav_start(n));step(n);CHECK(entered==1&&ticked==0&&n->action_active);}
 int main(void){rcs_navigator n;
+ CHECK(rcs_route_config.actions_required==1u);
  init(&n,0);CHECK(!rcs_nav_start(&n));CHECK(n.fault==RCS_NAV_ACTION_CONFIG);
  init(&n,0);CHECK(!rcs_nav_bind_actions(&n,specs,RCS_ROUTE_POINT_COUNT,0,&mode));CHECK(n.fault==RCS_NAV_ACTION_CONFIG);
  init(&n,0);specs[0].timeout_s=0;CHECK(!rcs_nav_bind_actions(&n,specs,RCS_ROUTE_POINT_COUNT,cb,&mode));

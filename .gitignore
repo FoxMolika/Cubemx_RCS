@@ -1,0 +1,8 @@
+**/build/
+**/__pycache__/
+repaired_project/
+native/Drivers/
+native/Core/
+native/MDK-ARM/
+*.uvguix.*
+*.build_log.htm

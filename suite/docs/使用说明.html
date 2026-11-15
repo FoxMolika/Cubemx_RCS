@@ -1,10 +1,78 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RCS CubeMX 合并安装版 0.3.4</title><style>body{font:16px/1.9 "Microsoft YaHei",sans-serif;background:#eef4fa;color:#243f57;margin:0}main{max-width:960px;background:white;margin:30px auto;padding:35px 45px;border-radius:12px}h1{font-size:32px}h2{margin-top:35px}code,pre{background:#edf3f8}pre{padding:16px;overflow:auto;border-radius:8px}.note{padding:16px;background:#eaf5f0;border-left:4px solid #168d76}.warn{padding:16px;background:#fff5e6;border-left:4px solid #d08a1e}a{color:#146ab0}li{margin:9px 0}table{border-collapse:collapse;width:100%}td,th{border:1px solid #d6e1ec;padding:8px;text-align:left}</style><main><h1>RCS CubeMX 合并安装版 0.3.4</h1><p>一个 EXE：自动注册底盘软件包 0.3.4 ＋ 安装位点地图编辑器 0.2.0 ＋ Keil 头文件工具。</p>
-<div class="note">只需要把 <b>RCS_CubeMX_Suite_Setup_0.3.4_win-x64.exe</b> 复制到另一台电脑运行。安装载荷、底盘 .pack、位点编辑器、<code>RCS_KeilHeaders.exe</code>、任务示例和说明全部内嵌，无需额外 ZIP、Python 或手动导入 .pack。目标电脑需要已经安装完整 STM32CubeMX（已验证 6.18.1）。</div>
-<h2>在另一台电脑上安装</h2><ol><li>先安装/确认完整 STM32CubeMX。此安装程序没有捆绑 ST 官方 CubeMX；已验证 6.18.1，其他版本尚未承诺兼容。</li><li>保存并关闭 CubeMX；使用实际运行 CubeMX 的同一 Windows 用户启动本安装器，无需管理员权限。</li><li>安装器自动搜索当前用户、系统安装位置和注册表。若未找到，点击“选择程序…”选择本机 <b>STM32CubeMX.exe</b>，不需要选 .pack。</li><li>选择套件保存目录（默认 <code>LocalAppData\RCS_CubeMX_Suite_0.3.4</code>，也可选空目录）。点击 <b>安装 / 修复</b>。</li><li>安装器释放内嵌文件、调用本机 CubeMX 自动导入 <b>RCS.Chassis 0.3.4</b>，再检查注册 XML 和包内全部文件哈希。两项都通过才显示成功。</li><li>安装完成后可点击“启动地图编辑器”绘图；地图请保存到自己的资料目录。</li></ol>
-<p>安装记录：<code>install-success.xml</code>；包所有权收据：<code>cube-pack-receipt.xml</code>；导入日志：<code>import-pack.log</code>；失败详情：<code>suite-error.log</code>。以上文件都在所选套件目录。</p>
-<h2>在 CubeMX 里生成底盘</h2><ol><li>打开 F407 HAL 工程，进入 <b>Software Packs → Select Components</b>，找到 <b>RCS.Chassis 0.3.4</b>，勾选 Robotics / Chassis。</li><li>进入左侧 <b>Middleware and Software Packs → Chassis</b>，再次启用 <b>Robotics Chassis</b> 模式。</li><li>填写轮型、轮径、轮距、CAN、电机 ID 与控制参数，然后点击 Generate Code。底盘仍生成独立 3 个 .c 和 4 个 .h，不向 main.c 插入底盘逻辑。</li><li>为工程完成一次“关联工程…”后，后续Generate Code会自动将4个头文件登记到Keil工程树。</li></ol>
-<p>0.3.4 使用独立版本目录，保留已有 0.2.0/0.3.0 包，不覆盖同版本内容不同的包。旧工程可继续选旧版本，新工程请选择 0.3.4。已有工程要在组件选择器中明确切换版本，安装不会擅自修改 .ioc。</p>
-<h2>地图与路径</h2><p>地图编辑器 0.2.0 可导入 CubeMX 生成的 <code>rcs_config.h</code> 保持几何与减速比一致，并读取命令超时。绘图、拖动/排序位点、填朝向/速度/停留、设置编码器有效计数后，导出 <code>rcs_route.c/h</code> 、<code>rcs_nav.c/h</code> 和 <code>rcs_actions.c/h</code>（路径3C3H）。路径模块及任务示例需要加入自己的工程，生成器不修改 main.c。画布是配套 Windows 窗口，未嵌入 CubeMX 内部。</p><p><a href="地图编辑器说明.html">完整地图编辑与编码器接入说明</a> · <a href="底盘接入说明.md">底盘接口说明</a></p><p>要原地转头，连续两个位点设相同 X/Y、不同朝向。0°向右，90°向上，180°向左，-90°向下。每点到达位置与朝向后停车，再计算停留时间。</p>
-<h2>航点动作预留</h2><p>地图中选择航点，点击“航点动作…”或双击动作列，可填写夹爪/舵机/升降的启动一次、完成条件、完成清理、取消清理及超时。也可在独立rcs_actions.c的USER CODE区域填写；重新导出按航点稳定ID保留手写内容，冲突保留原文件。使用rcs_route_init绑定动作，不修改main.c。模板只是预留注释，实际驱动由用户接入。<a href="地图编辑器说明.html#actions">完整航点动作使用说明</a>。</p><h2>修复和失败提示</h2><ul><li>找不到 CubeMX：安装完整 CubeMX 或选择其 EXE；不会误报安装成功。</li><li>CubeMX 正在运行：保存并关闭后重新点击安装/修复。安装器不关闭用户进程。</li><li>CubeMX 更新组件尚未初始化（日志中的 <code>Updater is busy</code>）：安装器导入时跳过 CubeMX 的网络更新检查，避免该竞争；仍保留最多 4 次重试。</li><li>已存在相同内容：重复安装核验通过，不重复注册；文件齐全但注册丢失时会保留备份并重新原生导入。</li><li>已有同版本不同文件：保留原文件并明确失败；不要用一份不同内容的 .pack 冒充同一版本。本版安装器与 <code>dist</code> 使用同一个包。</li><li>原生导入失败/超时：安装未完成，保存目录中的 <code>import-pack.log</code> 和 <code>suite-error.log</code> 提供细节。修复按钮会重试，失败时不建议把“手动导入 .pack”当作正常安装步骤。</li></ul>
-<h2>卸载</h2><p>重新运行此单文件安装器，选择原套件保存目录并卸载。只通过 CubeMX 移除本安装器首次引入且未被修改的 <b>0.3.4</b> 包；预先存在的包和其他版本保留。地图、工程和用户新增文件保留。若从安装目录里的 <code>RCS_Suite_Setup.exe</code> 运行卸载，正在运行的安装器自身会留在原处，可在退出后自行删除。</p>
-<h2>0.3.4 升级与失败恢复</h2><p>本版合并 Fix/Claude 的固件修复，使用新版本号 0.3.4。已有 0.3.1 包继续保留，旧工程不会自动切换；新工程或升级工程请在组件选择器中选择 0.3.4。安装/重导入若失败，半成品会被隔离并恢复原包，首次安装失败后也可重试。若进程被意外关闭，下次安装会先恢复未完成操作。原包备份和失败内容位于仓库的 .rcs-chassis-transactions 目录，未确认恢复成功时不会删除。正常使用只需点击安装/修复。</p><h2>验证边界</h2><p>安装器未代码签名；.NET Framework 4.x 是 Windows 运行依赖。自动注册测试使用本机实际 CubeMX 和全新隔离配置/空仓库，未声称已测试另一台物理电脑或全新 Windows 虚拟机。底盘适配 F407 HAL、M3508/C620；主机侧有 1555 项检查、HAL 桥接、编译期配置检查和 C++ 链接检查。没有烧录和实车验证。底盘软件包沿用已记录的 <code>Invalid RefComponent list</code> 诊断，需以实际生成结果核验。详细记录见 <code>suite/build/acceptance.json</code> 与项目 <code>docs/验证记录.md</code>。</p><h2>0.3.4：工程关联与编译修复</h2><ol><li>安装/修复套件后，在CubeMX启用RCS.Chassis并保存.ioc。</li><li>保存并关闭工程，点击安装器“关联工程…”或运行安装目录中的RCS_ProjectSetup.exe，选择该.ioc。每个工程只需关联一次。</li><li>关联会合并.extSettings以启用CAN HAL驱动，并登记工程内的生成后工具。旧RCS组件可切换至0.3.4，原文件有备份。</li><li>重新打开.ioc，Generate Code后4个头文件会自动加入Keil分组。若Keil已打开，选择重新加载工程。</li></ol><p>生成后结果：RCS_Tools_034/headers-result.txt。RCS_KeilHeaders.exe只作手动诊断备用。关联不会替你指定CAN引脚或初始化硬件；CAN1/CAN2、波特率、滤波、接收中断仍需按实车配置。工程已有其他生成后操作时，工具会拒绝覆盖，需先合并操作。</p></main></html>
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RCS 0.3.5 使用教程：关联工程与打开地图编辑器</title>
+<style>
+body{margin:0;background:#eef4fa;color:#24394e;font:16px/1.85 "Microsoft YaHei",sans-serif}
+main{max-width:1000px;margin:28px auto;padding:30px 42px;background:white;border-radius:12px}
+h1,h2,h3{line-height:1.5;color:#173954}h1{font-size:30px}h2{margin-top:34px}
+nav{display:flex;flex-wrap:wrap;gap:10px}a{color:#12649a}nav a{padding:7px 12px;background:#edf4fa;border-radius:6px}
+.key{background:#e9f6ef;border-left:5px solid #238563;padding:16px 20px}.note{background:#fff4dc;padding:14px 18px}
+code,pre{background:#edf3f8;font-family:Consolas,"Microsoft YaHei",monospace;overflow-wrap:anywhere}pre{padding:14px;white-space:pre-wrap}
+li{margin:10px 0}table{width:100%;border-collapse:collapse}th,td{padding:10px;border:1px solid #d5e0ea;text-align:left;vertical-align:top}
+@media(max-width:650px){main{margin:0;padding:20px}h1{font-size:25px}}
+</style></head><body><main>
+<h1>RCS 底盘与地图编辑器 · 0.3.5</h1>
+<p>单文件套件：RCS.Chassis 0.3.5 ＋ 地图编辑器 0.2.1。更新：2026-11-10。</p>
+<div class="key"><b>第一次使用，请先完成这两件事：</b>
+<ol><li><b>每个工程主动关联一次：</b>安装器的 <b>“关联工程…”</b> → <b>“选择 .ioc 并关联 / 升级”</b>。完成后重新打开工程再 Generate Code，Keil 才会自动列出底盘的 4 个 .h。</li>
+<li><b>打开地形／路径编辑器：</b>安装器的 <b>“启动地图编辑器”</b>，或运行安装目录的 <code>RCS_MapEditor.exe</code>。它是独立窗口，没有 CubeMX 内部的绘图菜单。</li></ol>
+<b>安装成功只表示工具和 .pack 已就绪，不代表你的 .ioc 已关联。新建 test2 等新工程也要单独关联。</b></div>
+<nav><a href="#install">① 安装</a><a href="#associate">② 关联工程</a><a href="#generate">③ 生成与查看 .h</a><a href="#map">④ 打开地图编辑器</a><a href="#actions">航点动作</a><a href="#help">常见问题</a></nav>
+
+<h2 id="install">① 安装单文件套件</h2>
+<ol><li>本机先安装完整 STM32CubeMX。已验证版本为 <b>6.18.1</b>；本套件不含 ST 官方 CubeMX。</li>
+<li>保存并关闭 CubeMX。使用平时运行 CubeMX 的同一 Windows 用户，运行 <code>RCS_CubeMX_Suite_Setup_0.3.5_win-x64.exe</code>。</li>
+<li>确认 CubeMX 安装位置；没有自动找到时，点“选择程序…”选本机 <code>STM32CubeMX.exe</code>。</li>
+<li>确认“本套工具的保存目录”，点击 <b>“安装 / 修复”</b>。等待自动导入和哈希核验成功，无需手动导入 .pack。</li></ol>
+<p>默认目录为 <code>%LOCALAPPDATA%\RCS_CubeMX_Suite_0.3.5</code>。在资源管理器地址栏粘贴该路径即可打开；如果安装时改过目录，请打开自己选择的位置。运行不需要 Python 或 clang-format。</p>
+
+<h2 id="associate">② 在 CubeMX 选好组件，再主动关联工程</h2>
+<ol><li>打开 <b>STM32F407 HAL</b> 工程，工具链选择 <b>MDK-ARM</b>。</li>
+<li>进入 <b>Software Packs → Select Components</b>，选择 <b>RCS.Chassis 0.3.5</b> 下的 <b>Robotics / Chassis</b> 组件。</li>
+<li>在左侧 <b>Middleware and Software Packs → Chassis</b> 中，启用 <b>Robotics Chassis</b> 模式。填写轮型、轮径、轮距、CAN、电机 ID 等参数。</li>
+<li><b>保存 .ioc 并关闭 CubeMX 中这个工程。</b>关联会修改 .ioc；关闭后操作可避免 CubeMX 用内存中的旧配置覆盖修改。</li>
+<li>回到套件安装器，在“安装 / 修复”“启动地图编辑器”等按钮的同一行，点击最右边的 <b>“关联工程…”</b>。安装器已关闭时，可重新运行它，确认保存目录仍是安装目录；也可以直接运行安装目录的 <code>RCS_ProjectSetup.exe</code>。</li>
+<li>弹出的“RCS 工程关联 0.3.5”窗口中，点击 <b>“选择 .ioc 并关联 / 升级”</b>，选择该工程的 <b>.ioc 文件</b>，等待“完成”。</li>
+<li><b>重新打开刚才的 .ioc</b>，检查选中的 RCS 组件为 0.3.5，再执行下一步 Generate Code。</li></ol>
+<div class="note"><b>关联范围：</b>每个工程一次；新工程需要重新关联。它会合并 <code>.extSettings</code> 以启用 CAN HAL，并把工程内的生成后工具登记到 CubeMX。已有 RCS 组件可升级到本版，原 .ioc / .extSettings 留有 <code>.rcs-before-035</code> 备份。工程已有其他生成后操作时会拒绝覆盖，需要先合并操作。</div>
+<p>关联不替你配置物理 CAN 引脚、波特率、滤波器或接收中断。请按硬件接线配置 CAN1 / CAN2；选择 <code>RCS_CAN_BUS</code> 只选择使用哪个句柄。</p>
+
+<h2 id="generate">③ Generate Code 后，查看独立的 .c / .h</h2>
+<ol><li>在重新打开的 CubeMX 工程里点击 <b>Generate Code</b>，等待生成后操作结束。</li>
+<li>打开 Keil 的 <code>MDK-ARM/工程名.uvprojx</code>。如果 Keil 已经打开，接受“重新加载工程”，或关闭后再打开。</li>
+<li>展开底盘分组（通常为 <code>Middlewares/Chassis/Robotics/Chassis</code>）：应直接看到下面 <b>3 个 .c 和 4 个 .h</b>，无需先编译。</li></ol>
+<table><tr><th>文件</th><th>作用／位置</th></tr>
+<tr><td><code>rcs_chassis.c / .h</code><br><code>rcs_control.c / .h</code><br><code>rcs_hal.c / .h</code></td><td>运动学、速度环与 HAL 适配。通常位于 <code>Middlewares/Third_Party/RCS_Robotics/RCS_Chassis/</code>。</td></tr>
+<tr><td><code>rcs_config.h</code></td><td>由 CubeMX 参数生成；实际位置随工程结构可能为底盘目录、<code>Inc/</code> 或 <code>Core/Inc/</code>。在 Keil 中右键文件查看路径即可确认。</td></tr></table>
+<p>自动补全日志：<code>RCS_Tools_035/headers-result.txt</code>。保留工程里的整个 <code>RCS_Tools_035</code> 文件夹，生成后工具使用相对路径。<code>RCS_KeilHeaders.exe</code> 是手动诊断备用，不是正常流程中每次都要运行的步骤。</p>
+<p>生成器不向 <code>main.c</code> 插入底盘逻辑。请在自己的任务文件里绑定 CAN、接收反馈，周期调用 <code>RCS_Process</code>，并按需要调用 <code>RCS_Arm</code>、<code>RCS_SetVelocity</code>、<code>RCS_Lock</code>。默认 PID 为零，必须按实车调参。</p>
+
+<h2 id="map">④ 地形／地图／路径编辑器在哪里打开？</h2>
+<p>这三个叫法指的是同一个配套程序：<b>RCS 位点地图编辑器 0.2.1</b>。</p>
+<table><tr><th>打开方式</th><th>具体操作</th></tr>
+<tr><td>安装器中打开</td><td>运行本套件安装器，确认保存目录，点击 <b>“启动地图编辑器”</b>。</td></tr>
+<tr><td>直接打开</td><td>资源管理器地址栏输入 <code>%LOCALAPPDATA%\RCS_CubeMX_Suite_0.3.5</code>，双击 <code>RCS_MapEditor.exe</code>。自定义安装位置请用对应目录。</td></tr></table>
+<p><b>当前版本在独立窗口中绘图，并未嵌入 CubeMX。</b>不要在 CubeMX 的插件菜单中寻找绘图入口。</p>
+<ol><li>点击“新建”，设置场地宽、高与网格（mm）；用“＋ 位点”在画布放点，用“▧ 障碍”画矩形障碍。</li>
+<li>在表格中设置 X、Y、朝向、速度、停留。0° 向右、90° 向上；连续两个点用相同 X/Y、不同朝向即可原地转头。</li>
+<li>导入底盘的 <code>rcs_config.h</code>，核对轮径、布局、减速比；按实际编码器设置每电机转的有效计数和各轮方向。最大采样间隔须小于底盘命令超时。</li>
+<li>将地图保存为 <code>.rcsmap.json</code>，它与 CubeMX 的 <code>.ioc</code> 是两个不同文件。</li>
+<li>路线检查通过后点击 <b>“导出 C / H”</b>，得到 <code>rcs_route.c/h</code>、<code>rcs_nav.c/h</code>、<code>rcs_actions.c/h</code>，共 <b>3C3H</b>。</li>
+<li>将路径模块加入自己的工程，编译三个 .c 并加入头文件搜索目录，在自己的任务中调用 <code>rcs_route_init</code> 和导航更新接口。安装目录的 <code>examples/robot_route_task.c/h</code> 提供接入示例；编辑器“使用说明”有完整编码器接口说明。</li></ol>
+<p class="note"><b>自动补全的范围是底盘 4 个 .h。</b>地图导出的 3C3H 仍需主动加入工程，关联工具不会替你添加路径任务。地图里的障碍物用于路线检查，本版没有自动规划、动态避障或外部定位。</p>
+
+<h2 id="actions">航点插入夹爪、舵机、升降动作</h2>
+<p>选择航点 → <b>“航点动作…”</b>，或双击动作列。填写启动一次、完成条件、完成清理、取消清理与超时；也可导出后在 <code>rcs_actions.c</code> 的 <code>USER CODE</code> 区域接入自己的驱动。预留区不包含真实机构驱动，默认完成条件 <code>1</code> 只表示空动作完成。</p>
+<p>执行顺序：到达位置与朝向并减速 → 启动动作 → 逐周期检查完成 → 完成清理 → 停留 → 下一点。用户代码必须快速返回；时间等待用完成条件，避免阻塞延时。使用 <code>rcs_route_init</code> 绑定动作。</p>
+<p>0.2.1 使用可读的模板生成代码，保留航点稳定 ID 和 USER CODE。重新导出会保留手写内容，不重排用户区；同一区域同时在界面和 C 文件中改动会拒绝覆盖。地图和导出的 C 文件都应保存。</p>
+
+<h2 id="help">常见问题与恢复</h2>
+<table><tr><th>现象</th><th>检查顺序</th></tr>
+<tr><td>安装成功，但 Keil 看不到 .h</td><td>确认是当前这个 .ioc 已关联 → 保存关闭后重新打开 .ioc → Generate Code → 查看 <code>RCS_Tools_035/headers-result.txt</code> → Keil 重载。只安装 .pack 或创建新工程不会自动关联。</td></tr>
+<tr><td>生成后日志不存在</td><td>确认工程内生成后工具文件夹存在，CubeMX 使用的是关联后的 .ioc；查看 Project Manager 的生成后操作是否指向 <code>RCS_Tools_035/RCS_PostGenerate.exe</code>。不要覆盖已有的其他操作。</td></tr>
+<tr><td>找不到地图编辑器</td><td>确认安装器保存目录正确，点击“启动地图编辑器”；或直接运行目录中的 <code>RCS_MapEditor.exe</code>。只手动导入 .pack 不会安装编辑器。</td></tr>
+<tr><td>CAN HAL 未启用／找不到 CAN 类型</td><td>完成关联再重新生成，检查 HAL 配置中的 CAN 模块与驱动源文件。硬件初始化仍需自己配置。</td></tr>
+<tr><td>导入失败或包被修改</td><td>查看安装目录的 <code>import-pack.log</code>、<code>suite-error.log</code>。安装器核验全部文件，拒绝覆盖同版本的不同内容，保留其他版本和用户资料。修复失败的事务保留在仓库 <code>.rcs-chassis-transactions</code>。</td></tr></table>
+<p>卸载：重新运行安装器，选原目录，点击“卸载此套工具”。只移除本套件引入且未被修改的包和工具；工程、地图及用户新增文件保留。</p>
+<p>适用范围：Windows x64、STM32F407 HAL、M3508/C620；已验证 CubeMX 6.18.1。其他 IDE 的头文件自动登记、CubeMX 内嵌绘图、真实机构驱动不在本版范围。安装器未代码签名；未烧录或实车验收。完整验证和版本比较见随源码交付的 docs 目录。</p>
+</main></body></html>

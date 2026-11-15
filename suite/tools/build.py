@@ -12,6 +12,7 @@ def run(args):
  return p.stdout
 def main():
  build=ROOT/'build';dist=ROOT/'dist';build.mkdir(exist_ok=True);dist.mkdir(exist_ok=True)
+ assert (ROOT/'docs/使用说明.html').read_bytes()==(PROJECT/'docs/使用说明.html').read_bytes(),'Suite and pack tutorials must stay synchronized'
  src=(ROOT/'src/PackService.cs').read_text(encoding='utf-8')
  assert 'Version="'+VERSION+'"' in src,'PackService.Version must equal tools/version.py'
  for p in [ROOT/'src/Setup.cs',PROJECT/'keil_headers/KeilHeaders.cs']:

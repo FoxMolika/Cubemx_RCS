@@ -6,7 +6,7 @@ def run(args,expected=0):
     p=subprocess.run([str(x) for x in args],cwd=ROOT,capture_output=True,timeout=30)
     if p.returncode!=expected:raise RuntimeError(f'exit {p.returncode}, expected {expected}: {args[0]}')
 def main():
-    setup=ROOT/'dist/RCS_MapEditor_Setup_0.2.0_win-x64.exe'
+    setup=ROOT/'dist/RCS_MapEditor_Setup_0.2.1_win-x64.exe'
     area=ROOT/'build'/('安装验收 空间_'+uuid.uuid4().hex[:8]);area.mkdir();dest=area/'安装目录'
     run([setup,'/S','/D='+str(dest)]);run([setup,'/S','/D='+str(dest)])
     assert (dest/'rcs-map-installed.xml').is_file()

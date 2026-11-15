@@ -5,8 +5,8 @@ using System.Windows.Forms;
 using System.Reflection;
 [assembly: AssemblyTitle("RCS Waypoint Map Editor")]
 [assembly: AssemblyProduct("RCS CubeMX Map Companion")]
-[assembly: AssemblyVersion("0.2.0.0")]
-[assembly: AssemblyFileVersion("0.2.0.0")]
+[assembly: AssemblyVersion("0.2.1.0")]
+[assembly: AssemblyFileVersion("0.2.1.0")]
 namespace RcsMap {
  static class Program {
   [STAThread] static int Main(string[] args) {

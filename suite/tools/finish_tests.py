@@ -9,15 +9,15 @@ def run(exe,args,env,timeout=210,cwd=None):
  return p.stdout+p.stderr
 def main():
  r=json.loads((ROOT/'build/acceptance.json').read_text(encoding='utf-8'));area=Path(r['area']);home=Path(r['test_home']);dest=Path(r['installed_directory']);cube=Path(r['cube_auto_discovery'][0]);env=dict(os.environ);env.pop('STM32CubeMX_PATH',None)
- setup=ROOT/'dist/RCS_CubeMX_Suite_Setup_0.3.4_win-x64.exe'
+ setup=ROOT/'dist/RCS_CubeMX_Suite_Setup_0.3.5_win-x64.exe'
  # Native CubeMX Generate Code uses the exact newly installed pack/profile.
  native=area/'生成验收';native.mkdir(exist_ok=True);ioc=native/'suite_native.ioc'
  props=dict(l.split('=',1) for l in (PROJECT/'native/native.ioc').read_text().splitlines() if '=' in l)
- props={k.replace('0.1.0','0.3.4'):v.replace('0.1.0','0.3.4') for k,v in props.items()}
+ props={k.replace('0.1.0','0.3.5'):v.replace('0.1.0','0.3.5') for k,v in props.items()}
  props.update({'ProjectManager.ProjectName':'suite_native','ProjectManager.ProjectFileName':'suite_native.ioc','ProjectManager.TargetToolchain':'MDK-ARM V5.39'})
  ioc.write_text('\n'.join(k+'='+v for k,v in sorted(props.items()))+'\n',encoding='utf-8')
  fw=Path.home()/'STM32Cube/Repository/STM32Cube_FW_F4_V1.28.3';assert fw.is_dir()
- script=area/'native-generate.script';script.write_text('config load "'+ioc.as_posix()+'"\nproject setCustomFWPath "'+fw.as_posix()+'"\nset ip parameters RCS.Chassis.0.3.4 RCS_LAYOUT 2\nset ip parameters RCS.Chassis.0.3.4 RCS_WHEEL_DIAMETER_MM 180\nconfig save\nproject generate\nexit\n',encoding='utf-8')
+ script=area/'native-generate.script';script.write_text('config load "'+ioc.as_posix()+'"\nproject setCustomFWPath "'+fw.as_posix()+'"\nset ip parameters RCS.Chassis.0.3.5 RCS_LAYOUT 2\nset ip parameters RCS.Chassis.0.3.5 RCS_WHEEL_DIAMETER_MM 180\nconfig save\nproject generate\nexit\n',encoding='utf-8')
  args=['-Dfile.encoding=UTF-8','-DMX_UPDATER_SKIP_UPDATE=true','-Duser.home='+str(home),'-Djava.util.prefs.PreferencesFactory=WorkspacePreferencesFactory','-cp',str(dest/'validation')+';'+str(cube/'STM32CubeMX.exe'),'com.st.microxplorer.maingui.STM32CubeMX','-q',script]
  if '--resume' not in sys.argv:
   try:output=run(cube/'jre/bin/java.exe',args,env,300,cube)
@@ -29,8 +29,12 @@ def main():
  h=one('rcs_config.h').read_text(encoding='utf-8');assert re.search(r'^#define RCS_LAYOUT 2\s*$',h,re.M);assert re.search(r'^#define RCS_WHEEL_DIAMETER_MM 180\s*$',h,re.M);assert '${' not in h
  for p in (PROJECT/'firmware').glob('*'):
   if p.suffix in ('.c','.h'):assert one(p.name).read_bytes()==p.read_bytes()
+ sys.path.insert(0,str(PROJECT/'tools'))
+ from style_check import check_source
+ for name in ['rcs_chassis.c','rcs_chassis.h','rcs_control.c','rcs_control.h','rcs_hal.c','rcs_hal.h','rcs_config.h']:
+  errors=check_source(name,one(name).read_text(encoding='utf-8-sig'));assert not errors,errors
  main=one('main.c').read_bytes();assert b'RCS_' not in main and b'rcs_' not in main
- print('PASS native CubeMX 0.3.4 Generate Code, parameters and all 7 C/H verified; no chassis main hooks',flush=True)
+ print('PASS native CubeMX 0.3.5 Generate Code, parameters and all 7 C/H verified; no chassis main hooks',flush=True)
  # Native rcs_config.h compiles with its compile-time guards against the generated HAL headers.
  import shutil as _sh
  gcc=_sh.which('gcc')

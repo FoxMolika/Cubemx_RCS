@@ -3,6 +3,12 @@ setlocal
 cd /d "%~dp0"
 python map_editor\tools\verify.py
 if errorlevel 1 goto failed
+python tools\test_style_generation.py
+if errorlevel 1 goto failed
+python tools\check_guides.py
+if errorlevel 1 goto failed
+python tools\style_audit.py
+if errorlevel 1 goto failed
 python tools\verify.py
 if errorlevel 1 goto failed
 python suite\tools\build.py
@@ -22,6 +28,8 @@ if errorlevel 1 goto failed
 python suite\tools\finish_tests.py
 if errorlevel 1 goto failed
 python suite\tools\release.py
+if errorlevel 1 goto failed
+python tools\audit_release.py
 if errorlevel 1 goto failed
 pause
 exit /b 0

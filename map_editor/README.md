@@ -1,12 +1,14 @@
-# RCS 位点地图编辑器 0.2.0
+> 合并套件0.3.5中的入口：安装器“启动地图编辑器”，或 `%LOCALAPPDATA%\RCS_CubeMX_Suite_0.3.5\RCS_MapEditor.exe`。地形／地图／路径编辑器是同一独立窗口，未嵌入CubeMX。底盘工程还需单独“关联工程…”后重新生成；路径3C3H仍需自己加入工程。详见 [网页教程](docs/使用说明.html)。
+
+# RCS 位点地图编辑器 0.2.1
 
 Windows 原生 CubeMX 配套编辑器：绘制场地和矩形障碍、添加/拖动/排序位点、设定朝向/目标速度/停留，结合底盘参数和编码器分辨率生成路径数据及闭环执行模块。
 
-0.2.0 兼容底盘 0.3.1 / 0.3.2 / 0.3.4：导入 `rcs_config.h` 时读取 `RCS_COMMAND_TIMEOUT_MS`，新增“允许采样最大间隔”参数并在导出前检查其小于命令超时；导入轮向沿用 C620 转子角度约定，外接编码器需自行核对。
+0.2.1 兼容底盘 0.3.1 / 0.3.2 / 0.3.5：导入 `rcs_config.h` 时读取 `RCS_COMMAND_TIMEOUT_MS`，新增“允许采样最大间隔”参数并在导出前检查其小于命令超时；导入轮向沿用 C620 转子角度约定，外接编码器需自行核对。
 
 ## 直接使用
 
-- 安装程序：`dist/RCS_MapEditor_Setup_0.2.0_win-x64.exe`
+- 安装程序：`dist/RCS_MapEditor_Setup_0.2.1_win-x64.exe`
 - 便携程序：`dist/RCS_MapEditor.exe`
 - 图文说明：`dist/使用说明.html`（截图内嵌，无需联网）
 - 示例地图：`dist/示例路线.rcsmap.json`
