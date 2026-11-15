@@ -9,8 +9,8 @@ using System.Text;
 using System.Windows.Forms;
 using System.Xml.Linq;
 [assembly: AssemblyTitle("foxmolika Map Editor Setup")]
-[assembly: AssemblyVersion("0.4.0.0")]
-[assembly: AssemblyFileVersion("0.4.0.0")]
+[assembly: AssemblyVersion("0.4.1.0")]
+[assembly: AssemblyFileVersion("0.4.1.0")]
 class Install {
  internal static readonly string[] Files={"foxmolika_MapEditor.exe","使用说明.html","LICENSE.txt","examples/示例路线.rcsmap.json","examples/robot_route_task.c","examples/robot_route_task.h","sdk/rcs_chassis.c","sdk/rcs_chassis.h"};
  internal const string Marker="rcs-map-installed.xml";
@@ -18,7 +18,7 @@ class Install {
  static string Hash(byte[] bytes){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-","").ToLowerInvariant();}
  static byte[] Payload(string name){using(var s=Assembly.GetExecutingAssembly().GetManifestResourceStream("payload/"+name)){if(s==null)throw new Exception("缺少载荷："+name);using(var m=new MemoryStream()){s.CopyTo(m);return m.ToArray();}}}
  static bool Within(string root,string file){return file.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase);}
- static XElement Receipt(string dir){string marker=Path.Combine(dir,Marker);if(!File.Exists(marker))throw new Exception("目录中没有本安装器的安装记录。");var receipt=XElement.Load(marker);if(receipt.Name!="RCSMapEditor"||(string)receipt.Attribute("Version")!="0.4.0")throw new Exception("安装记录不兼容。");return receipt;}
+ static XElement Receipt(string dir){string marker=Path.Combine(dir,Marker);if(!File.Exists(marker))throw new Exception("目录中没有本安装器的安装记录。");var receipt=XElement.Load(marker);if(receipt.Name!="RCSMapEditor"||(string)receipt.Attribute("Version")!="0.4.1")throw new Exception("安装记录不兼容。");return receipt;}
  internal static void InstallTo(string dir) {
   dir=Path.GetFullPath(dir);if(Directory.Exists(dir)&&Directory.EnumerateFileSystemEntries(dir).Any()){
    // Owned directory: modified files are refused, missing files are restored (repair).
@@ -26,7 +26,7 @@ class Install {
    foreach(string file in Files){string p=Path.Combine(dir,file.Replace('/',Path.DirectorySeparatorChar));if(!Within(dir,Path.GetFullPath(p)))throw new Exception("无效载荷路径。");if(!File.Exists(p)){Directory.CreateDirectory(Path.GetDirectoryName(p));File.WriteAllBytes(p,Payload(file));}}return;}
   string parent=Path.GetDirectoryName(dir);if(String.IsNullOrEmpty(parent))throw new Exception("不能选择磁盘根目录。");Directory.CreateDirectory(parent);
   string stage=Path.Combine(parent,".rcs-map-install-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);
-  try{var receipt=new XElement("RCSMapEditor",new XAttribute("Version","0.4.0"));
+  try{var receipt=new XElement("RCSMapEditor",new XAttribute("Version","0.4.1"));
    foreach(string name in Files){byte[] bytes=Payload(name);string path=Path.Combine(stage,name.Replace('/',Path.DirectorySeparatorChar));if(!Within(stage,Path.GetFullPath(path)))throw new Exception("无效载荷路径。");Directory.CreateDirectory(Path.GetDirectoryName(path));File.WriteAllBytes(path,bytes);receipt.Add(new XElement("File",new XAttribute("Name",name),new XAttribute("Sha256",Hash(bytes))));}
    receipt.Save(Path.Combine(stage,Marker));if(Directory.Exists(dir))Directory.Delete(dir);Directory.Move(stage,dir);
   }finally{if(Directory.Exists(stage))Directory.Delete(stage,true);}
@@ -47,7 +47,7 @@ class Install {
 }
 class Wizard:Form {
  TextBox path=new TextBox();Label status=new Label();Button launch;
- public Wizard(string dir){Text="foxmolika 位点地图编辑器 · 安装程序 0.4.0";ClientSize=new Size(760,430);Font=new Font("Microsoft YaHei UI",10);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;BackColor=Color.White;
+ public Wizard(string dir){Text="foxmolika 位点地图编辑器 · 安装程序 0.4.1";ClientSize=new Size(760,430);Font=new Font("Microsoft YaHei UI",10);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;BackColor=Color.White;
   Controls.Add(new Label{Text="画出路线，生成编码器闭环路径代码",Font=new Font(Font.FontFamily,19,FontStyle.Bold),AutoSize=true,Location=new Point(24,25)});
   Controls.Add(new Label{Text="CubeMX 配套编辑器 · 独立 Windows 窗口 · 无需 Python",AutoSize=true,Location=new Point(26,74),ForeColor=Color.DimGray});
   Controls.Add(new Label{Text="安装目录（也可直接粘贴路径）",AutoSize=true,Location=new Point(26,122)});path.SetBounds(26,153,590,30);path.Text=dir;Controls.Add(path);

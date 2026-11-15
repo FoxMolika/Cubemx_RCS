@@ -1,13 +1,15 @@
-# foxmolika CubeMX 套件 0.4.0
+# foxmolika CubeMX 套件 0.4.1
+
+新增地图直接夹角标注：计划出发车头与下一段轨迹之间，默认画弧线并显示顺/逆时针角度；拖动或修改动作实时更新，不自动添加转向动作。0.4.0 保留，固件运动代码不变。
 
 STM32F407 HAL 底盘模块与位点地图编辑器。独立生成 C/H，支持 CubeMX 软件包和 Keil 工程关联，不向 main.c 插入业务。
 
-- [单文件安装包](dist/foxmolika_CubeMX_Setup_0.4.0_win-x64.exe)
+- [单文件安装包](dist/foxmolika_CubeMX_Setup_0.4.1_win-x64.exe)
 - [安装与使用教程](docs/使用说明.html)
 - [地图、航点动作与量角器](docs/地图编辑器说明.html)
 - [底盘接口](docs/接入说明.md)
-- [本次变更](变更说明_0.4.0.md)
-- [发布验证结果](dist/发布核验_0.4.0.json)
+- [本次变更](变更说明_0.4.1.md)
+- [发布验证结果](dist/发布核验_0.4.1.json)
 
 航点执行顺序：平移到点 → 停稳 → 到达后动作 → 独立纠偏 → 起步前动作 → 离开验收。旋转是独立动作，旋转时 XY 命令为零，机构动作不会因纠偏重放。
 
@@ -17,4 +19,4 @@ STM32F407 HAL 底盘模块与位点地图编辑器。独立生成 C/H，支持 C
 
 旧地图另存 v3。建议使用工程副本升级，0.3.7 及原工程保留。此版本改变航点调度语义，不能用旧路线数组或旧 AXF 代表新动作流程。只有编码器时的纠偏仍受里程计误差影响，实车旋转还需验证轮速、几何和滑移。
 
-重建需要 Windows、.NET Framework C# 编译器、Python、GCC；原生验收另需 STM32CubeMX/F4 固件包和可用 Keil 编译器。目标电脑运行安装器/编辑器不需要 Python。查看 tools/release_040.py。
+重建需要 Windows、.NET Framework C# 编译器、Python、GCC；原生验收另需 STM32CubeMX/F4 固件包和可用 Keil 编译器。目标电脑运行安装器/编辑器不需要 Python。查看 tools/release_041.py。

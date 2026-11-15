@@ -99,7 +99,7 @@ class FakeNativeCli {
 
  c=case('old-version-coexist');old=c[1]/'STM32Cube/Repository/Packs/RCS/foxmolika/0.3.1';shutil.copytree(seed,old);(old/'prior-fixture.txt').write_bytes(b'prior version fixture')
  ioc=c[0]/'old.ioc';ioc.write_bytes(b'Mcu.ThirdParty0=RCS.foxmolika.0.3.1\r\n');oldhash=hashes(old);iocbytes=ioc.read_bytes();success(c)
- assert hashes(old)==oldhash and ioc.read_bytes()==iocbytes;cases.append('0.4.0 coexists with prior-version fixture; prior bytes and IOC unchanged')
+ assert hashes(old)==oldhash and ioc.read_bytes()==iocbytes;cases.append('0.4.1 coexists with prior-version fixture; prior bytes and IOC unchanged')
 
  c=case('legacy-RCS-brand-coexist');legacy=c[1]/'STM32Cube/Repository/Packs/RCS/Chassis/0.3.5';legacy.mkdir(parents=True);(legacy/'sentinel.txt').write_bytes(b'old RCS package must remain unchanged')
  ioc=c[0]/'old_RCS.ioc';ioc.write_bytes(b'Mcu.ThirdParty0=RCS.Chassis.0.3.5\r\n');oldhash=hashes(legacy);iocbytes=ioc.read_bytes();success(c)

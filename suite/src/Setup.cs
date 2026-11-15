@@ -13,8 +13,8 @@ using System.Windows.Forms;
 using System.Xml.Linq;
 [assembly:AssemblyTitle("foxmolika CubeMX Suite Setup")]
 [assembly:AssemblyProduct("foxmolika Chassis and Waypoint Suite")]
-[assembly:AssemblyVersion("0.4.0.0")]
-[assembly:AssemblyFileVersion("0.4.0.0")]
+[assembly:AssemblyVersion("0.4.1.0")]
+[assembly:AssemblyFileVersion("0.4.1.0")]
 namespace RcsSuite {
  static class Payload {
   internal static XDocument Manifest {get{using(var s=Assembly.GetExecutingAssembly().GetManifestResourceStream("payload/manifest.xml"))return XDocument.Load(s);}}
@@ -50,7 +50,7 @@ namespace RcsSuite {
    new XElement("Pending",new XAttribute("Home",home),new XAttribute("Cube",cube),new XAttribute("Isolated",isolated),new XAttribute("PackDirectory",packDir),new XAttribute("NewlyIntroduced",newly)).Save(pending);
    PackService.Install(cube,home,isolated,dir,newly,report);
    foreach(var f in Payload.AppFiles)if(Payload.HashFile(Payload.In(dir,(string)f.Attribute("Name")))!=(string)f.Attribute("Sha256"))throw new Exception("安装文件核验失败。");
-   new XElement("VerifiedInstallation",new XAttribute("Version",PackService.Version),new XAttribute("PackVersion",PackService.Version),new XAttribute("EditorVersion","0.4.0"),new XAttribute("Cube",cube),new XAttribute("Home",home),new XAttribute("PackDirectory",PackService.PackDir(home)),new XAttribute("Registered",PackService.Registered(home)),new XAttribute("FilesVerified",PackService.FilesMatch(PackService.PackDir(home))),new XAttribute("IsolatedTest",isolated),new XAttribute("Utc",DateTime.UtcNow.ToString("o"))).Save(success);
+   new XElement("VerifiedInstallation",new XAttribute("Version",PackService.Version),new XAttribute("PackVersion",PackService.Version),new XAttribute("EditorVersion","0.4.1"),new XAttribute("Cube",cube),new XAttribute("Home",home),new XAttribute("PackDirectory",PackService.PackDir(home)),new XAttribute("Registered",PackService.Registered(home)),new XAttribute("FilesVerified",PackService.FilesMatch(PackService.PackDir(home))),new XAttribute("IsolatedTest",isolated),new XAttribute("Utc",DateTime.UtcNow.ToString("o"))).Save(success);
    if(File.Exists(pending))File.Delete(pending);report("安装成功：编辑器已就绪，底盘包已自动导入并核验。无需手动导入 .pack。");
   }
   internal static void Remove(string dir,Action<string> report){dir=Path.GetFullPath(dir);Payload.Owned(dir);Payload.Preflight(dir);PackService.Remove(dir,report);
@@ -62,7 +62,7 @@ namespace RcsSuite {
    report("已移除本安装器引入且未修改的包与程序，保留其他用户文件。若从安装目录运行，安装器自身会保留。");
   }
   [STAThread] static int Main(string[] a){
-   using(var mutex=new Mutex(false,"Local\\foxmolika_CubeMX_Setup_040")){bool acquired;try{acquired=mutex.WaitOne(0,false);}catch(AbandonedMutexException){acquired=true;}if(!acquired)return 3;try{
+   using(var mutex=new Mutex(false,"Local\\foxmolika_CubeMX_Setup_041")){bool acquired;try{acquired=mutex.WaitOne(0,false);}catch(AbandonedMutexException){acquired=true;}if(!acquired)return 3;try{
     string dir=Option(a,"/D",DefaultDir),cube=Option(a,"/CUBEMX"),test=Option(a,"/TESTHOME");
     if(a.Any(x=>x.Equals("/DISCOVER",StringComparison.OrdinalIgnoreCase))){string p=Option(a,"/LOG");if(String.IsNullOrEmpty(p))return 2;File.WriteAllLines(p,CubeLocator.Find());return 0;}
     if(a.Any(x=>x.Equals("/S",StringComparison.OrdinalIgnoreCase))){try{if(a.Any(x=>x.Equals("/UNINSTALL",StringComparison.OrdinalIgnoreCase)))Remove(dir,s=>{});else Install(dir,cube,test,s=>{});return 0;}catch(Exception e){string log=Option(a,"/LOG",Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"suite-error.log"));try{File.WriteAllText(log,e.ToString(),PackService.Utf8);}catch{}return 2;}}

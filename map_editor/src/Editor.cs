@@ -11,13 +11,13 @@ namespace RcsMap {
  public class MapCanvas:Control {
   public MapDocument Document;
   public int Selected=-1,SelectedObstacle=-1,Mode;
-  public bool Snap=true;public double Zoom=1;public PointF Offset;
+  public bool Snap=true,ShowCourseAngles=true;public double Zoom=1;public PointF Offset;
   public Action BeginChange,EndChange,SelectionChanged; public Action<int> MeasurePicked;
   public Action<string> Status;
   public double[] PreviewPose; public int MeasureA=-1,MeasureB=-1;
   bool dragging,panning,drawing;Point last;PointF anchor,original;string dragOriginal;
   public MapCanvas(){DoubleBuffered=true;BackColor=Color.FromArgb(244,248,252);Dock=DockStyle.Fill;TabStop=true;Resize+=(s,e)=>{if(Zoom<=0)Fit();Invalidate();};}
-  public void Fit(){if(Document==null||Width<10||Height<10)return;var s=Document.Settings;Zoom=Math.Min((Width-90)/s.Width,(Height-85)/s.Height);if(!MapDocument.Finite(Zoom)||Zoom<=0)Zoom=.1;Offset=new PointF((float)((Width-s.Width*Zoom)/2),(float)((Height+s.Height*Zoom)/2));Invalidate();}
+  public void Fit(){if(Document==null||Width<10||Height<10)return;var s=Document.Settings;Zoom=Math.Min((Width-90)/s.Width,(Height-120)/s.Height);if(!MapDocument.Finite(Zoom)||Zoom<=0)Zoom=.1;Offset=new PointF((float)((Width-s.Width*Zoom)/2),(float)((Height+s.Height*Zoom)/2+12));Invalidate();}
   public PointF ScreenPoint(double x,double y){return new PointF((float)(Offset.X+x*Zoom),(float)(Offset.Y-y*Zoom));}
   public PointF WorldPoint(Point p){return new PointF((float)((p.X-Offset.X)/Zoom),(float)((Offset.Y-p.Y)/Zoom));}
   double Snapped(double x){return Snap&&Document.Settings.Grid>0?Math.Round(x/Document.Settings.Grid)*Document.Settings.Grid:x;}
@@ -56,6 +56,7 @@ namespace RcsMap {
    using(var pen=new Pen(Color.FromArgb(115,141,165),1.5f))g.DrawRectangle(pen,field.X,field.Y,field.Width,field.Height);
    using(var text=new SolidBrush(Color.FromArgb(73,94,118))){g.DrawString("世界坐标：X → / Y ↑ · yaw 逆时针为正",Font,text,12,12);g.DrawString("0",Font,text,bottom.X-field.Width-16,bottom.Y+5);
     g.DrawString(s.Width.ToString("0")+" mm",Font,text,bottom.X-64,bottom.Y+5);g.DrawString(s.Height.ToString("0")+" mm",Font,text,top.X+4,top.Y-23);}
+   if(ShowCourseAngles)g.DrawString("橙虚线：计划出发朝向 · 弧线：转头参考夹角",Font,Brushes.SaddleBrown,12,29);
    for(int i=0;i<Document.Obstacles.Count;i++){var o=Document.Obstacles[i];PointF p=ScreenPoint(o.X,o.Y+o.Height);float w=(float)(o.Width*Zoom),h=(float)(o.Height*Zoom);
     if(w<0||h<0)continue;using(var b=new SolidBrush(Color.FromArgb(238,216,213)))g.FillRectangle(b,p.X,p.Y,w,h);
     using(var pen=new Pen(i==SelectedObstacle?Color.FromArgb(181,54,48):Color.FromArgb(184,137,133),i==SelectedObstacle?2.5f:1))g.DrawRectangle(pen,p.X,p.Y,w,h);
@@ -67,10 +68,12 @@ namespace RcsMap {
    for(int i=0;i<Document.Points.Count;i++){var p=Document.Points[i];PointF pt=ScreenPoint(p.X,p.Y);Color c=i==0?Color.FromArgb(22,145,120):i==Selected?Color.FromArgb(236,149,41):Color.FromArgb(37,117,209);
     if(i==Selected){float r=(float)(s.Radius*Zoom);if(MapDocument.Finite(r)&&r>0)using(var pen=new Pen(Color.FromArgb(225,177,95),1)){pen.DashStyle=DashStyle.Dash;g.DrawEllipse(pen,pt.X-r,pt.Y-r,2*r,2*r);}}
     using(var b=new SolidBrush(c))g.FillEllipse(b,pt.X-9,pt.Y-9,18,18);using(var pen=new Pen(Color.White,2))g.DrawEllipse(pen,pt.X-9,pt.Y-9,18,18);
-    double shownYaw=PhaseMath.OutputHeading(Document,i);double angle=shownYaw*Math.PI/180;using(var pen=new Pen(c,2))g.DrawLine(pen,pt,new PointF(pt.X+(float)Math.Cos(angle)*28,pt.Y-(float)Math.Sin(angle)*28));
-    using(var b=new SolidBrush(Color.FromArgb(46,65,87)))g.DrawString("P"+i+" · "+shownYaw.ToString("0")+"°",Font,b,pt.X+12,pt.Y+9);
+    double shownYaw;bool validHeading=CourseAngles.TryHeading(Document,i,out shownYaw);
+    if(validHeading){double angle=shownYaw*Math.PI/180;using(var pen=new Pen(c,2))g.DrawLine(pen,pt,new PointF(pt.X+(float)Math.Cos(angle)*28,pt.Y-(float)Math.Sin(angle)*28));}
+    using(var b=new SolidBrush(Color.FromArgb(46,65,87)))g.DrawString("P"+i+" · "+(validHeading?shownYaw.ToString("0.##")+"°":"朝向无效"),Font,b,pt.X+12,pt.Y+9);
    }
-   if(MeasureA>=0&&MeasureB>=0&&MeasureA<Document.Points.Count&&MeasureB<Document.Points.Count){var a=Document.Points[MeasureA];var b=Document.Points[MeasureB];var center=ScreenPoint(a.X,a.Y);using(var pen=new Pen(Color.DarkViolet,2)){g.DrawLine(pen,center,ScreenPoint(b.X,b.Y));pen.DashStyle=DashStyle.Dash;g.DrawLine(pen,center,new PointF(center.X+90,center.Y));g.DrawLine(pen,center,new PointF(center.X,center.Y-90));try{float angle=(float)PhaseMath.Bearing(a,b);g.DrawArc(pen,center.X-45,center.Y-45,90,90,0,-angle);g.DrawString(angle.ToString("F2")+"°",Font,Brushes.DarkViolet,center.X+48,center.Y-35);}catch{}}}
+   if(ShowCourseAngles)CourseAnglePainter.Draw(g,bounds,this);
+   if(MeasureA>=0&&MeasureB>=0&&MeasureA<Document.Points.Count&&MeasureB<Document.Points.Count){var a=Document.Points[MeasureA];var b=Document.Points[MeasureB];var center=ScreenPoint(a.X,a.Y);using(var pen=new Pen(Color.DarkViolet,2)){g.DrawLine(pen,center,ScreenPoint(b.X,b.Y));pen.DashStyle=DashStyle.Dash;g.DrawLine(pen,center,new PointF(center.X+90,center.Y));g.DrawLine(pen,center,new PointF(center.X,center.Y-90));try{float angle=(float)PhaseMath.Bearing(a,b);g.DrawArc(pen,center.X-45,center.Y-45,90,90,0,-angle);g.DrawString("对 +X "+angle.ToString("F2")+"°",Font,Brushes.DarkViolet,center.X+48,center.Y-35);}catch{}}}
    if(drawing){PointF w=WorldPoint(last);PointF p=ScreenPoint(Math.Min(anchor.X,w.X),Math.Max(anchor.Y,w.Y));using(var pen=new Pen(Color.IndianRed,2)){pen.DashStyle=DashStyle.Dash;g.DrawRectangle(pen,p.X,p.Y,(float)(Math.Abs(w.X-anchor.X)*Zoom),(float)(Math.Abs(w.Y-anchor.Y)*Zoom));}}
    if(PreviewPose!=null){var p=ScreenPoint(PreviewPose[0],PreviewPose[1]);float r=(float)(s.Radius*Zoom);using(var b=new SolidBrush(Color.FromArgb(65,21,151,127)))g.FillEllipse(b,p.X-r,p.Y-r,2*r,2*r);using(var pen=new Pen(Color.FromArgb(10,133,110),3)){g.DrawEllipse(pen,p.X-r,p.Y-r,2*r,2*r);g.DrawLine(pen,p,new PointF(p.X+r*(float)Math.Cos(PreviewPose[2]),p.Y-r*(float)Math.Sin(PreviewPose[2])));}}
    float scale=(float)(1000*Zoom);if(scale>30&&scale<bounds.Width-40)using(var pen=new Pen(Color.FromArgb(80,104,129),2)){g.DrawLine(pen,18,bounds.Height-24,18+scale,bounds.Height-24);g.DrawLine(pen,18,bounds.Height-28,18,bounds.Height-20);g.DrawLine(pen,18+scale,bounds.Height-28,18+scale,bounds.Height-20);using(var b=new SolidBrush(pen.Color))g.DrawString("1 m",Font,b,22,bounds.Height-46);}
@@ -84,11 +87,12 @@ namespace RcsMap {
   Stack<string> undo=new Stack<string>(),redo=new Stack<string>();string pending,filename,savedJson,exportedRevision;bool refresh;PhasePreview phasePreview;int measureFirst=-1;
   public static Action<string,string> RecoverySnapshot;
   public static Action<string> Operation;
-  public Editor(){Text="foxmolika 位点地图编辑器 0.4.0 · CubeMX 配套扩展";Size=new Size(1420,900);MinimumSize=new Size(1120,720);StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",9);KeyPreview=true;BackColor=Color.White;
+  public Editor(){Text="foxmolika 位点地图编辑器 0.4.1 · CubeMX 配套扩展";Size=new Size(1420,900);MinimumSize=new Size(1120,720);StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",9);KeyPreview=true;BackColor=Color.White;
    var toolbar=new ToolStrip{GripStyle=ToolStripGripStyle.Hidden,Padding=new Padding(8,7,8,7),BackColor=Color.FromArgb(237,243,250),ImageScalingSize=new Size(20,20),Dock=DockStyle.Top};
    Button(toolbar,"新建",()=>New());Button(toolbar,"示例",()=>Replace(MapDocument.Demo(),null));Button(toolbar,"打开",LoadMap);Button(toolbar,"保存",()=>Save(false));toolbar.Items.Add(new ToolStripSeparator());
    Button(toolbar,"撤销",Undo);Button(toolbar,"重做",Redo);toolbar.Items.Add(new ToolStripSeparator());select=Button(toolbar,"选择 / 拖动",()=>SetMode(0));add=Button(toolbar,"＋ 位点",()=>SetMode(1));obstacle=Button(toolbar,"▧ 障碍",()=>SetMode(2));
    Button(toolbar,"删除",Delete);Button(toolbar,"适配画布",()=>canvas.Fit());var snap=Button(toolbar,"吸附网格",()=>{canvas.Snap=!canvas.Snap;});snap.CheckOnClick=true;snap.Checked=true;
+   var angles=Button(toolbar,"显示夹角",()=>{canvas.ShowCourseAngles=!canvas.ShowCourseAngles;canvas.Invalidate();});angles.CheckOnClick=true;angles.Checked=true;angles.ToolTipText="直接显示计划出发朝向与下一段路径的夹角，不自动转头。";
    Button(toolbar,"航点流程…",EditAction);Button(toolbar,"量角器",Measure);preview=Button(toolbar,"▶ 路线预览",TogglePreview);Button(toolbar,"导出 C / H",Export);Button(toolbar,"使用说明",OpenGuide);
    var footer=new StatusStrip{BackColor=Color.FromArgb(237,243,250)};footer.Items.Add(status);status.Spring=true;status.TextAlign=ContentAlignment.MiddleLeft;
    var left=new Panel{Dock=DockStyle.Left,Width=282,Padding=new Padding(8)};
@@ -129,11 +133,11 @@ namespace RcsMap {
   void Undo(){if(undo.Count==0)return;StopPreview();redo.Push(doc.Json());doc=MapDocument.Parse(undo.Pop());pending=null;canvas.Selected=canvas.SelectedObstacle=-1;RefreshAll();}
   void Redo(){if(redo.Count==0)return;StopPreview();undo.Push(doc.Json());doc=MapDocument.Parse(redo.Pop());pending=null;canvas.Selected=canvas.SelectedObstacle=-1;RefreshAll();}
   void RefreshAll(){refresh=true;canvas.Document=doc;properties.SelectedObject=doc.Settings;properties.Refresh();points.Rows.Clear();obstacles.Rows.Clear();segments.Rows.Clear();
-   for(int i=0;i<doc.Points.Count;i++){var p=doc.Points[i];points.Rows.Add("P"+i,p.X,p.Y,(i==0?p.Yaw:PhaseMath.OutputHeading(doc,i)),p.Speed,p.ArrivalActions.Count+p.DepartureActions.Count,"到达 "+p.ArrivalActions.Count+" / 起步 "+p.DepartureActions.Count);points.Rows[i].Cells[3].ReadOnly=i>0;}
+   for(int i=0;i<doc.Points.Count;i++){var p=doc.Points[i];double heading;object shown=i==0?(object)p.Yaw:CourseAngles.TryHeading(doc,i,out heading)?(object)heading:"朝向无效";points.Rows.Add("P"+i,p.X,p.Y,shown,p.Speed,p.ArrivalActions.Count+p.DepartureActions.Count,"到达 "+p.ArrivalActions.Count+" / 起步 "+p.DepartureActions.Count);points.Rows[i].Cells[3].ReadOnly=i>0;}
    for(int i=0;i<doc.Obstacles.Count;i++){var o=doc.Obstacles[i];obstacles.Rows.Add(i,o.X,o.Y,o.Width,o.Height);}
    var errors=doc.Validate();validation.Text=errors.Count==0?"✓ 路线检查通过。灰红虚线：障碍膨胀包络。预览和计数均为理想模型。":"⚠ "+String.Join("  /  ",errors.Take(3).ToArray());validation.ForeColor=errors.Count==0?Color.FromArgb(22,126,104):Color.FromArgb(183,65,49);
    if(errors.Count==0)for(int i=1;i<doc.Points.Count;i++){var a=SegmentInfo.Calculate(doc.Settings,doc.Points[i-1],doc.Points[i],i-1);segments.Rows.Add("P"+(i-1)+"→P"+i,(a.Distance*1000).ToString("F0"),(a.Turn*180/Math.PI).ToString("F1"),a.Seconds.ToString("F2"),a.Counts[0].ToString("F0"),a.Counts[1].ToString("F0"),a.Counts[2].ToString("F0"),doc.Settings.Wheels==3?"—":a.Counts[3].ToString("F0"));}
-   SelectRows();refresh=false;canvas.Invalidate();Text="foxmolika 位点地图编辑器 0.4.0 · "+(filename==null?"未命名":Path.GetFileName(filename))+(savedJson!=null&&savedJson!=doc.Json()?" *":"");
+   SelectRows();refresh=false;canvas.Invalidate();Text="foxmolika 位点地图编辑器 0.4.1 · "+(filename==null?"未命名":Path.GetFileName(filename))+(savedJson!=null&&savedJson!=doc.Json()?" *":"");
    if(RecoverySnapshot!=null)RecoverySnapshot(doc.Json(),filename);
    status.Text=(savedJson==doc.Json()?"已保存":"未保存")+" · "+(exportedRevision==TemplateGenerator.RouteRevision(doc)?"已导出当前版本":"当前版本未导出")+" · 动作/量角器可在工具栏编辑";
    try{string linked=ProjectExport.Resolve(doc,filename);projectCaption.Text=linked==null?"未关联工程：关联后，导出会自动加入路径3C3H和包含目录。":"目标工程："+linked;}catch{projectCaption.Text="关联路径无效，请重新关联工程。";}
@@ -164,6 +168,7 @@ namespace RcsMap {
   void StopPreview(){timer.Stop();preview.Text="▶ 路线预览";canvas.PreviewPose=null;canvas.Invalidate();}
   void TogglePreview(){if(timer.Enabled){StopPreview();return;}var errors=doc.Validate();if(errors.Count>0){MessageBox.Show(this,String.Join("\r\n",errors.Take(8).ToArray()));return;}phasePreview=new PhasePreview(doc);preview.Text="■ 停止预览";timer.Start();}
   void PreviewTick(){if(phasePreview==null)return;canvas.PreviewPose=phasePreview.Tick(timer.Interval/1000.0);status.Text=phasePreview.Status+" · 理想模型；自定义机构仅占位，不执行用户代码";canvas.Invalidate();if(phasePreview.Done)StopPreview();}
+  public void RenderCourseAnglesImage(string path){var saved=doc;try{doc=MapDocument.Demo();doc.Points[1].Y=1200;doc.Points[2].X=4700;using(var bmp=new Bitmap(1100,720))using(var g=Graphics.FromImage(bmp)){using(var c=new MapCanvas{Document=doc,Width=1100,Height=720,Font=Font,Selected=0}){c.Fit();c.Draw(g,new Rectangle(0,0,1100,720));bmp.Save(path,System.Drawing.Imaging.ImageFormat.Png);}}}finally{doc=saved;}}
   public void RenderPreview(string path){using(var bmp=new Bitmap(1100,720))using(var g=Graphics.FromImage(bmp)){var c=new MapCanvas{Document=doc,Width=1100,Height=720,Font=Font,Selected=0};c.Fit();c.Draw(g,new Rectangle(0,0,1100,720));bmp.Save(path,System.Drawing.Imaging.ImageFormat.Png);c.Dispose();}}
   public void RenderEditorImage(string path){renderOnly=true;ShowInTaskbar=false;Opacity=0;Size=new Size(1120,800);Show();Refresh();Application.DoEvents();if(!projectCaption.Parent.Visible||projectCaption.Right>projectCaption.Parent.ClientSize.Width)throw new Exception("工程关联栏布局越界。");using(var bitmap=new Bitmap(Width,Height)){DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height));bitmap.Save(path,System.Drawing.Imaging.ImageFormat.Png);}Close();}
  }

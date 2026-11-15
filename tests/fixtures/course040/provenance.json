@@ -1,0 +1,12 @@
+{
+  "source": "actual 0.4.0 export before the view-only change",
+  "old_editor_sha256": "5dc10c08da2736081eae01791f8fd5003f0170ea83fbabf0ddfa7e7bf2ff8c66",
+  "sha256": {
+    "rcs_actions.c": "70c6773806d80c42f0d5f630654d25ac6f1cfe360a0a4d6a39d7950b59b2ce8f",
+    "rcs_actions.h": "45290a783629dd0da80f3ae02ea82b08e2202d5797dad2ebf0748d4869f545cf",
+    "rcs_nav.c": "fefaeef2c8d2da9239b47dc7a96dec63150a7e2fecaede879b0606a36bf183c1",
+    "rcs_nav.h": "cf2fa3f507f9ec80d5285059dd568c965da439e5ca868ca73bf05b66640617f8",
+    "rcs_route.c": "432f06d8099416dabe14ef4eac89f9386d8ed22351d5a9b8371c7491cd6dcd1a",
+    "rcs_route.h": "c6ed50911e1c428f5b99124dc0c7cde012607e2b255bc667f130db8804ead5e8"
+  }
+}
