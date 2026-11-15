@@ -1,0 +1,6 @@
+__pycache__/
+build/
+dist/
+
+native/MDK-ARM/native/
+*.rcs-backup
