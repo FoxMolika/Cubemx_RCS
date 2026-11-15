@@ -3,7 +3,7 @@ from xml.etree import ElementTree as E
 import hashlib,json,os,re,shutil,subprocess,sys,uuid
 sys.stdout.reconfigure(encoding='utf-8')
 ROOT=Path(__file__).resolve().parents[1];PROJECT=ROOT.parent
-EXE=ROOT/'dist/RCS_CubeMX_Suite_Setup_0.3.3_win-x64.exe'
+EXE=ROOT/'dist/RCS_CubeMX_Suite_Setup_0.3.4_win-x64.exe'
 def invoke(exe,args,env,expected=0):
  p=subprocess.run([str(exe)]+[str(x) for x in args],cwd=exe.parent,env=env,capture_output=True,timeout=210)
  if p.returncode!=expected:raise RuntimeError(f'Installer exit={p.returncode} expected={expected}; args={args}')
@@ -21,9 +21,9 @@ def main():
  invoke(exe,args,env)
  success=xml(dest/'install-success.xml');pack=Path(success.attrib['PackDirectory'])
  assert success.attrib['Registered'].lower()=='true' and success.attrib['FilesVerified'].lower()=='true'
- assert success.attrib['PackVersion']=='0.3.3' and pack.is_relative_to(home)
- assert (pack/'CubeMX/RCS.Chassis.0.3.3_Modes.xml').is_file()
- assert (dest/'RCS_MapEditor.exe').is_file() and (dest/'RCS.Chassis.0.3.3.pack').is_file() and (dest/'RCS_KeilHeaders.exe').is_file()
+ assert success.attrib['PackVersion']=='0.3.4' and pack.is_relative_to(home)
+ assert (pack/'CubeMX/RCS.Chassis.0.3.4_Modes.xml').is_file()
+ assert (dest/'RCS_MapEditor.exe').is_file() and (dest/'RCS.Chassis.0.3.4.pack').is_file() and (dest/'RCS_KeilHeaders.exe').is_file()
  assert xml(dest/'cube-pack-receipt.xml').attrib['NewlyIntroduced'].lower()=='true'
  print('PASS single-file fresh home/empty repository native import + registration/hash verification',flush=True)
  invoke(exe,args,env);print('PASS repeat install',flush=True)

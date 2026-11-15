@@ -1,4 +1,5 @@
 #include "rcs_hal.h"
+#if defined(HAL_CAN_MODULE_ENABLED)
 #include "rcs_config.h"
 #include <string.h>
 #ifndef RCS_TX_ABORT_WAIT_MS
@@ -64,3 +65,4 @@ int RCS_SetVelocity(float vx,float vy,float wz) {
 }
 rcs_state RCS_State(void) { return controller.state; }
 rcs_fault RCS_Fault(void) { return controller.fault; }
+#endif

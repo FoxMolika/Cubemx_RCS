@@ -13,8 +13,8 @@ using System.Windows.Forms;
 using System.Xml.Linq;
 [assembly:AssemblyTitle("RCS CubeMX Suite Setup")]
 [assembly:AssemblyProduct("RCS Chassis and Waypoint Suite")]
-[assembly:AssemblyVersion("0.3.3.0")]
-[assembly:AssemblyFileVersion("0.3.3.0")]
+[assembly:AssemblyVersion("0.3.4.0")]
+[assembly:AssemblyFileVersion("0.3.4.0")]
 namespace RcsSuite {
  static class Payload {
   internal static XDocument Manifest {get{using(var s=Assembly.GetExecutingAssembly().GetManifestResourceStream("payload/manifest.xml"))return XDocument.Load(s);}}
@@ -62,7 +62,7 @@ namespace RcsSuite {
    report("已移除本安装器引入且未修改的包与程序，保留其他用户文件。若从安装目录运行，安装器自身会保留。");
   }
   [STAThread] static int Main(string[] a){
-   using(var mutex=new Mutex(false,"Local\\RCS_CubeMX_Suite_Setup_033")){bool acquired;try{acquired=mutex.WaitOne(0,false);}catch(AbandonedMutexException){acquired=true;}if(!acquired)return 3;try{
+   using(var mutex=new Mutex(false,"Local\\RCS_CubeMX_Suite_Setup_034")){bool acquired;try{acquired=mutex.WaitOne(0,false);}catch(AbandonedMutexException){acquired=true;}if(!acquired)return 3;try{
     string dir=Option(a,"/D",DefaultDir),cube=Option(a,"/CUBEMX"),test=Option(a,"/TESTHOME");
     if(a.Any(x=>x.Equals("/DISCOVER",StringComparison.OrdinalIgnoreCase))){string p=Option(a,"/LOG");if(String.IsNullOrEmpty(p))return 2;File.WriteAllLines(p,CubeLocator.Find());return 0;}
     if(a.Any(x=>x.Equals("/S",StringComparison.OrdinalIgnoreCase))){try{if(a.Any(x=>x.Equals("/UNINSTALL",StringComparison.OrdinalIgnoreCase)))Remove(dir,s=>{});else Install(dir,cube,test,s=>{});return 0;}catch(Exception e){string log=Option(a,"/LOG",Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"suite-error.log"));try{File.WriteAllText(log,e.ToString(),PackService.Utf8);}catch{}return 2;}}
@@ -71,7 +71,7 @@ namespace RcsSuite {
   }
  }
  class Wizard:Form {
-  ComboBox cube=new ComboBox();TextBox dest=new TextBox(),log=new TextBox();Button install,remove,launch,guide;bool busy;
+  ComboBox cube=new ComboBox();TextBox dest=new TextBox(),log=new TextBox();Button install,remove,launch,guide,projectSetup;bool busy;
   public Wizard(string cubePath,string dir){Text="RCS CubeMX 合并安装程序 "+PackService.Version;ClientSize=new Size(850,650);MinimumSize=Size;StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",10);BackColor=Color.White;
    Controls.Add(new Label{Text="底盘生成 + 位点地图，一次安装",Font=new Font(Font.FontFamily,22,FontStyle.Bold),Location=new Point(24,22),AutoSize=true});
    Controls.Add(new Label{Text="单文件安装包 · 自动导入 RCS.Chassis "+PackService.Version+" · 含 Keil 头文件补全工具",Location=new Point(27,77),AutoSize=true,ForeColor=Color.FromArgb(30,117,102)});
@@ -83,11 +83,12 @@ namespace RcsSuite {
    launch=new Button{Text="启动地图编辑器",Location=new Point(198,363),Size=new Size(162,41)};launch.Click+=(s,e)=>Open("RCS_MapEditor.exe");Controls.Add(launch);
    guide=new Button{Text="使用说明",Location=new Point(373,363),Size=new Size(130,41)};guide.Click+=(s,e)=>Open("使用说明.html");Controls.Add(guide);
    remove=new Button{Text="卸载此套工具",Location=new Point(516,363),Size=new Size(155,41)};remove.Click+=(s,e)=>Work(true);Controls.Add(remove);
-   log.SetBounds(27,427,795,192);log.Multiline=true;log.ReadOnly=true;log.ScrollBars=ScrollBars.Vertical;log.BackColor=Color.FromArgb(244,248,252);log.Text="安装成功后，在 CubeMX 的 Software Packs → Select Components 中选择 RCS.Chassis "+PackService.Version+"。\r\n再在 Chassis 配置页启用 Robotics Chassis。生成 Keil 工程后运行 RCS_KeilHeaders.exe 让 .h 显示在工程树。";Controls.Add(log);
+   projectSetup=new Button{Text="关联工程…",Location=new Point(684,363),Size=new Size(138,41)};projectSetup.Click+=(s,e)=>Open("RCS_ProjectSetup.exe");Controls.Add(projectSetup);
+   log.SetBounds(27,427,795,192);log.Multiline=true;log.ReadOnly=true;log.ScrollBars=ScrollBars.Vertical;log.BackColor=Color.FromArgb(244,248,252);log.Text="选择并启用 RCS.Chassis "+PackService.Version+" 后保存.ioc；每个工程点一次“关联工程…”。\r\n关联后，CAN HAL驱动与4个头文件会在每次Generate Code后自动加入。硬件引脚和波特率仍需按接线配置。";Controls.Add(log);
    FormClosing+=(s,e)=>{if(busy){e.Cancel=true;MessageBox.Show(this,"正在等待 CubeMX 核验完成，请稍候。");}};
   }
   void Append(string s){if(InvokeRequired){BeginInvoke(new Action<string>(Append),s);return;}log.AppendText("\r\n"+s);}
   void Open(string n){try{string p=Path.Combine(dest.Text.Trim(),n);if(!File.Exists(p))throw new Exception("请先安装；或检查保存目录。");Process.Start(new ProcessStartInfo(p){UseShellExecute=true});}catch(Exception e){MessageBox.Show(this,e.Message);}}
-  void Work(bool uninstall){string d=dest.Text.Trim(),c=cube.Text.Trim();if(String.IsNullOrWhiteSpace(d)||!Path.IsPathRooted(d)){MessageBox.Show(this,"请填写完整保存路径。");return;}busy=true;install.Enabled=remove.Enabled=launch.Enabled=guide.Enabled=false;var worker=new BackgroundWorker();worker.DoWork+=(s,e)=>{if(uninstall)Setup.Remove(d,Append);else Setup.Install(d,c,null,Append);};worker.RunWorkerCompleted+=(s,e)=>{busy=false;install.Enabled=remove.Enabled=launch.Enabled=guide.Enabled=true;if(e.Error!=null){Append("未完成："+e.Error.Message);try{if(Directory.Exists(d))File.WriteAllText(Path.Combine(d,"suite-error.log"),e.Error.ToString(),PackService.Utf8);}catch{}MessageBox.Show(this,e.Error.Message,"安装未完成",MessageBoxButtons.OK,MessageBoxIcon.Warning);}else MessageBox.Show(this,uninstall?"卸载流程完成。":"已完成自动导入与核验。无需手动导入 .pack。","完成");};worker.RunWorkerAsync();}
+  void Work(bool uninstall){string d=dest.Text.Trim(),c=cube.Text.Trim();if(String.IsNullOrWhiteSpace(d)||!Path.IsPathRooted(d)){MessageBox.Show(this,"请填写完整保存路径。");return;}busy=true;install.Enabled=remove.Enabled=launch.Enabled=guide.Enabled=projectSetup.Enabled=false;var worker=new BackgroundWorker();worker.DoWork+=(s,e)=>{if(uninstall)Setup.Remove(d,Append);else Setup.Install(d,c,null,Append);};worker.RunWorkerCompleted+=(s,e)=>{busy=false;install.Enabled=remove.Enabled=launch.Enabled=guide.Enabled=projectSetup.Enabled=true;if(e.Error!=null){Append("未完成："+e.Error.Message);try{if(Directory.Exists(d))File.WriteAllText(Path.Combine(d,"suite-error.log"),e.Error.ToString(),PackService.Utf8);}catch{}MessageBox.Show(this,e.Error.Message,"安装未完成",MessageBoxButtons.OK,MessageBoxIcon.Warning);}else MessageBox.Show(this,uninstall?"卸载流程完成。":"已完成自动导入与核验。请为每个工程关联一次，以启用CAN HAL和自动头文件补全。","完成");};worker.RunWorkerAsync();}
  }
 }

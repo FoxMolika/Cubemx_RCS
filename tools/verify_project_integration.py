@@ -1,0 +1,38 @@
+"""Real CubeMX regression for the user's no-CAN MDK project. Own copy only."""
+from pathlib import Path
+from xml.etree import ElementTree as E
+import subprocess,os,sys,json,re,hashlib,shutil,uuid
+R=Path(__file__).resolve().parents[1]
+def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+def main():
+ sys.stdout.reconfigure(encoding='utf-8');install=json.loads((R/'suite/build/acceptance.json').read_text(encoding='utf-8'));cube=Path(install['cube_auto_discovery'][0]);home=Path(install['test_home']);dest=Path(install['installed_directory'])
+ area=R/'suite/build'/('工程关联 验收 '+uuid.uuid4().hex[:8]);work=area/'tester123';(work/'MDK-ARM').mkdir(parents=True);(work/'Core/Src').mkdir(parents=True)
+ for src,target in [('tester123_no_can.ioc','tester123.ioc'),('tester123.uvprojx','MDK-ARM/tester123.uvprojx'),('tester123.uvoptx','MDK-ARM/tester123.uvoptx'),('tester123_main.c','Core/Src/main.c')]:shutil.copyfile(R/'tests/fixtures'/src,work/target)
+ main_before=sha(work/'Core/Src/main.c');tool=dest/'RCS_ProjectSetup.exe';q=subprocess.run([str(tool),str(work/'tester123.ioc'),'/UPGRADE'],capture_output=True);assert q.returncode==0
+ assert main_before==sha(work/'Core/Src/main.c');post=work/'RCS_Tools_034/RCS_PostGenerate.exe'
+ def generate(tag):
+  fw=Path.home()/'STM32Cube/Repository/STM32Cube_FW_F4_V1.28.3';script=area/(tag+'.script');script.write_text('config load "'+(work/'tester123.ioc').as_posix()+'"\nproject setCustomFWPath "'+fw.as_posix()+'"\nconfig save\nproject generate\nexit\n',encoding='utf-8')
+  args=[cube/'jre/bin/java.exe','-Dfile.encoding=UTF-8','-DMX_UPDATER_SKIP_UPDATE=true','-Duser.home='+str(home),'-Djava.util.prefs.PreferencesFactory=WorkspacePreferencesFactory','-cp',str(dest/'validation')+';'+str(cube/'STM32CubeMX.exe'),'com.st.microxplorer.maingui.STM32CubeMX','-q',script]
+  p=subprocess.run([str(x) for x in args],cwd=cube,env=os.environ.copy(),capture_output=True,timeout=300);(area/(tag+'.log')).write_bytes(p.stdout+p.stderr);assert p.returncode==0
+ def check():
+  uv=work/'MDK-ARM/tester123.uvprojx';tree=E.parse(uv);files=tree.findall('.//File');names=[f.findtext('FileName') for f in files]
+  expected=['rcs_chassis.h','rcs_control.h','rcs_hal.h','rcs_config.h']
+  for n in expected:
+   hits=[f for f in files if f.findtext('FileName')==n];assert len(hits)==1,(n,hits);assert hits[0].findtext('FileType')=='5';assert (uv.parent/hits[0].findtext('FilePath')).is_file()
+  assert 'stm32f4xx_hal_can.c' in names and all(n in names for n in ['rcs_chassis.c','rcs_control.c','rcs_hal.c'])
+  conf=(work/'Core/Inc/stm32f4xx_hal_conf.h').read_text(encoding='utf-8');assert re.search(r'^#define HAL_CAN_MODULE_ENABLED',conf,re.M)
+  assert sha(work/'Core/Src/main.c')==main_before
+  assert (work/'RCS_Tools_034/headers-result.txt').read_text(encoding='utf-8').startswith('PASS ')
+  for p in (R/'firmware').iterdir():
+   if p.suffix in ['.c','.h']:assert sha(work/'Middlewares/Third_Party/RCS_Robotics/RCS_Chassis'/p.name)==sha(p)
+  return tree
+ generate('generate-first');tree=check();print('PASS native no-CAN fixture: HAL CAN driver + 4 automatic headers + unchanged main',flush=True)
+ # Remove every RCS header registration, then let CubeMX restore it itself.
+ for parent in tree.iter():
+  for child in list(parent):
+   name=child.findtext('FileName')
+   if child.tag=='File' and name and name.startswith('rcs_') and name.endswith('.h'):parent.remove(child)
+ tree.write(work/'MDK-ARM/tester123.uvprojx',encoding='utf-8',xml_declaration=True);(work/'RCS_Tools_034/headers-result.txt').unlink();generate('generate-repeat');check();print('PASS deleted MDK headers restored automatically on next Generate Code',flush=True)
+ report={'version':'0.3.4','native_generation_twice':'pass','can_HAL_and_driver':'pass','four_headers_automatic':'pass','delete_then_regenerate':'pass','main_unchanged':True,'main_sha256':main_before,'project_setup_sha256':sha(tool),'post_helper_sha256':sha(post),'installer_sha256':sha(R/'suite/dist/RCS_CubeMX_Suite_Setup_0.3.4_win-x64.exe'),'project_directory':str(work),'keil':'pending separate ARM6.22 build','hardware_test':False}
+ (R/'build/project_integration_validation.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8');print(work)
+if __name__=='__main__':main()

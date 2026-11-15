@@ -7,7 +7,7 @@ using System.Text;
 using System.Xml.Linq;
 namespace RcsSuite {
  static class PackService {
-  internal const string Version="0.3.3";
+  internal const string Version="0.3.4";
   internal static readonly Encoding Utf8=new UTF8Encoding(false);
   internal static string Q(string s){if(s.IndexOf('"')>=0||s.IndexOf('\n')>=0||s.IndexOf('\r')>=0)throw new Exception("路径含不支持的字符。");return "\""+s+"\"";}
   internal static string Repo(string home){string ini=Path.Combine(home,@".stm32cubemx\plugins\updater\updater.ini");if(File.Exists(ini))foreach(string raw in File.ReadAllLines(ini)){

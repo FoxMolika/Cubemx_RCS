@@ -1,6 +1,7 @@
 /* Minimal host-only HAL stub. Never include this file in a firmware project. */
 #ifndef TEST_HAL_H
 #define TEST_HAL_H
+#define HAL_CAN_MODULE_ENABLED
 #include <stdint.h>
 typedef struct {volatile uint32_t ESR;} CAN_TypeDef;
 typedef struct {CAN_TypeDef *Instance;} CAN_HandleTypeDef;

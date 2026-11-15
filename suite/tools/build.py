@@ -31,7 +31,14 @@ def main():
  csc=Path(os.environ.get('WINDIR','C:/Windows'))/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
  keil=build/'RCS_KeilHeaders.exe'
  run([csc,'/nologo','/target:exe','/platform:anycpu','/optimize+','/reference:System.Xml.Linq.dll','/reference:System.Xml.dll','/reference:System.Core.dll','/out:'+str(keil),PROJECT/'keil_headers/KeilHeaders.cs'])
- payload={'RCS_MapEditor.exe':editor,'RCS.Chassis.'+VERSION+'.pack':pack,'RCS_KeilHeaders.exe':keil,'使用说明.html':ROOT/'docs/使用说明.html',
+ post=build/'RCS_PostGenerate.exe'
+ post_source_hash=sha((PROJECT/'keil_headers/KeilHeaders.cs').read_bytes());post_stamp=build/'post-source.sha256'
+ if not post.is_file() or not post_stamp.is_file() or post_stamp.read_text()!=post_source_hash:
+  run([csc,'/nologo','/target:exe','/define:RCS_POSTGEN','/platform:anycpu','/optimize+','/reference:System.Xml.Linq.dll','/reference:System.Xml.dll','/reference:System.Core.dll','/out:'+str(post),PROJECT/'keil_headers/KeilHeaders.cs'])
+  post_stamp.write_text(post_source_hash)
+ project_setup=build/'RCS_ProjectSetup.exe'
+ run([csc,'/nologo','/target:winexe','/platform:anycpu','/optimize+','/reference:System.Windows.Forms.dll','/reference:System.Core.dll','/resource:'+str(post)+',payload/RCS_PostGenerate.exe','/out:'+str(project_setup),PROJECT/'keil_headers/ProjectSetup.cs'])
+ payload={'RCS_ProjectSetup.exe':project_setup,'RCS_MapEditor.exe':editor,'RCS.Chassis.'+VERSION+'.pack':pack,'RCS_KeilHeaders.exe':keil,'使用说明.html':ROOT/'docs/使用说明.html',
   '地图编辑器说明.html':PROJECT/'map_editor/dist/使用说明.html','底盘接入说明.md':PROJECT/'docs/接入说明.md','LICENSE.txt':PROJECT/'LICENSE.txt',
   'examples/示例路线.rcsmap.json':PROJECT/'map_editor/examples/示例路线.rcsmap.json','examples/robot_route_task.c':PROJECT/'map_editor/examples/robot_route_task.c','examples/robot_route_task.h':PROJECT/'map_editor/examples/robot_route_task.h',
   'sdk/rcs_chassis.c':PROJECT/'firmware/rcs_chassis.c','sdk/rcs_chassis.h':PROJECT/'firmware/rcs_chassis.h',

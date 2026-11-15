@@ -1,6 +1,9 @@
 #ifndef RCS_HAL_H
 #define RCS_HAL_H
 #include "stm32f4xx_hal.h"
+#if !defined(HAL_CAN_MODULE_ENABLED)
+#error "RCS: CAN HAL is disabled. Enable CAN1/CAN2 in CubeMX, or run RCS_ProjectSetup then Generate Code."
+#else
 #include "rcs_control.h"
 #ifdef __cplusplus
 extern "C" {
@@ -20,4 +23,5 @@ rcs_fault RCS_Fault(void);
 #ifdef __cplusplus
 }
 #endif
-#endif
+#endif /* HAL_CAN_MODULE_ENABLED */
+#endif /* RCS_HAL_H */

@@ -99,7 +99,7 @@ class FakeNativeCli {
 
  c=case('old-version-coexist');old=c[1]/'STM32Cube/Repository/Packs/RCS/Chassis/0.3.1';shutil.copytree(seed,old);(old/'prior-fixture.txt').write_bytes(b'prior version fixture')
  ioc=c[0]/'old.ioc';ioc.write_bytes(b'Mcu.ThirdParty0=RCS.Chassis.0.3.1\r\n');oldhash=hashes(old);iocbytes=ioc.read_bytes();success(c)
- assert hashes(old)==oldhash and ioc.read_bytes()==iocbytes;cases.append('0.3.3 coexists with prior-version fixture; prior bytes and IOC unchanged')
+ assert hashes(old)==oldhash and ioc.read_bytes()==iocbytes;cases.append('0.3.4 coexists with prior-version fixture; prior bytes and IOC unchanged')
 
  report={'version':VERSION,'test_type':'actual single EXE with controlled CLI fixtures, not physical CubeMX failures','cases':cases,'installer_sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'pack_sha256':hashlib.sha256(pack.read_bytes()).hexdigest(),'test_directory':str(area),'physical_cross_volume_test':False,'passed':True}
  (ROOT/'build/transactions.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')

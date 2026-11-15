@@ -11,8 +11,8 @@ using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 [assembly: AssemblyTitle("RCS Keil Header Fix")]
-[assembly: AssemblyVersion("0.3.3.0")]
-[assembly: AssemblyFileVersion("0.3.3.0")]
+[assembly: AssemblyVersion("0.3.4.0")]
+[assembly: AssemblyFileVersion("0.3.4.0")]
 static class KeilHeaders {
  static readonly string[] Module={"rcs_chassis.h","rcs_control.h","rcs_hal.h"};
  static string Norm(string p){return p.Replace('\\','/').Trim();}
@@ -63,11 +63,20 @@ static class KeilHeaders {
   return 0;}
  static int Main(string[] args){
   Console.OutputEncoding=new UTF8Encoding(false);
+  string postLog=null;
   try{
+#if RCS_POSTGEN
+   string toolDir=Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+   postLog=Path.Combine(toolDir,"headers-result.txt");
+   string root=Path.GetDirectoryName(toolDir);
+   var projects=FindProjects(root);
+#else
    var projects=FindProjects(args.Length>0?args[0]:null);
+#endif
    if(projects.Count==0)throw new Exception("未找到 .uvprojx。请传入 CubeMX 工程目录、.ioc 文件或 .uvprojx 文件。");
-   foreach(var p in projects)Fix(p,Console.WriteLine);
+   var messages=new List<string>();foreach(var p in projects)Fix(p,s=>{messages.Add(s);Console.WriteLine(s);});
+   if(postLog!=null)File.WriteAllText(postLog,"PASS "+DateTime.UtcNow.ToString("o")+"\r\n"+String.Join("\r\n",messages.ToArray()),new UTF8Encoding(false));
    return 0;
-  }catch(Exception e){Console.Error.WriteLine("失败："+e.Message);return 2;}
+  }catch(Exception e){if(postLog!=null)File.WriteAllText(postLog,"FAIL "+DateTime.UtcNow.ToString("o")+"\r\n"+e.Message,new UTF8Encoding(false));Console.Error.WriteLine("失败："+e.Message);return 2;}
  }
 }

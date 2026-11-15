@@ -18,7 +18,7 @@ def metadata(version=VERSION):
     rel=PACK+'.'+version
     pd=E.Element('package',schemaVersion='1.6.3')
     for k,v in [('vendor','RCS'),('name','Chassis'),('description','RCS F407 HAL chassis prototype: Mecanum X and tangent Omni'),('url','https://example.invalid/rcs-chassis/'),('license','LICENSE.txt')]: child(pd,k).text=v
-    releases=child(pd,'releases');child(releases,'release',version=version,date='2026-11-09').text='0.3.3: derivative-on-measurement PID, ESR bus-off, TX wait, compile-time config checks, C++ linkage, Keil header helper.'
+    releases=child(pd,'releases');child(releases,'release',version=version,date='2026-11-09').text='0.3.4: actionable CAN HAL guard; suite provides project association for CAN HAL dependency and automatic Keil headers. Waypoint actions retained.'
     keys=child(pd,'keywords');child(keys,'keyword').text='IMPLEMENTED_WITH_STM32CUBEMX'
     conds=child(pd,'conditions');cond=child(conds,'condition',id='STM32F407');child(cond,'require',Dname='STM32F407*')
     comps=child(pd,'components');comp=child(comps,'component',Cclass='Robotics',Cgroup='Chassis',Cversion=version,condition='STM32F407',maxInstances='1')
@@ -63,7 +63,7 @@ def metadata(version=VERSION):
 def write_sums():
     """Hash every current release artifact; never drop lines written by other build steps."""
     dist=ROOT/'dist';names=['RCS.Chassis.'+VERSION+'.pack','RCS.Chassis.C_H.'+VERSION+'.zip',
-                         'RCS_CubeMX_Suite_Setup_'+VERSION+'_win-x64.exe','RCS_CubeMX_Suite_Source_'+VERSION+'.zip']
+                         'RCS_CubeMX_Suite_Setup_'+VERSION+'_win-x64.exe','RCS_CubeMX_Suite_Source_'+VERSION+'.zip','tester123_fixed_'+VERSION+'.zip']
     lines=[hashlib.sha256((dist/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in names if (dist/n).is_file()]
     (dist/'SHA256SUMS.txt').write_text(''.join(lines),encoding='ascii')
 
