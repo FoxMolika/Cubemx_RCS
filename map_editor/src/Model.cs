@@ -74,6 +74,7 @@ namespace RcsMap {
   public override string ToString(){return (Enabled?"":"[禁用] ")+Name+" · "+new[]{"自定义","绝对旋转","相对旋转","等待"}[Math.Max(0,Math.Min(3,Kind))];}
  }
  [DataContract] public class Waypoint {
+  [DataMember(EmitDefaultValue=false)] public string SurfaceId {get;set;}
   [DataMember] public double X {get;set;} [DataMember] public double Y {get;set;}
   [DataMember] public double Yaw {get;set;} [DataMember] public double Speed {get;set;}
   [DataMember] public double Dwell {get;set;}
@@ -100,11 +101,13 @@ namespace RcsMap {
   public Waypoint(double x,double y,double yaw,double speed,double dwell=0):this(){X=x;Y=y;Yaw=yaw;Speed=speed;Dwell=dwell;}
  }
  [DataContract] public class Obstacle {
+  [DataMember(EmitDefaultValue=false)] public string SurfaceId {get;set;}
   [DataMember] public double X {get;set;} [DataMember] public double Y {get;set;}
   [DataMember] public double Width {get;set;} [DataMember] public double Height {get;set;}
   public Obstacle(){} public Obstacle(double x,double y,double w,double h){X=x;Y=y;Width=w;Height=h;}
  }
  [DataContract] public class MapDocument {
+  [DataMember(EmitDefaultValue=false)] public TerrainMap Terrain {get;set;}
   [DataMember] public int Version {get;set;}
   public bool MigratedFromLegacy {get;private set;}
   [DataMember] public RobotSettings Settings {get;set;}
@@ -134,7 +137,8 @@ namespace RcsMap {
     }d.Version=3;}d.StructuralCheck();return d;}}
   static string LegacyId(string point,string kind){using(var sha=System.Security.Cryptography.SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes((point??"")+":"+kind))).Replace("-","").Substring(0,32).ToLowerInvariant();}
   public MapDocument Clone(){return Parse(Json());}
-  public void StructuralCheck(){if(Version!=3||Settings==null||Points==null||Obstacles==null||Points.Count>512||Obstacles.Count>256||Points.Any(p=>p==null)||Obstacles.Any(o=>o==null))throw new Exception("地图格式/版本不正确，或元素过多。");
+  public void StructuralCheck(){if((Version!=3&&Version!=4)||Settings==null||Points==null||Obstacles==null||Points.Count>512||Obstacles.Count>256||Points.Any(p=>p==null)||Obstacles.Any(o=>o==null))throw new Exception("地图格式/版本不正确，或元素过多。");
+   var terrainErrors=TerrainGeometry.Structure(this);if(terrainErrors.Count>0)throw new Exception(String.Join(" / ",terrainErrors.ToArray()));
    if(ProjectIoc!=null&&(ProjectIoc.Length>2048||ProjectIoc.IndexOf('\0')>=0))throw new Exception("关联工程路径不正确或过长。");
    foreach(var p in Points)if(p.ArrivalActions==null||p.DepartureActions==null||p.ArrivalActions.Count+p.DepartureActions.Count>64||p.ArrivalActions.Any(a=>a==null)||p.DepartureActions.Any(a=>a==null))throw new Exception("动作组格式无效或单点动作超过64条。");
    int total=Points.Sum(p=>p.ArrivalActions.Concat(p.DepartureActions).Sum(a=>(a.Start??"").Length+(a.Condition??"").Length+(a.Done??"").Length+(a.Cancel??"").Length))+(ActionIncludes??"").Length;foreach(var p in Points)total+=(p.ActionStart??"").Length+(p.ActionCondition??"").Length+(p.ActionDone??"").Length+(p.ActionCancel??"").Length;
@@ -143,6 +147,7 @@ namespace RcsMap {
   static void Range(List<string> e,double v,double lo,double hi,string label){if(!Finite(v)||v<lo||v>hi)e.Add(label+"：范围 "+lo+"～"+hi);}
   public List<string> Validate(bool route=true) {
    StructuralCheck();var e=new List<string>();var s=Settings;
+   e.AddRange(TerrainGeometry.Validate(this));
    Range(e,s.Width,500,100000,"场地宽度");Range(e,s.Height,500,100000,"场地高度");Range(e,s.Grid,10,5000,"网格");
    Range(e,s.Radius,1,10000,"车体半径");Range(e,s.Layout,0,2,"轮型");Range(e,s.Diameter,1,1000,"轮径");
    Range(e,s.Wheelbase,1,3000,"轮距");Range(e,s.Track,1,3000,"轮距");Range(e,s.OmniRadius,1,1500,"全向半径");Range(e,s.Theta0,-360,360,"W0角度");
@@ -181,7 +186,7 @@ namespace RcsMap {
    if(e.Count>0)return e;
    for(int i=0;i<Points.Count;i++) {
     var p=Points[i];var prev=i==0?p:Points[i-1];
-    foreach(var o in Obstacles)if(SegmentHits(prev.X,prev.Y,p.X,p.Y,o,s.Radius+s.PositionTolerance)){
+    foreach(var o in Obstacles)if(TerrainGeometry.ObstacleHits(this,prev,p,o)){
      e.Add(i==0?"P0 车体与障碍物冲突。":"P"+(i-1)+" → P"+i+" 路线与障碍物安全包络冲突。");break;}
    }
    // Bounds also include arrival tolerance, preventing an accepted endpoint outside the field.

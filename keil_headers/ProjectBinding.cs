@@ -158,14 +158,14 @@ internal sealed class ProjectBinding {
         return changed;
     }
     internal int EnsureBuildGuard(XElement target,string project) {
-        string receipt=Path.Combine(Root,"foxmolika_Tools_041","route-build.xml");
+        string receipt=Path.Combine(Root,"foxmolika_Tools_050","route-build.xml");
         if(!File.Exists(receipt))return 0;
         var common=target.Descendants("TargetCommonOption").FirstOrDefault();
         if(common==null)throw new IOException("Keil缺少目标构建选项，无法登记路线版本检查。");
         var before=common.Element("BeforeMake");
         if(before==null){before=new XElement("BeforeMake");common.Add(before);}
         string dir=Path.GetDirectoryName(project);
-        string tool=Relative(dir,Path.Combine(Root,"foxmolika_Tools_041","foxmolika_PostGenerate.exe"));
+        string tool=Relative(dir,Path.Combine(Root,"foxmolika_Tools_050","foxmolika_PostGenerate.exe"));
         string relativeRoot=Relative(dir,Root+Path.DirectorySeparatorChar).TrimEnd('/','\\');
         string command="\""+tool.Replace('/', '\\')+"\" --check-route \""+relativeRoot+"\"";
         for(int slot=1;slot<=2;slot++) {
@@ -189,7 +189,7 @@ internal sealed class ProjectBinding {
         return BitConverter.ToString(h.ComputeHash(s)).Replace("-","").ToLowerInvariant(); }
     internal static string CheckRouteVersion(string root) {
         root=Path.GetFullPath(root);
-        string receipt=Path.Combine(root,"foxmolika_Tools_041","route-build.xml");NoLink(receipt);
+        string receipt=Path.Combine(root,"foxmolika_Tools_050","route-build.xml");NoLink(receipt);
         var xml=ReadXml(receipt).Root;
         if(xml==null||xml.Name!="FoxmolikaExport"||(string)xml.Attribute("Schema")!="1" ||
            (string)xml.Attribute("Route")!=RouteRelative)throw new IOException("路线版本记录无效，请重新导出地图。");

@@ -75,6 +75,7 @@ namespace RcsMap {
     var order=new List<int>();if(canvas.Selected>=0&&canvas.Selected+1<document.Points.Count)order.Add(canvas.Selected);
     for(int i=0;i+1<document.Points.Count;i++)if(i!=canvas.Selected)order.Add(i);
     foreach(int index in order) {
+     if(!canvas.VisibleSurface(document.Points[index].SurfaceId))continue;
      var relation=CourseAngles.Measure(document,index);var point=document.Points[index];
      PointF center=canvas.ScreenPoint(point.X,point.Y);
      var visible=bounds;visible.Inflate(12,12);if(!visible.Contains(Point.Round(center)))continue;

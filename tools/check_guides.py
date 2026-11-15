@@ -13,7 +13,7 @@ def main():
  paths=['docs/使用说明.html','suite/docs/使用说明.html','map_editor/docs/使用说明.html','docs/地图编辑器说明.html']
  for rel in paths:
   file=ROOT/rel;text=file.read_text(encoding='utf-8');page=Page();page.feed(text)
-  for phrase in ['0.4.1','启动地图编辑器','foxmolika_MapEditor.exe','关联工程…','到达后动作','起步前动作','独立纠偏','量角器','CrashReports','ZIP','导出到关联工程','Application/foxmolikaRoute','3C3H','构建前']:
+  for phrase in ['0.5.0','启动地图编辑器','foxmolika_MapEditor.exe','关联工程…','到达后动作','起步前动作','独立纠偏','量角器','CrashReports','ZIP','导出到关联工程','Application/foxmolikaRoute','3C3H','构建前','到达航点后','离开航点前','立体地形…','航点归属','向下厚度','拒绝导出','v4']:
    assert phrase in text,(rel,phrase)
   for link in page.hrefs:
    if link.startswith('#'):assert link[1:] in page.ids,(rel,link)

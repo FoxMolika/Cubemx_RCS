@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -16,32 +17,50 @@ namespace RcsMap {
   public static double OutputHeading(MapDocument d,int point){bool departure=point<d.Points.Count-1||d.Points[point].RunFinalDeparture;return Heading(d,point,departure,departure?d.Points[point].DepartureActions.Count:d.Points[point].ArrivalActions.Count);}
   public static double Heading(MapDocument d,int point,bool departure,int before){double yaw=d.Points.Count==0?0:d.Points[0].Yaw;for(int i=0;i<=point;i++){var groups=new[]{d.Points[i].ArrivalActions,d.Points[i].DepartureActions};for(int g=0;g<2;g++){if(i==point&&g>(departure?1:0))return Wrap(yaw);var list=groups[g];int count=i==point&&g==(departure?1:0)?Math.Min(before,list.Count):list.Count;for(int j=0;j<count;j++){var a=list[j];if(!a.Enabled)continue;if(a.Kind==1||a.Kind==2)yaw+=RotationDelta(d,a,yaw);}if(i==point&&g==(departure?1:0))return Wrap(yaw);}}return Wrap(yaw);}
  }
+ public sealed class ActionGroupBox:GroupBox {
+  public readonly ListBox List=new ListBox();readonly List<RouteAction> actions;readonly Func<RouteAction,bool> edit;
+  public ActionGroupBox(string title,List<RouteAction> source,Func<RouteAction,bool> editor){Text=title;actions=source;edit=editor;Dock=DockStyle.Fill;Padding=new Padding(9,25,9,9);
+   var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=2};layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,112));Controls.Add(layout);List.Dock=DockStyle.Fill;List.HorizontalScrollbar=true;layout.Controls.Add(List);
+   var bar=new FlowLayoutPanel{Dock=DockStyle.Fill,WrapContents=true};layout.Controls.Add(bar);var kind=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=145};kind.Items.AddRange(new object[]{"自定义机构","绝对旋转","相对旋转","等待"});kind.SelectedIndex=0;bar.Controls.Add(kind);
+   Button(bar,"添加",()=>{var action=new RouteAction{Kind=kind.SelectedIndex,Name=Convert.ToString(kind.SelectedItem),Value=kind.SelectedIndex==3?1:90};if(edit(action)){actions.Add(action);RefreshList(actions.Count-1);}});
+   Button(bar,"编辑",()=>Edit());Button(bar,"上移",()=>MoveAction(-1));Button(bar,"下移",()=>MoveAction(1));Button(bar,"删除",()=>Remove());List.DoubleClick+=(s,e)=>Edit();List.KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Delete){Remove();e.Handled=true;}};RefreshList();}
+  static void Button(Control c,string title,Action action){var b=new Button{Text=title,Width=58,Height=30};b.Click+=(s,e)=>action();c.Controls.Add(b);}
+  void Edit(){int i=List.SelectedIndex;if(i>=0){edit(actions[i]);RefreshList(i);}}
+  public void MoveAction(int offset){int i=List.SelectedIndex,j=i+offset;if(i<0||j<0||j>=actions.Count)return;var a=actions[i];actions.RemoveAt(i);actions.Insert(j,a);RefreshList(j);}
+  public void Remove(){int i=List.SelectedIndex;if(i<0)return;actions.RemoveAt(i);RefreshList(Math.Min(i,actions.Count-1));}
+  public void RefreshList(int selected=-1){int i=selected<0?List.SelectedIndex:selected;List.Items.Clear();foreach(var a in actions)List.Items.Add(a);if(actions.Count>0)List.SelectedIndex=Math.Max(0,Math.Min(i,actions.Count-1));}
+ }
  public sealed class PhaseDialog:Form {
-  Waypoint point;string includes;ListBox list=new ListBox();ComboBox group=new ComboBox();PropertyGrid config=new PropertyGrid();
+  string includes;public readonly ActionGroupBox ArrivalBox,DepartureBox;
   public string SharedIncludes {get{return includes;}}
-  List<RouteAction> Actions {get{return group.SelectedIndex==0?point.ArrivalActions:point.DepartureActions;}}
-  public PhaseDialog(Waypoint p,string shared){point=p;includes=shared;Text="航点流程 · 到达后 → 纠偏 → 起步前";Size=new Size(920,660);StartPosition=FormStartPosition.CenterParent;Font=new Font("Microsoft YaHei UI",10);
-   group.Dock=DockStyle.Top;group.DropDownStyle=ComboBoxStyle.DropDownList;group.Items.AddRange(new object[]{"到达后动作","起步前动作"});Controls.Add(list);list.Dock=DockStyle.Fill;Controls.Add(group);
-   var side=new FlowLayoutPanel{Dock=DockStyle.Right,Width=180,FlowDirection=FlowDirection.TopDown};Controls.Add(side);
-   foreach(string label in new[]{"添加自定义","添加绝对旋转","添加相对旋转","添加等待","编辑","上移","下移","删除"}){var b=new Button{Text=label,Width=165,Height=34};string cmd=label;b.Click+=(s,e)=>Run(cmd);side.Controls.Add(b);}
-   config.Dock=DockStyle.Bottom;config.Height=180;config.SelectedObject=new PointOptions(p);Controls.Add(config);
-   var bottom=new FlowLayoutPanel{Dock=DockStyle.Bottom,Height=44,FlowDirection=FlowDirection.RightToLeft};var ok=new Button{Text="确定",DialogResult=DialogResult.OK};var cancel=new Button{Text="取消",DialogResult=DialogResult.Cancel};bottom.Controls.Add(ok);bottom.Controls.Add(cancel);Controls.Add(bottom);AcceptButton=ok;CancelButton=cancel;
-   group.SelectedIndexChanged+=(s,e)=>RefreshList();group.SelectedIndex=0;list.DoubleClick+=(s,e)=>Run("编辑");}
-  void RefreshList(){int index=list.SelectedIndex;list.Items.Clear();foreach(var a in Actions)list.Items.Add(a);if(list.Items.Count>0)list.SelectedIndex=Math.Max(0,Math.Min(index,list.Items.Count-1));}
-  void Run(string cmd){int i=list.SelectedIndex;if(cmd.StartsWith("添加")){int k=cmd=="添加自定义"?0:cmd=="添加绝对旋转"?1:cmd=="添加相对旋转"?2:3;var a=new RouteAction{Kind=k,Name=cmd.Substring(2),Value=k==3?1:90};Actions.Add(a);RefreshList();list.SelectedIndex=Actions.Count-1;Edit(a);return;}if(i<0)return;if(cmd=="编辑")Edit(Actions[i]);if(cmd=="删除")Actions.RemoveAt(i);int j=cmd=="上移"?i-1:cmd=="下移"?i+1:-1;if(j>=0&&j<Actions.Count){var a=Actions[i];Actions.RemoveAt(i);Actions.Insert(j,a);list.SelectedIndex=j;}RefreshList();}
-  void Edit(RouteAction a){using(var dialog=new ActionProperties(a,includes)){if(dialog.ShowDialog(this)==DialogResult.OK)includes=dialog.SharedIncludes;}RefreshList();}
+  public PhaseDialog(Waypoint point,string shared){includes=shared;Text="航点流程 · 到达航点后 → 位置纠错 → 离开航点前";Size=new Size(1130,720);MinimumSize=new Size(1020,650);StartPosition=FormStartPosition.CenterParent;Font=new Font("Microsoft YaHei UI",10);
+   var root=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=3,RowCount=3,Padding=new Padding(12)};root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,36));root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,28));root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,36));root.RowStyles.Add(new RowStyle(SizeType.Absolute,54));root.RowStyles.Add(new RowStyle(SizeType.Percent,100));root.RowStyles.Add(new RowStyle(SizeType.Absolute,52));Controls.Add(root);
+   var note=new Label{Text="同一航点按从左到右执行：到达航点后动作 → 独立位置纠错 → 离开航点前动作。\r\n两个动作框各自排序；纠错重试不会重放已经完成的到达动作。",Dock=DockStyle.Fill};root.Controls.Add(note,0,0);root.SetColumnSpan(note,3);
+   ArrivalBox=new ActionGroupBox("① 到达航点后",point.ArrivalActions,Edit);DepartureBox=new ActionGroupBox("③ 离开航点前",point.DepartureActions,Edit);root.Controls.Add(ArrivalBox,0,1);root.Controls.Add(DepartureBox,2,1);
+   var correction=new GroupBox{Text="② 位置纠错",Dock=DockStyle.Fill,Padding=new Padding(8,25,8,8)};var grid=new PropertyGrid{Dock=DockStyle.Fill,SelectedObject=new PointOptions(point),ToolbarVisible=false,HelpVisible=true,PropertySort=PropertySort.NoSort};correction.Controls.Add(grid);root.Controls.Add(correction,1,1);
+   var bottom=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.RightToLeft,Padding=new Padding(0,9,0,0)};var ok=new Button{Text="确定",DialogResult=DialogResult.OK,Width=100,Height=32};var cancel=new Button{Text="取消",DialogResult=DialogResult.Cancel,Width=100,Height=32};bottom.Controls.Add(ok);bottom.Controls.Add(cancel);root.Controls.Add(bottom,0,2);root.SetColumnSpan(bottom,3);AcceptButton=ok;CancelButton=cancel;}
+  bool Edit(RouteAction a){using(var dialog=new ActionProperties(a,includes)){if(dialog.ShowDialog(this)!=DialogResult.OK)return false;includes=dialog.SharedIncludes;return true;}}
  }
  public sealed class PointOptions {
   Waypoint p;public PointOptions(Waypoint v){p=v;}
-  public int 纠偏模式_0关闭1位置2位置朝向3验收 {get{return p.CorrectionMode;}set{p.CorrectionMode=value;}}
+  [DisplayName("纠错模式"),Description("到达后动作完成后执行；结束后才开始离开前动作。")]
+  public CorrectionChoice 纠偏模式_0关闭1位置2位置朝向3验收 {get{return (CorrectionChoice)p.CorrectionMode;}set{p.CorrectionMode=(int)value;}}
+  [DisplayName("到达半径 mm")]
   public double 到达半径_mm {get{return p.ArrivalRadius;}set{p.ArrivalRadius=value;}}
+  [DisplayName("纠错速度 mm/s")]
   public double 纠偏速度_mm_s {get{return p.CorrectionSpeed;}set{p.CorrectionSpeed=value;}}
+  [DisplayName("停稳时间 ms")]
   public double 停稳时间_ms {get{return p.SettleMs;}set{p.SettleMs=value;}}
+  [DisplayName("漂移上限 mm")]
   public double 漂移上限_mm {get{return p.DriftLimit;}set{p.DriftLimit=value;}}
+  [DisplayName("纠错超时 s")]
   public double 纠偏超时_s {get{return p.CorrectionTimeout;}set{p.CorrectionTimeout=value;}}
+  [DisplayName("最大纠错次数")]
   public int 最大纠偏次数 {get{return p.CorrectionPasses;}set{p.CorrectionPasses=value;}}
+  [DisplayName("终点执行离开组"),Description("终点默认跳过离开航点前动作；启用后执行该组，再结束任务。")]
   public bool 终点也执行起步前动作 {get{return p.RunFinalDeparture;}set{p.RunFinalDeparture=value;}}
  }
+ public enum CorrectionChoice { 关闭, 仅位置, 位置及朝向, 仅验收 }
  public sealed class ActionOptions {
   RouteAction a;public ActionOptions(RouteAction value){a=value;}
   public double 最大角速度_度每秒 {get{return a.MaxWz;}set{a.MaxWz=value;}}

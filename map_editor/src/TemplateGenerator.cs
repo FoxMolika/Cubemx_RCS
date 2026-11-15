@@ -25,6 +25,7 @@ namespace RcsMap {
   }
   public static string RouteRevision(MapDocument doc) {using(var sha=System.Security.Cryptography.SHA256.Create()){return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(doc.Json()))).Replace("-","").ToLowerInvariant();}}
   public static Dictionary<string,string> Generate(MapDocument doc) {
+   TerrainGeometry.RequireFlat(doc);
    var errors=doc.Validate();if(errors.Count>0)throw new Exception(String.Join("\r\n",errors.ToArray()));
    var s=doc.Settings;var values=new Dictionary<string,string> {
     {"LAYOUT",s.Layout.ToString(CultureInfo.InvariantCulture)}, {"DIAMETER",F(s.Diameter/1000)},

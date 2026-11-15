@@ -10,6 +10,8 @@ using System.Windows.Forms;
 namespace RcsMap {
  public class MapCanvas:Control {
   public MapDocument Document;
+  public string ActiveSurfaceId=TerrainGeometry.Ground;
+  public bool VisibleSurface(string id){return Document.Terrain==null||TerrainGeometry.Key(id)==ActiveSurfaceId;}
   public int Selected=-1,SelectedObstacle=-1,Mode;
   public bool Snap=true,ShowCourseAngles=true;public double Zoom=1;public PointF Offset;
   public Action BeginChange,EndChange,SelectionChanged; public Action<int> MeasurePicked;
@@ -24,13 +26,13 @@ namespace RcsMap {
   protected override void OnMouseWheel(MouseEventArgs e){base.OnMouseWheel(e);PointF p=WorldPoint(e.Location);Zoom=Math.Max(.001,Math.Min(4,Zoom*Math.Pow(1.15,e.Delta/120.0)));Offset=new PointF((float)(e.X-p.X*Zoom),(float)(e.Y+p.Y*Zoom));Invalidate();}
   protected override void OnMouseDown(MouseEventArgs e){base.OnMouseDown(e);Focus();if(Document==null||Zoom<=0)return;last=e.Location;
    if(e.Button==MouseButtons.Middle){panning=true;Capture=true;return;}if(e.Button!=MouseButtons.Left)return;
-   if(Mode==3){for(int i=Document.Points.Count-1;i>=0;i--){var hit=ScreenPoint(Document.Points[i].X,Document.Points[i].Y);if(Math.Abs(hit.X-e.X)<15&&Math.Abs(hit.Y-e.Y)<15){if(MeasurePicked!=null)MeasurePicked(i);break;}}return;}
+   if(Mode==3){for(int i=Document.Points.Count-1;i>=0;i--){if(!VisibleSurface(Document.Points[i].SurfaceId))continue;var hit=ScreenPoint(Document.Points[i].X,Document.Points[i].Y);if(Math.Abs(hit.X-e.X)<15&&Math.Abs(hit.Y-e.Y)<15){if(MeasurePicked!=null)MeasurePicked(i);break;}}return;}
    anchor=WorldPoint(e.Location);
-   if(Mode==1){if(Document.Points.Count>=512)return;BeginChange();Document.Points.Add(new Waypoint(Snapped(anchor.X),Snapped(anchor.Y),0,Math.Min(400,Document.Settings.MaxSpeed)));Selected=Document.Points.Count-1;SelectedObstacle=-1;EndChange();SelectionChanged();Invalidate();return;}
+   if(Mode==1){if(Document.Points.Count>=512)return;BeginChange();Document.Points.Add(new Waypoint(Snapped(anchor.X),Snapped(anchor.Y),0,Math.Min(400,Document.Settings.MaxSpeed)){SurfaceId=ActiveSurfaceId==TerrainGeometry.Ground?null:ActiveSurfaceId});Selected=Document.Points.Count-1;SelectedObstacle=-1;EndChange();SelectionChanged();Invalidate();return;}
    if(Mode==2){if(Document.Obstacles.Count>=256)return;BeginChange();drawing=true;Capture=true;original=anchor;return;}
    Selected=-1;SelectedObstacle=-1;
-   for(int i=Document.Points.Count-1;i>=0;i--){PointF p=ScreenPoint(Document.Points[i].X,Document.Points[i].Y);if(Math.Abs(p.X-e.X)<13&&Math.Abs(p.Y-e.Y)<13){Selected=i;break;}}
-   if(Selected<0)for(int i=Document.Obstacles.Count-1;i>=0;i--){var o=Document.Obstacles[i];if(anchor.X>=o.X&&anchor.X<=o.X+o.Width&&anchor.Y>=o.Y&&anchor.Y<=o.Y+o.Height){SelectedObstacle=i;break;}}
+   for(int i=Document.Points.Count-1;i>=0;i--){if(!VisibleSurface(Document.Points[i].SurfaceId))continue;PointF p=ScreenPoint(Document.Points[i].X,Document.Points[i].Y);if(Math.Abs(p.X-e.X)<13&&Math.Abs(p.Y-e.Y)<13){Selected=i;break;}}
+   if(Selected<0)for(int i=Document.Obstacles.Count-1;i>=0;i--){var o=Document.Obstacles[i];if(!VisibleSurface(o.SurfaceId))continue;if(anchor.X>=o.X&&anchor.X<=o.X+o.Width&&anchor.Y>=o.Y&&anchor.Y<=o.Y+o.Height){SelectedObstacle=i;break;}}
    if(Selected>=0||SelectedObstacle>=0){BeginChange();dragging=true;Capture=true;dragOriginal=Document.Json();if(Selected>=0){var p=Document.Points[Selected];original=new PointF((float)p.X,(float)p.Y);}else{var o=Document.Obstacles[SelectedObstacle];original=new PointF((float)o.X,(float)o.Y);}}
    SelectionChanged();Invalidate();
   }
@@ -43,7 +45,7 @@ namespace RcsMap {
   }
   protected override void OnMouseUp(MouseEventArgs e){base.OnMouseUp(e);if(e.Button==MouseButtons.Middle){panning=false;Capture=false;return;}if(e.Button!=MouseButtons.Left)return;
    if(drawing){PointF w=WorldPoint(e.Location);double x=Snapped(Math.Min(anchor.X,w.X)),y=Snapped(Math.Min(anchor.Y,w.Y)),width=Snapped(Math.Abs(w.X-anchor.X)),height=Snapped(Math.Abs(w.Y-anchor.Y));drawing=false;
-    if(width>=1&&height>=1){Document.Obstacles.Add(new Obstacle(x,y,width,height));Selected=-1;SelectedObstacle=Document.Obstacles.Count-1;}EndChange();SelectionChanged();}
+    if(width>=1&&height>=1){Document.Obstacles.Add(new Obstacle(x,y,width,height){SurfaceId=ActiveSurfaceId==TerrainGeometry.Ground?null:ActiveSurfaceId});Selected=-1;SelectedObstacle=Document.Obstacles.Count-1;}EndChange();SelectionChanged();}
    if(dragging){dragging=false;if(Document.Json()!=dragOriginal)EndChange();}Capture=false;Invalidate();
   }
   protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);Draw(e.Graphics,ClientRectangle);}
@@ -57,15 +59,18 @@ namespace RcsMap {
    using(var text=new SolidBrush(Color.FromArgb(73,94,118))){g.DrawString("世界坐标：X → / Y ↑ · yaw 逆时针为正",Font,text,12,12);g.DrawString("0",Font,text,bottom.X-field.Width-16,bottom.Y+5);
     g.DrawString(s.Width.ToString("0")+" mm",Font,text,bottom.X-64,bottom.Y+5);g.DrawString(s.Height.ToString("0")+" mm",Font,text,top.X+4,top.Y-23);}
    if(ShowCourseAngles)g.DrawString("橙虚线：计划出发朝向 · 弧线：转头参考夹角",Font,Brushes.SaddleBrown,12,29);
+   if(Document.Terrain!=null)foreach(var surface in Document.Terrain.Surfaces){if(surface.Width<=0||surface.Depth<=0)continue;var q=ScreenPoint(surface.X,surface.Y+surface.Depth);using(var brush=new SolidBrush(Color.FromArgb(surface.Id==ActiveSurfaceId?100:35,TerrainCanvas.SurfaceColor(surface))))g.FillRectangle(brush,q.X,q.Y,(float)(surface.Width*Zoom),(float)(surface.Depth*Zoom));using(var pen=new Pen(surface.Id==ActiveSurfaceId?Color.DarkOrange:Color.SlateGray,1))g.DrawRectangle(pen,q.X,q.Y,(float)(surface.Width*Zoom),(float)(surface.Depth*Zoom));g.DrawString(surface.Name+" · Z="+surface.Z0.ToString("0")+(surface.Kind==SurfaceKind.水平平台?"":"→"+surface.Z1.ToString("0")),Font,Brushes.SlateGray,q);}
    for(int i=0;i<Document.Obstacles.Count;i++){var o=Document.Obstacles[i];PointF p=ScreenPoint(o.X,o.Y+o.Height);float w=(float)(o.Width*Zoom),h=(float)(o.Height*Zoom);
+    if(!VisibleSurface(o.SurfaceId))continue;
     if(w<0||h<0)continue;using(var b=new SolidBrush(Color.FromArgb(238,216,213)))g.FillRectangle(b,p.X,p.Y,w,h);
     using(var pen=new Pen(i==SelectedObstacle?Color.FromArgb(181,54,48):Color.FromArgb(184,137,133),i==SelectedObstacle?2.5f:1))g.DrawRectangle(pen,p.X,p.Y,w,h);
     using(var b=new SolidBrush(Color.FromArgb(139,74,70)))g.DrawString("障碍 "+i,Font,b,p.X+5,p.Y+5);
     double r=s.Radius+s.PositionTolerance;if(MapDocument.Finite(r)&&r>0){PointF p2=ScreenPoint(o.X-r,o.Y+o.Height+r);using(var pen=new Pen(Color.FromArgb(210,151,146))){pen.DashStyle=DashStyle.Dash;g.DrawRectangle(pen,p2.X,p2.Y,(float)((o.Width+2*r)*Zoom),(float)((o.Height+2*r)*Zoom));}}
    }
-   for(int i=1;i<Document.Points.Count;i++){var a=Document.Points[i-1];var b=Document.Points[i];bool hit=Document.Obstacles.Any(o=>MapDocument.SegmentHits(a.X,a.Y,b.X,b.Y,o,s.Radius+s.PositionTolerance));
+   for(int i=1;i<Document.Points.Count;i++){var a=Document.Points[i-1];var b=Document.Points[i];if(!VisibleSurface(a.SurfaceId)&&!VisibleSurface(b.SurfaceId))continue;bool hit=Document.Obstacles.Any(o=>TerrainGeometry.ObstacleHits(Document,a,b,o));
     using(var pen=new Pen(hit?Color.FromArgb(210,63,61):Color.FromArgb(37,117,209),3)){pen.CustomEndCap=new AdjustableArrowCap(4,5);g.DrawLine(pen,ScreenPoint(a.X,a.Y),ScreenPoint(b.X,b.Y));}}
    for(int i=0;i<Document.Points.Count;i++){var p=Document.Points[i];PointF pt=ScreenPoint(p.X,p.Y);Color c=i==0?Color.FromArgb(22,145,120):i==Selected?Color.FromArgb(236,149,41):Color.FromArgb(37,117,209);
+    if(!VisibleSurface(p.SurfaceId))continue;
     if(i==Selected){float r=(float)(s.Radius*Zoom);if(MapDocument.Finite(r)&&r>0)using(var pen=new Pen(Color.FromArgb(225,177,95),1)){pen.DashStyle=DashStyle.Dash;g.DrawEllipse(pen,pt.X-r,pt.Y-r,2*r,2*r);}}
     using(var b=new SolidBrush(c))g.FillEllipse(b,pt.X-9,pt.Y-9,18,18);using(var pen=new Pen(Color.White,2))g.DrawEllipse(pen,pt.X-9,pt.Y-9,18,18);
     double shownYaw;bool validHeading=CourseAngles.TryHeading(Document,i,out shownYaw);
@@ -83,17 +88,19 @@ namespace RcsMap {
   MapDocument doc=MapDocument.Demo();MapCanvas canvas=new MapCanvas();PropertyGrid properties=new PropertyGrid();DataGridView points=new DataGridView(),obstacles=new DataGridView(),segments=new DataGridView();
   Label validation=new Label();ToolStripStatusLabel status=new ToolStripStatusLabel();ToolStripButton select,add,obstacle,preview;Timer timer=new Timer();
   Label projectCaption=new Label();
+  ComboBox surfacePicker=new ComboBox();
   bool renderOnly;protected override bool ShowWithoutActivation {get{return renderOnly;}}
   Stack<string> undo=new Stack<string>(),redo=new Stack<string>();string pending,filename,savedJson,exportedRevision;bool refresh;PhasePreview phasePreview;int measureFirst=-1;
   public static Action<string,string> RecoverySnapshot;
   public static Action<string> Operation;
-  public Editor(){Text="foxmolika 位点地图编辑器 0.4.1 · CubeMX 配套扩展";Size=new Size(1420,900);MinimumSize=new Size(1120,720);StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",9);KeyPreview=true;BackColor=Color.White;
+  public Editor(){Text="foxmolika 位点地图编辑器 0.5.0 · CubeMX 配套扩展";Size=new Size(1420,900);MinimumSize=new Size(1120,720);StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",9);KeyPreview=true;BackColor=Color.White;
    var toolbar=new ToolStrip{GripStyle=ToolStripGripStyle.Hidden,Padding=new Padding(8,7,8,7),BackColor=Color.FromArgb(237,243,250),ImageScalingSize=new Size(20,20),Dock=DockStyle.Top};
    Button(toolbar,"新建",()=>New());Button(toolbar,"示例",()=>Replace(MapDocument.Demo(),null));Button(toolbar,"打开",LoadMap);Button(toolbar,"保存",()=>Save(false));toolbar.Items.Add(new ToolStripSeparator());
    Button(toolbar,"撤销",Undo);Button(toolbar,"重做",Redo);toolbar.Items.Add(new ToolStripSeparator());select=Button(toolbar,"选择 / 拖动",()=>SetMode(0));add=Button(toolbar,"＋ 位点",()=>SetMode(1));obstacle=Button(toolbar,"▧ 障碍",()=>SetMode(2));
    Button(toolbar,"删除",Delete);Button(toolbar,"适配画布",()=>canvas.Fit());var snap=Button(toolbar,"吸附网格",()=>{canvas.Snap=!canvas.Snap;});snap.CheckOnClick=true;snap.Checked=true;
    var angles=Button(toolbar,"显示夹角",()=>{canvas.ShowCourseAngles=!canvas.ShowCourseAngles;canvas.Invalidate();});angles.CheckOnClick=true;angles.Checked=true;angles.ToolTipText="直接显示计划出发朝向与下一段路径的夹角，不自动转头。";
    Button(toolbar,"航点流程…",EditAction);Button(toolbar,"量角器",Measure);preview=Button(toolbar,"▶ 路线预览",TogglePreview);Button(toolbar,"导出 C / H",Export);Button(toolbar,"使用说明",OpenGuide);
+   var terrainBar=new FlowLayoutPanel{Dock=DockStyle.Top,Height=39,Padding=new Padding(8,3,0,0),BackColor=Color.FromArgb(246,240,225),WrapContents=false};var terrainButton=new Button{Text="立体地形…",Width=112,Height=30};terrainButton.Click+=(s,e)=>EditTerrain();terrainBar.Controls.Add(terrainButton);var terrainDemo=new Button{Text="立体示例",Width=95,Height=30};terrainDemo.Click+=(s,e)=>Replace(TerrainGeometry.Demo(),null);terrainBar.Controls.Add(terrainDemo);terrainBar.Controls.Add(new Label{Text="当前编辑表面",AutoSize=true,Padding=new Padding(5,6,0,0)});surfacePicker.Width=235;surfacePicker.DropDownStyle=ComboBoxStyle.DropDownList;terrainBar.Controls.Add(surfacePicker);terrainBar.Controls.Add(new Label{Text="选层后加点/拖动；高度在地形窗口查看",AutoSize=true,Padding=new Padding(4,6,0,0)});surfacePicker.SelectedIndexChanged+=(s,e)=>{if(refresh)return;var choice=surfacePicker.SelectedItem as SurfaceChoice;if(choice!=null){canvas.ActiveSurfaceId=choice.Id;canvas.Selected=canvas.SelectedObstacle=-1;canvas.Invalidate();}};
    var footer=new StatusStrip{BackColor=Color.FromArgb(237,243,250)};footer.Items.Add(status);status.Spring=true;status.TextAlign=ContentAlignment.MiddleLeft;
    var left=new Panel{Dock=DockStyle.Left,Width=282,Padding=new Padding(8)};
    left.Controls.Add(properties);properties.Dock=DockStyle.Fill;properties.ToolbarVisible=false;properties.HelpVisible=true;properties.PropertySort=PropertySort.Categorized;
@@ -111,13 +118,13 @@ namespace RcsMap {
    var associate=new Button{Text="关联工程…",Left=10,Top=4,Width=120,Height=31};associate.Click+=(s,e)=>AssociateProject();projectBar.Controls.Add(associate);
    var unlink=new Button{Text="清除地图关联",Left=138,Top=4,Width=120,Height=31};unlink.Click+=(s,e)=>{BeginChange();doc.ProjectIoc=null;EndChange();};projectBar.Controls.Add(unlink);
    projectCaption.SetBounds(270,7,Math.Max(120,projectBar.Width-282),27);projectCaption.Anchor=AnchorStyles.Left|AnchorStyles.Top|AnchorStyles.Right;projectCaption.AutoEllipsis=true;projectBar.Controls.Add(projectCaption);
-   Controls.Add(center);Controls.Add(right);Controls.Add(left);Controls.Add(projectBar);Controls.Add(toolbar);Controls.Add(footer);
-   SetupGrid(points,new[]{"编号","X mm","Y mm","计划/初始 °","速度 mm/s","动作数","流程"});points.Columns[0].ReadOnly=points.Columns[5].ReadOnly=points.Columns[6].ReadOnly=true;
-   points.CellDoubleClick+=(s,e)=>{if(e.RowIndex>=0&&e.ColumnIndex==6)EditAction();};
+   Controls.Add(center);Controls.Add(right);Controls.Add(left);Controls.Add(terrainBar);Controls.Add(projectBar);Controls.Add(toolbar);Controls.Add(footer);
+   SetupGrid(points,new[]{"编号","X mm","Y mm","计划/初始 °","速度 mm/s","到达后动作","离开前动作"});points.Columns[0].ReadOnly=points.Columns[5].ReadOnly=points.Columns[6].ReadOnly=true;
+   points.CellDoubleClick+=(s,e)=>{if(e.RowIndex>=0&&(e.ColumnIndex==5||e.ColumnIndex==6))EditAction();};
    SetupGrid(obstacles,new[]{"编号","X mm","Y mm","宽 mm","高 mm"});obstacles.Columns[0].ReadOnly=true;
    SetupGrid(segments,new[]{"路线","距离 mm","平移转角 °","匀速估计 s","W0 计数","W1 计数","W2 计数","W3 计数"});
-   points.SelectionChanged+=(s,e)=>{if(refresh||points.CurrentRow==null)return;canvas.Selected=points.CurrentRow.Index;canvas.SelectedObstacle=-1;canvas.Invalidate();};
-   obstacles.SelectionChanged+=(s,e)=>{if(refresh||obstacles.CurrentRow==null)return;canvas.SelectedObstacle=obstacles.CurrentRow.Index;canvas.Selected=-1;canvas.Invalidate();};
+   points.SelectionChanged+=(s,e)=>{if(refresh||points.CurrentRow==null)return;canvas.Selected=points.CurrentRow.Index;canvas.SelectedObstacle=-1;RevealSurface(doc.Points[canvas.Selected].SurfaceId);canvas.Invalidate();};
+   obstacles.SelectionChanged+=(s,e)=>{if(refresh||obstacles.CurrentRow==null)return;canvas.SelectedObstacle=obstacles.CurrentRow.Index;canvas.Selected=-1;RevealSurface(doc.Obstacles[canvas.SelectedObstacle].SurfaceId);canvas.Invalidate();};
    points.CellBeginEdit+=(s,e)=>BeginChange();obstacles.CellBeginEdit+=(s,e)=>BeginChange();
    points.CellEndEdit+=(s,e)=>GridEdit(points,e.RowIndex,e.ColumnIndex,false);obstacles.CellEndEdit+=(s,e)=>GridEdit(obstacles,e.RowIndex,e.ColumnIndex,true);
    properties.PropertyValueChanged+=(s,e)=>{if(refresh)return;var descriptor=e.ChangedItem.PropertyDescriptor;object now=descriptor.GetValue(doc.Settings);descriptor.SetValue(doc.Settings,e.OldValue);BeginChange();descriptor.SetValue(doc.Settings,now);var check=new MapDocument{Settings=doc.Settings}.Validate(false);if(check.Count>0){descriptor.SetValue(doc.Settings,e.OldValue);MessageBox.Show(this,String.Join("\r\n",check.Take(6).ToArray()));}EndChange();};
@@ -133,16 +140,19 @@ namespace RcsMap {
   void Undo(){if(undo.Count==0)return;StopPreview();redo.Push(doc.Json());doc=MapDocument.Parse(undo.Pop());pending=null;canvas.Selected=canvas.SelectedObstacle=-1;RefreshAll();}
   void Redo(){if(redo.Count==0)return;StopPreview();undo.Push(doc.Json());doc=MapDocument.Parse(redo.Pop());pending=null;canvas.Selected=canvas.SelectedObstacle=-1;RefreshAll();}
   void RefreshAll(){refresh=true;canvas.Document=doc;properties.SelectedObject=doc.Settings;properties.Refresh();points.Rows.Clear();obstacles.Rows.Clear();segments.Rows.Clear();
-   for(int i=0;i<doc.Points.Count;i++){var p=doc.Points[i];double heading;object shown=i==0?(object)p.Yaw:CourseAngles.TryHeading(doc,i,out heading)?(object)heading:"朝向无效";points.Rows.Add("P"+i,p.X,p.Y,shown,p.Speed,p.ArrivalActions.Count+p.DepartureActions.Count,"到达 "+p.ArrivalActions.Count+" / 起步 "+p.DepartureActions.Count);points.Rows[i].Cells[3].ReadOnly=i>0;}
+   surfacePicker.Items.Clear();var choices=SurfaceChoice.All(doc);surfacePicker.Items.AddRange(choices.Cast<object>().ToArray());surfacePicker.SelectedIndex=Math.Max(0,choices.FindIndex(c=>c.Id==canvas.ActiveSurfaceId));canvas.ActiveSurfaceId=((SurfaceChoice)surfacePicker.SelectedItem).Id;
+   for(int i=0;i<doc.Points.Count;i++){var p=doc.Points[i];double heading;object shown=i==0?(object)p.Yaw:CourseAngles.TryHeading(doc,i,out heading)?(object)heading:"朝向无效";points.Rows.Add("P"+i,p.X,p.Y,shown,p.Speed,p.ArrivalActions.Count,p.DepartureActions.Count);points.Rows[i].Cells[3].ReadOnly=i>0;}
    for(int i=0;i<doc.Obstacles.Count;i++){var o=doc.Obstacles[i];obstacles.Rows.Add(i,o.X,o.Y,o.Width,o.Height);}
    var errors=doc.Validate();validation.Text=errors.Count==0?"✓ 路线检查通过。灰红虚线：障碍膨胀包络。预览和计数均为理想模型。":"⚠ "+String.Join("  /  ",errors.Take(3).ToArray());validation.ForeColor=errors.Count==0?Color.FromArgb(22,126,104):Color.FromArgb(183,65,49);
-   if(errors.Count==0)for(int i=1;i<doc.Points.Count;i++){var a=SegmentInfo.Calculate(doc.Settings,doc.Points[i-1],doc.Points[i],i-1);segments.Rows.Add("P"+(i-1)+"→P"+i,(a.Distance*1000).ToString("F0"),(a.Turn*180/Math.PI).ToString("F1"),a.Seconds.ToString("F2"),a.Counts[0].ToString("F0"),a.Counts[1].ToString("F0"),a.Counts[2].ToString("F0"),doc.Settings.Wheels==3?"—":a.Counts[3].ToString("F0"));}
-   SelectRows();refresh=false;canvas.Invalidate();Text="foxmolika 位点地图编辑器 0.4.1 · "+(filename==null?"未命名":Path.GetFileName(filename))+(savedJson!=null&&savedJson!=doc.Json()?" *":"");
+   if(errors.Count==0&&!TerrainGeometry.HasRelief(doc))for(int i=1;i<doc.Points.Count;i++){var a=SegmentInfo.Calculate(doc.Settings,doc.Points[i-1],doc.Points[i],i-1);segments.Rows.Add("P"+(i-1)+"→P"+i,(a.Distance*1000).ToString("F0"),(a.Turn*180/Math.PI).ToString("F1"),a.Seconds.ToString("F2"),a.Counts[0].ToString("F0"),a.Counts[1].ToString("F0"),a.Counts[2].ToString("F0"),doc.Settings.Wheels==3?"—":a.Counts[3].ToString("F0"));}
+   if(TerrainGeometry.HasRelief(doc))validation.Text="立体路线：仅地图编辑/几何预览；尚不能生成坡道控制。 "+validation.Text;
+   SelectRows();refresh=false;canvas.Invalidate();Text="foxmolika 位点地图编辑器 0.5.0 · "+(filename==null?"未命名":Path.GetFileName(filename))+(savedJson!=null&&savedJson!=doc.Json()?" *":"");
    if(RecoverySnapshot!=null)RecoverySnapshot(doc.Json(),filename);
    status.Text=(savedJson==doc.Json()?"已保存":"未保存")+" · "+(exportedRevision==TemplateGenerator.RouteRevision(doc)?"已导出当前版本":"当前版本未导出")+" · 动作/量角器可在工具栏编辑";
    try{string linked=ProjectExport.Resolve(doc,filename);projectCaption.Text=linked==null?"未关联工程：关联后，导出会自动加入路径3C3H和包含目录。":"目标工程："+linked;}catch{projectCaption.Text="关联路径无效，请重新关联工程。";}
   }
   void SelectRows(){bool was=refresh;refresh=true;points.ClearSelection();obstacles.ClearSelection();if(canvas.Selected>=0&&canvas.Selected<points.Rows.Count){points.CurrentCell=points.Rows[canvas.Selected].Cells[0];points.Rows[canvas.Selected].Selected=true;}if(canvas.SelectedObstacle>=0&&canvas.SelectedObstacle<obstacles.Rows.Count){obstacles.CurrentCell=obstacles.Rows[canvas.SelectedObstacle].Cells[0];obstacles.Rows[canvas.SelectedObstacle].Selected=true;}refresh=was;}
+  void RevealSurface(string id){if(doc.Terrain==null)return;bool was=refresh;refresh=true;canvas.ActiveSurfaceId=TerrainGeometry.Key(id);for(int i=0;i<surfacePicker.Items.Count;i++)if(((SurfaceChoice)surfacePicker.Items[i]).Id==canvas.ActiveSurfaceId){surfacePicker.SelectedIndex=i;break;}refresh=was;}
   void GridEdit(DataGridView g,int row,int col,bool obs){if(refresh||row<0||col<=0)return;double v;object cell=g.Rows[row].Cells[col].Value;
    if(!Double.TryParse(Convert.ToString(cell),NumberStyles.Float,CultureInfo.CurrentCulture,out v)||!MapDocument.Finite(v)||Math.Abs(v)>1000000){MessageBox.Show(this,"请输入合理的有限数字（绝对值不超过1000000）。");pending=null;RefreshAll();return;}
    if(obs){var o=doc.Obstacles[row];switch(col){case 1:o.X=v;break;case 2:o.Y=v;break;case 3:o.Width=v;break;case 4:o.Height=v;break;}}
@@ -150,13 +160,14 @@ namespace RcsMap {
   void Delete(){int p=canvas.Selected,o=canvas.SelectedObstacle;if(p<0&&o<0)return;BeginChange();if(p>=0&&p<doc.Points.Count)doc.Points.RemoveAt(p);else if(o>=0&&o<doc.Obstacles.Count)doc.Obstacles.RemoveAt(o);canvas.Selected=canvas.SelectedObstacle=-1;EndChange();}
   void MovePoint(int delta){int i=canvas.Selected,j=i+delta;if(i<0||j<0||j>=doc.Points.Count)return;BeginChange();var p=doc.Points[i];doc.Points.RemoveAt(i);doc.Points.Insert(j,p);canvas.Selected=j;EndChange();}
   void EditAction(){int i=canvas.Selected;if(i<0||i>=doc.Points.Count){MessageBox.Show(this,"请先在画布或右侧表格选择一个航点。");return;}StopPreview();var candidate=doc.Clone();using(var dialog=new PhaseDialog(candidate.Points[i],candidate.ActionIncludes))if(dialog.ShowDialog(this)==DialogResult.OK){try{candidate.ActionIncludes=dialog.SharedIncludes;candidate.StructuralCheck();BeginChange();doc=candidate;EndChange();}catch(Exception e){MessageBox.Show(this,e.Message);}}}
+  void EditTerrain(){StopPreview();using(var dialog=new TerrainDialog(doc))if(dialog.ShowDialog(this)==DialogResult.OK){BeginChange();doc=dialog.Document;EndChange();}}
   void Measure(){if(doc.Points.Count<2){MessageBox.Show(this,"量角器至少需要两个位点。");return;}StopPreview();measureFirst=-1;SetMode(3);status.Text="量角器：依次点击起点 A、终点 B；不会移动航点。Esc 退出。";canvas.MeasurePicked=i=>{if(measureFirst<0){measureFirst=i;canvas.MeasureA=i;status.Text="已选 A=P"+i+"，请点击终点 B";canvas.Invalidate();}else{int first=measureFirst;SetMode(0);ShowMeasure(first,i);}};}
   void ShowMeasure(int first,int second){var before=doc.Json();using(var dialog=new ProtractorDialog(doc,first,()=>{},(a,b)=>{canvas.MeasureA=a;canvas.MeasureB=b;canvas.Invalidate();},second)){dialog.ShowDialog(this);}if(doc.Json()!=before){undo.Push(before);redo.Clear();RefreshAll();}}
   bool ConfirmDiscard(){if(savedJson==doc.Json())return true;var result=MessageBox.Show(this,"地图有未保存的修改。是否先保存？","保存地图",MessageBoxButtons.YesNoCancel,MessageBoxIcon.Question);if(result==DialogResult.Cancel)return false;if(result==DialogResult.Yes)return Save(false);return true;}
   void New(){Replace(new MapDocument(),null);}
   void Replace(MapDocument d,string file){if(!ConfirmDiscard())return;StopPreview();doc=d;filename=file;undo.Clear();redo.Clear();pending=null;savedJson=doc.Json();canvas.Selected=canvas.SelectedObstacle=-1;RefreshAll();canvas.Fit();}
   public void OpenRecovery(string path){Replace(MapDocument.Parse(File.ReadAllText(path)),null);}
-  void LoadMap(){using(var dialog=new OpenFileDialog{Filter="foxmolika 地图 (*.rcsmap.json)|*.rcsmap.json|JSON (*.json)|*.json"})if(dialog.ShowDialog(this)==DialogResult.OK){try{var info=new FileInfo(dialog.FileName);if(info.Length>2*1024*1024)throw new Exception("地图文件超过2MB。");var loaded=MapDocument.Parse(File.ReadAllText(dialog.FileName));var errors=loaded.Validate(false);if(errors.Count>0)throw new Exception(String.Join("\r\n",errors.Take(10).ToArray()));Replace(loaded,dialog.FileName);if(loaded.MigratedFromLegacy){filename=Path.Combine(Path.GetDirectoryName(dialog.FileName),Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(dialog.FileName))+".v3.rcsmap.json");savedJson=null;RefreshAll();MessageBox.Show(this,"旧地图已迁移，将另存为："+filename+"\r\n原地图保留。朝向变化改为到达后旋转，原机构动作改为起步前动作。");}}catch(Exception e){MessageBox.Show(this,"打开失败："+e.Message);}}}
+  void LoadMap(){using(var dialog=new OpenFileDialog{Filter="foxmolika 地图 (*.rcsmap.json)|*.rcsmap.json|JSON (*.json)|*.json"})if(dialog.ShowDialog(this)==DialogResult.OK){try{var info=new FileInfo(dialog.FileName);if(info.Length>2*1024*1024)throw new Exception("地图文件超过2MB。");var loaded=MapDocument.Parse(File.ReadAllText(dialog.FileName));var errors=loaded.Validate(false);if(errors.Count>0&&!TerrainGeometry.CanOpenDraft(loaded))throw new Exception(String.Join("\r\n",errors.Take(10).ToArray()));Replace(loaded,dialog.FileName);if(errors.Count>0)MessageBox.Show(this,"立体地图已作为待修正草稿打开。\r\n"+String.Join("\r\n",errors.Take(8).ToArray())+"\r\n请在立体地形窗口继续修正；导出检查仍然有效。","打开地图草稿");if(loaded.MigratedFromLegacy){filename=Path.Combine(Path.GetDirectoryName(dialog.FileName),Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(dialog.FileName))+".v3.rcsmap.json");savedJson=null;RefreshAll();MessageBox.Show(this,"旧地图已迁移，将另存为："+filename+"\r\n原地图保留。朝向变化改为到达后旋转，原机构动作改为起步前动作。");}}catch(Exception e){MessageBox.Show(this,"打开失败："+e.Message);}}}
   bool Save(bool saveAs){if(Operation!=null)Operation("保存地图");string beforeFile=filename,beforeLink=doc.ProjectIoc;try{if(filename==null||saveAs){using(var dialog=new SaveFileDialog{Filter="foxmolika 地图 (*.rcsmap.json)|*.rcsmap.json",FileName="我的路线.rcsmap.json"}){if(dialog.ShowDialog(this)!=DialogResult.OK)return false;filename=dialog.FileName;}}
     ProjectExport.Save(doc,beforeFile,filename);savedJson=doc.Json();RefreshAll();status.Text="地图已保存："+filename;return true;}catch(Exception e){filename=beforeFile;doc.ProjectIoc=beforeLink;MessageBox.Show(this,"保存失败："+e.Message);return false;}}
   public static void AtomicSave(string path,string text){string temp=path+"."+Guid.NewGuid().ToString("N")+".tmp";try{File.WriteAllText(temp,text,new System.Text.UTF8Encoding(false));if(File.Exists(path))File.Replace(temp,path,null);else File.Move(temp,path);}finally{if(File.Exists(temp))File.Delete(temp);}}
@@ -166,11 +177,12 @@ namespace RcsMap {
   void OpenGuide(){string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"使用说明.html");try{if(!File.Exists(path)){path=Path.Combine(Path.GetTempPath(),"foxmolika_MapEditor_0.1_使用说明.html");File.WriteAllText(path,Exporter.Resource("使用说明.html"));}System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true});}catch(Exception e){MessageBox.Show(this,e.Message);}}
   void KeysDown(object s,KeyEventArgs e){if(e.Control&&e.KeyCode==Keys.S){Save(e.Shift);e.SuppressKeyPress=true;}if(e.Control&&e.KeyCode==Keys.O){LoadMap();e.SuppressKeyPress=true;}if(e.Control&&e.KeyCode==Keys.Z){Undo();e.SuppressKeyPress=true;}if(e.Control&&e.KeyCode==Keys.Y){Redo();e.SuppressKeyPress=true;}if(e.KeyCode==Keys.Delete&&canvas.Focused){Delete();e.SuppressKeyPress=true;}if(e.KeyCode==Keys.Escape){SetMode(0);StopPreview();}}
   void StopPreview(){timer.Stop();preview.Text="▶ 路线预览";canvas.PreviewPose=null;canvas.Invalidate();}
-  void TogglePreview(){if(timer.Enabled){StopPreview();return;}var errors=doc.Validate();if(errors.Count>0){MessageBox.Show(this,String.Join("\r\n",errors.Take(8).ToArray()));return;}phasePreview=new PhasePreview(doc);preview.Text="■ 停止预览";timer.Start();}
+  void TogglePreview(){if(timer.Enabled){StopPreview();return;}try{TerrainGeometry.RequireFlat(doc);}catch(Exception e){MessageBox.Show(this,e.Message+"\r\n请打开“立体地形…”查看侧视/三维几何预览。");return;}var errors=doc.Validate();if(errors.Count>0){MessageBox.Show(this,String.Join("\r\n",errors.Take(8).ToArray()));return;}phasePreview=new PhasePreview(doc);preview.Text="■ 停止预览";timer.Start();}
   void PreviewTick(){if(phasePreview==null)return;canvas.PreviewPose=phasePreview.Tick(timer.Interval/1000.0);status.Text=phasePreview.Status+" · 理想模型；自定义机构仅占位，不执行用户代码";canvas.Invalidate();if(phasePreview.Done)StopPreview();}
   public void RenderCourseAnglesImage(string path){var saved=doc;try{doc=MapDocument.Demo();doc.Points[1].Y=1200;doc.Points[2].X=4700;using(var bmp=new Bitmap(1100,720))using(var g=Graphics.FromImage(bmp)){using(var c=new MapCanvas{Document=doc,Width=1100,Height=720,Font=Font,Selected=0}){c.Fit();c.Draw(g,new Rectangle(0,0,1100,720));bmp.Save(path,System.Drawing.Imaging.ImageFormat.Png);}}}finally{doc=saved;}}
   public void RenderPreview(string path){using(var bmp=new Bitmap(1100,720))using(var g=Graphics.FromImage(bmp)){var c=new MapCanvas{Document=doc,Width=1100,Height=720,Font=Font,Selected=0};c.Fit();c.Draw(g,new Rectangle(0,0,1100,720));bmp.Save(path,System.Drawing.Imaging.ImageFormat.Png);c.Dispose();}}
   public void RenderEditorImage(string path){renderOnly=true;ShowInTaskbar=false;Opacity=0;Size=new Size(1120,800);Show();Refresh();Application.DoEvents();if(!projectCaption.Parent.Visible||projectCaption.Right>projectCaption.Parent.ClientSize.Width)throw new Exception("工程关联栏布局越界。");using(var bitmap=new Bitmap(Width,Height)){DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height));bitmap.Save(path,System.Drawing.Imaging.ImageFormat.Png);}Close();}
+  public void RenderTerrainMainImage(string path){doc=TerrainGeometry.Demo();savedJson=doc.Json();canvas.ActiveSurfaceId=doc.Terrain.Surfaces[0].Id;RefreshAll();canvas.Fit();RenderEditorImage(path);}
  }
  public class ExportDialog:Form {
   TextBox path=new TextBox();CheckBox project=new CheckBox();public string Destination {get{return path.Text.Trim();}}public bool ToProject {get{return project.Checked;}}

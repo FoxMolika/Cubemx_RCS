@@ -1,0 +1,53 @@
+{
+  "version": "0.5.0",
+  "passed": true,
+  "installer_sha256": "bded995661e8e36d99133e6d1a0459c4893eb93f802a499736c78e57ace500e7",
+  "editor_sha256": "c15c64a2570a7c3dacddc1653e703d2e7871424b3bc4355890d93335ba3301ac",
+  "pack_sha256": "7fae29000b09494add38b9586b48a3f52defb4a86bc0eac16289233b90635e94",
+  "features": [
+    "dual arrival/departure action panes",
+    "multi-surface platform/ramp/bridge authoring",
+    "linked top/profile/3D geometry views",
+    "terrain connectivity/envelope/slope/speed/clearance checks",
+    "nonplanar firmware export blocked",
+    "direct heading/path angle overlay",
+    "protractor",
+    "local crash ZIP",
+    "Keil stale-map prebuild guard"
+  ],
+  "tests": {
+    "core_assertions": 1555,
+    "generated_layouts": 3,
+    "generated_assertions_per_layout": 4205,
+    "phase_assertions": 11551,
+    "editor_model_checks": 49,
+    "crash_checks": 54,
+    "route_integration_scenarios": 21,
+    "project_setup_scenarios": 13,
+    "revision_scenarios": 9,
+    "installer_transaction_scenarios": 8
+  },
+  "actual_CubeMX": "6.18.1; fresh isolated profiles, automatic import, alternate empty repository, native generate/regenerate, uninstall",
+  "actual_Keil": "ARM Compiler 6.22; route/nav/actions compiled; 0 errors, 0 warnings",
+  "actual_stale_map_blocks_Keil_build": true,
+  "route_user_code_and_main_preserved": true,
+  "original_037_files_unchanged": 168,
+  "original_040_files_unchanged": 203,
+  "original_041_files_unchanged": 216,
+  "terrain_checks": 57,
+  "embedded_resources_verified": 17,
+  "hardware_test": false,
+  "flashed": false,
+  "second_physical_PC_test": false,
+  "ui_review": "actual dual-pane action window, top/profile/3D terrain views and 1120px main editor inspected; minimum action-window layout tested",
+  "delegated_review": "two parallel DeepSeek text reviews: terrain schema/edge cases and dual-pane UI. Codex integrated, inspected actual renders and executed all local tests",
+  "limitations": [
+    "nonplanar routes are geometry-only: no slope firmware export or flat dynamic preview",
+    "axis-aligned rectangular surfaces only; no steps/lifts/automatic routing/IMU fusion",
+    "3D drawing shows upper surfaces; clearance includes configured underside thickness and envelope margin",
+    "encoder-only correction cannot observe all real slip",
+    "existing hardware driver support unchanged",
+    "custom-action preview is a placeholder",
+    "hard termination/power loss cannot guarantee immediate crash ZIP"
+  ]
+}

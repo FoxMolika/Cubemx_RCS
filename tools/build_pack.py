@@ -18,7 +18,7 @@ def metadata(version=VERSION):
     rel=PACK+'.'+version
     pd=E.Element('package',schemaVersion='1.6.3')
     for k,v in [('vendor','RCS'),('name','foxmolika'),('description','foxmolika F407 HAL chassis: Mecanum X and tangent Omni'),('url','https://example.invalid/foxmolika/'),('license','LICENSE.txt')]: child(pd,k).text=v
-    releases=child(pd,'releases');child(releases,'release',version=version,date='2026-11-14').text='0.4.1: direct planned-heading versus route angle overlay; view-only update, phased navigation unchanged.'
+    releases=child(pd,'releases');child(releases,'release',version=version,date='2026-11-14').text='0.5.0: multi-surface terrain authoring and geometric previews; dual arrival/departure action panes. Nonplanar firmware export is explicitly blocked; flat navigation unchanged.'
     keys=child(pd,'keywords');child(keys,'keyword').text='IMPLEMENTED_WITH_STM32CUBEMX'
     conds=child(pd,'conditions');cond=child(conds,'condition',id='STM32F407');child(cond,'require',Dname='STM32F407*')
     comps=child(pd,'components');comp=child(comps,'component',Cclass='Robotics',Cgroup='foxmolika',Cversion=version,condition='STM32F407',maxInstances='1')
