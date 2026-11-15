@@ -28,7 +28,7 @@ def main():
      except UnicodeDecodeError:pass
     else:skipped.append({'name':n,'reason':'Neither strict UTF-8 nor GB18030; excluded from metrics rather than replacing bytes.'})
    result['archives'][file]={'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'selected_files':names,'decoded_files':decoded,'excluded_files':skipped,'metrics':metrics(texts)}
- for label,folder in [('baseline_034',R.parent/'RCS_Chassis_CubeMX_0.3.4/firmware'),('deepseek_candidate',R.parent/'RCS_Chassis_CubeMX_Fix/firmware'),('generated_052',R/'firmware')]:
+ for label,folder in [('baseline_034',R.parent/'RCS_Chassis_CubeMX_0.3.4/firmware'),('deepseek_candidate',R.parent/'RCS_Chassis_CubeMX_Fix/firmware'),('generated_060',R/'firmware')]:
   result[label]=metrics([(folder/n).read_text(encoding='utf-8') for n in CORE]) if folder.is_dir() else dict(reference[label],basis='Recorded reference snapshot; reference source directory unavailable.')
  result['scope']='HAL framework files and standard USER files only; vendor CMSIS and test libraries excluded.'
  (R/'build').mkdir(exist_ok=True);(R/'build/style_audit.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')

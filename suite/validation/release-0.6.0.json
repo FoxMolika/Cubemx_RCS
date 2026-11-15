@@ -1,17 +1,17 @@
 {
-  "version": "0.5.2",
+  "version": "0.6.0",
   "passed": true,
-  "installer_sha256": "4ee026219eac40e61cba0552d0652eaea5f6fed3c67dc8c9c3b2a6b0375ed804",
-  "editor_sha256": "d6386b43e8dfe954702fffcc5d02e92bcde7f92354b71cabf53e392cac47de1e",
-  "pack_sha256": "13b99db02af3af5db6f726d490da808b9d4a2a09b3fc4011b1c1f2bcb7b9b07f",
+  "installer_sha256": "b0603bfef880127dfbc377d8cf2289d6d6c9604f610f75373556253228415bc1",
+  "editor_sha256": "4aae7ddcc77f4ce57f65cf301ec34648497c7cd4998f8bbe9d639ed4787d4250",
+  "pack_sha256": "01a87ede76dd62779da888097a556081cbadceebc5be90cf2ef93ea240d9143f",
   "features": [
-    "verified Medium installer integrity label without DACL changes",
-    "actual Medium non-admin installation acceptance",
-    "write preflight and fallback diagnostics",
-    "CubeMX runs in owned working/temp directory",
-    "per-user installer lock and startup error capture",
-    "direct top-view platform/ramp dragging",
-    "local terrain undo/redo",
+    "unified main-window waypoint and terrain workspace",
+    "exposed platform/ramp/connection/layer controls",
+    "shared document, global undo/redo and recovery snapshots",
+    "insert transition waypoint after selected point",
+    "draft save/open independent of full route validation",
+    "derived height and editable surface assignment",
+    "verified Medium non-admin installation",
     "dual arrival/departure action panes",
     "nonplanar firmware export blocked",
     "Keil stale-map prebuild guard"
@@ -25,7 +25,7 @@
     "crash_checks": 54,
     "route_integration_scenarios": 21,
     "project_setup_scenarios": 13,
-    "revision_scenarios": 11,
+    "revision_scenarios": 12,
     "installer_transaction_scenarios": 8
   },
   "actual_CubeMX": "6.18.1; fresh isolated profiles, automatic import, alternate empty repository, native generate/regenerate, uninstall",
@@ -42,7 +42,7 @@
   "embedded_resources_verified": 17,
   "ordinary_user_install": {
     "passed": true,
-    "installer_sha256": "4ee026219eac40e61cba0552d0652eaea5f6fed3c67dc8c9c3b2a6b0375ed804",
+    "installer_sha256": "b0603bfef880127dfbc377d8cf2289d6d6c9604f610f75373556253228415bc1",
     "installer_integrity_rid": 8192,
     "low_token_reproduction": {
       "Administrator": "false",
@@ -70,15 +70,18 @@
     "denied_paths_before_mutation": true,
     "fallback_diagnostics": true,
     "cube_installation_root_unchanged": true,
+    "installed_workspace_checks": 41,
     "normal_native_uninstall": true,
-    "area": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.5.2\\build\\permissions_6c1e1a9c"
+    "area": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.6.0\\build\\permissions_d9c45eb3"
   },
   "published_installer_integrity_rid": 8192,
+  "original_052_files_unchanged": 237,
+  "workspace_checks": 41,
   "hardware_test": false,
   "flashed": false,
   "second_physical_PC_test": false,
-  "ui_review": "actual dual-pane action window, top/profile/3D terrain views and 1120px main editor inspected; minimum action-window layout tested",
-  "delegated_review": "two parallel DeepSeek text reviews: installer permission paths and non-admin test design. Codex identified inherited Low labels, reproduced Low/Medium access difference and ran actual Medium non-admin native installation tests",
+  "ui_review": "actual unified main window at 1440px and 1120px; top/profile/3D and shared point/property editors inspected; event-level main-window workflow tests passed",
+  "delegated_review": "two parallel DeepSeek text reviews: shared state/draft architecture and original modal deadlock regression design. Codex implemented and verified actual control events, rendered UI, ordinary-user installation and native generation",
   "limitations": [
     "nonplanar routes are geometry-only: no slope firmware export or flat dynamic preview",
     "axis-aligned rectangular surfaces only; no steps/lifts/automatic routing/IMU fusion",

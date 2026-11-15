@@ -29,6 +29,6 @@ namespace RcsSuite {
   }
   internal static string Failure(Exception error,string requested,string dir,string cube,string home){string path=Diagnostic(error,requested,dir,cube,home);string message=error.Message+"\r\n"+(path==null?"诊断报告也无法保存，请复制本窗口错误文字。":"诊断报告："+path);try{Console.Error.WriteLine(message);}catch{}return message;}
   internal static Mutex Lock(string name){try{return new Mutex(false,name);}catch(UnauthorizedAccessException x){throw new IOException("安装器进程锁访问被拒绝。可能已有以管理员或其他权限启动的同版本安装器；请先关闭已有安装器，再以当前用户重新打开。",x);}}
-  internal static string LockName(){using(var identity=WindowsIdentity.GetCurrent()){string user=identity.User==null?Environment.UserName:identity.User.Value;return "Local\\foxmolika_CubeMX_Setup_052_"+Payload.Hash(Encoding.UTF8.GetBytes(user)).Substring(0,16);}}
+  internal static string LockName(){using(var identity=WindowsIdentity.GetCurrent()){string user=identity.User==null?Environment.UserName:identity.User.Value;return "Local\\foxmolika_CubeMX_Setup_060_"+Payload.Hash(Encoding.UTF8.GetBytes(user)).Substring(0,16);}}
  }
 }
