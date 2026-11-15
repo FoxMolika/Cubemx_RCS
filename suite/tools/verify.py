@@ -3,7 +3,7 @@ from xml.etree import ElementTree as E
 import hashlib,json,os,re,shutil,subprocess,sys,uuid
 sys.stdout.reconfigure(encoding='utf-8')
 ROOT=Path(__file__).resolve().parents[1];PROJECT=ROOT.parent
-EXE=ROOT/'dist/foxmolika_CubeMX_Setup_0.3.6_win-x64.exe'
+EXE=ROOT/'dist/foxmolika_CubeMX_Setup_0.3.7_win-x64.exe'
 def invoke(exe,args,env,expected=0):
  p=subprocess.run([str(exe)]+[str(x) for x in args],cwd=exe.parent,env=env,capture_output=True,timeout=210)
  if p.returncode!=expected:raise RuntimeError(f'Installer exit={p.returncode} expected={expected}; args={args}')
@@ -21,9 +21,9 @@ def main():
  invoke(exe,args,env)
  success=xml(dest/'install-success.xml');pack=Path(success.attrib['PackDirectory'])
  assert success.attrib['Registered'].lower()=='true' and success.attrib['FilesVerified'].lower()=='true'
- assert success.attrib['PackVersion']=='0.3.6' and pack.is_relative_to(home)
- assert (pack/'CubeMX/RCS.foxmolika.0.3.6_Modes.xml').is_file()
- assert (dest/'foxmolika_MapEditor.exe').is_file() and (dest/'RCS.foxmolika.0.3.6.pack').is_file() and (dest/'foxmolika_KeilHeaders.exe').is_file()
+ assert success.attrib['PackVersion']=='0.3.7' and pack.is_relative_to(home)
+ assert (pack/'CubeMX/RCS.foxmolika.0.3.7_Modes.xml').is_file()
+ assert (dest/'foxmolika_MapEditor.exe').is_file() and (dest/'RCS.foxmolika.0.3.7.pack').is_file() and (dest/'foxmolika_KeilHeaders.exe').is_file()
  assert xml(dest/'cube-pack-receipt.xml').attrib['NewlyIntroduced'].lower()=='true'
  print('PASS single-file fresh home/empty repository native import + registration/hash verification',flush=True)
  invoke(exe,args,env);print('PASS repeat install',flush=True)
@@ -37,7 +37,7 @@ def main():
  print('PASS missing-registration repair, existing pack folder',flush=True)
  invoke(dest/'foxmolika_MapEditor.exe',['--selftest',area/'已安装编辑器 自测'],env)
  editor_report=(area/'已安装编辑器 自测/editor-test-report.txt').read_text(encoding='utf-8').strip()
- assert success.attrib['EditorVersion']=='0.2.2'
+ assert success.attrib['EditorVersion']=='0.3.0'
  print('PASS installed editor actual binary tests',flush=True)
  foreign=area/'用户原工程';foreign.mkdir();sentinel=foreign/'main.c';sentinel.write_bytes(b'original\r\n\xff\x00');before=sha(sentinel)
  invoke(exe,['/S','/D='+str(foreign),'/TESTHOME='+str(home),'/LOG='+str(area/'覆盖拒绝.log')],env,2);assert sha(sentinel)==before

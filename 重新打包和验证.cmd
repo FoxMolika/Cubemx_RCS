@@ -5,6 +5,8 @@ python map_editor\tools\verify.py
 if errorlevel 1 goto failed
 python tools\test_style_generation.py
 if errorlevel 1 goto failed
+python tools\test_route_project.py
+if errorlevel 1 goto failed
 python tools\check_guides.py
 if errorlevel 1 goto failed
 python tools\style_audit.py

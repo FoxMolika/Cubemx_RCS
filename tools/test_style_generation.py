@@ -38,7 +38,7 @@ def main():
   for name,digest in provenance['files'].items():assert hashlib.sha256((fixture/'legacy-output'/name).read_bytes()).hexdigest()==digest
   shutil.copytree(fixture/'legacy-output',out);legacy_origin='hash-verified export captured from actual old 0.2.0 EXE'
  c=out/'rcs_actions.c';text=c.read_text(encoding='utf-8');text=text.replace('/* @ID@ and @POINT_COUNT@ are user text */','/* user hand edit kept: @ID@; @POINT_COUNT@ */');c.write_text(text,encoding='utf-8')
- run([new_exe,'--export',mapfile,out]);actual=c.read_text(encoding='utf-8');assert '/* user hand edit kept: @ID@; @POINT_COUNT@ */' in actual;checks.append('actual 0.2.0 -> 0.2.2 in-place export preserves handwritten code and literal template tokens')
+ run([new_exe,'--export',mapfile,out]);actual=c.read_text(encoding='utf-8');assert '/* user hand edit kept: @ID@; @POINT_COUNT@ */' in actual;checks.append('actual 0.2.0 -> 0.3.0 in-place export preserves handwritten code and literal template tokens')
  before={p.name:p.read_bytes() for p in out.iterdir()};run([new_exe,'--export',mapfile,out]);assert all(p.read_bytes()==before[p.name] for p in out.iterdir());checks.append('new template regeneration is byte-idempotent')
  errors=check_files({p.name:p.read_text(encoding='utf-8') for p in out.iterdir()});assert not errors,errors;checks.append('upgraded route outputs pass full style gate')
  doc['Points'][0]['ActionStart']='/* conflict changed in GUI */';mapfile.write_text(json.dumps(doc,ensure_ascii=False),encoding='utf-8');run([new_exe,'--export',mapfile,out],2);assert all(p.read_bytes()==before[p.name] for p in out.iterdir());checks.append('dual edit conflicts still refuse without overwriting')

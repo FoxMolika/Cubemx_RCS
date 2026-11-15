@@ -18,7 +18,7 @@ def metadata(version=VERSION):
     rel=PACK+'.'+version
     pd=E.Element('package',schemaVersion='1.6.3')
     for k,v in [('vendor','RCS'),('name','foxmolika'),('description','foxmolika F407 HAL chassis: Mecanum X and tangent Omni'),('url','https://example.invalid/foxmolika/'),('license','LICENSE.txt')]: child(pd,k).text=v
-    releases=child(pd,'releases');child(releases,'release',version=version,date='2026-11-10').text='0.3.6: renamed to foxmolika; new package/component identity, application names and tutorials. RCS C APIs, file names and user-code regions remain compatible.'
+    releases=child(pd,'releases');child(releases,'release',version=version,date='2026-11-10').text='0.3.7: unified chassis/map project association; automatically register route 3C3H and include paths in MDK, restore after CubeMX regeneration, preserve user code. Firmware C APIs unchanged.'
     keys=child(pd,'keywords');child(keys,'keyword').text='IMPLEMENTED_WITH_STM32CUBEMX'
     conds=child(pd,'conditions');cond=child(conds,'condition',id='STM32F407');child(cond,'require',Dname='STM32F407*')
     comps=child(pd,'components');comp=child(comps,'component',Cclass='Robotics',Cgroup='foxmolika',Cversion=version,condition='STM32F407',maxInstances='1')

@@ -1,14 +1,16 @@
-> 合并套件0.3.6中的入口：安装器“启动地图编辑器”，或 `%LOCALAPPDATA%\foxmolika_CubeMX_Suite_0.3.6\foxmolika_MapEditor.exe`。地形／地图／路径编辑器是同一独立窗口，未嵌入CubeMX。底盘工程还需单独“关联工程…”后重新生成；路径3C3H仍需自己加入工程。详见 [网页教程](docs/使用说明.html)。
+> 0.3.7新增：地图编辑器“关联工程…”→选择.ioc→“导出 C / H”保持“导出到关联工程”勾选。自动加入Application/foxmolikaRoute中的3C3H与包含目录，CubeMX重生成后自动恢复。保存地图记住关联，旧0.3.6目录保留。
 
-# foxmolika 位点地图编辑器 0.2.2
+> 合并套件0.3.7中的入口：安装器“启动地图编辑器”，或 `%LOCALAPPDATA%\foxmolika_CubeMX_Suite_0.3.7\foxmolika_MapEditor.exe`。地形／地图／路径编辑器是同一独立窗口，未嵌入CubeMX。底盘工程还需单独“关联工程…”后重新生成；在地图编辑器关联工程后，工程模式导出自动加入路径3C3H和包含目录。详见 [网页教程](docs/使用说明.html)。
+
+# foxmolika 位点地图编辑器 0.3.0
 
 Windows 原生 CubeMX 配套编辑器：绘制场地和矩形障碍、添加/拖动/排序位点、设定朝向/目标速度/停留，结合底盘参数和编码器分辨率生成路径数据及闭环执行模块。
 
-0.2.2 兼容底盘 0.3.1 / 0.3.2 / 0.3.6：导入 `rcs_config.h` 时读取 `RCS_COMMAND_TIMEOUT_MS`，新增“允许采样最大间隔”参数并在导出前检查其小于命令超时；导入轮向沿用 C620 转子角度约定，外接编码器需自行核对。
+0.3.0 兼容底盘 0.3.1 / 0.3.2 / 0.3.7：导入 `rcs_config.h` 时读取 `RCS_COMMAND_TIMEOUT_MS`，新增“允许采样最大间隔”参数并在导出前检查其小于命令超时；导入轮向沿用 C620 转子角度约定，外接编码器需自行核对。
 
 ## 直接使用
 
-- 安装程序：`dist/foxmolika_MapEditor_Setup_0.2.2_win-x64.exe`
+- 安装程序：`dist/foxmolika_MapEditor_Setup_0.3.0_win-x64.exe`
 - 便携程序：`dist/foxmolika_MapEditor.exe`
 - 图文说明：`dist/使用说明.html`（截图内嵌，无需联网）
 - 示例地图：`dist/示例路线.rcsmap.json`

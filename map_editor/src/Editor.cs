@@ -77,8 +77,10 @@ namespace RcsMap {
  public class Editor:Form {
   MapDocument doc=MapDocument.Demo();MapCanvas canvas=new MapCanvas();PropertyGrid properties=new PropertyGrid();DataGridView points=new DataGridView(),obstacles=new DataGridView(),segments=new DataGridView();
   Label validation=new Label();ToolStripStatusLabel status=new ToolStripStatusLabel();ToolStripButton select,add,obstacle,preview;Timer timer=new Timer();
+  Label projectCaption=new Label();
+  bool renderOnly;protected override bool ShowWithoutActivation {get{return renderOnly;}}
   Stack<string> undo=new Stack<string>(),redo=new Stack<string>();string pending,filename,savedJson;bool refresh;int simIndex;double simT;
-  public Editor(){Text="foxmolika 位点地图编辑器 0.2.2 · CubeMX 配套扩展";Size=new Size(1420,900);MinimumSize=new Size(1120,720);StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",9);KeyPreview=true;BackColor=Color.White;
+  public Editor(){Text="foxmolika 位点地图编辑器 0.3.0 · CubeMX 配套扩展";Size=new Size(1420,900);MinimumSize=new Size(1120,720);StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",9);KeyPreview=true;BackColor=Color.White;
    var toolbar=new ToolStrip{GripStyle=ToolStripGripStyle.Hidden,Padding=new Padding(8,7,8,7),BackColor=Color.FromArgb(237,243,250),ImageScalingSize=new Size(20,20),Dock=DockStyle.Top};
    Button(toolbar,"新建",()=>New());Button(toolbar,"示例",()=>Replace(MapDocument.Demo(),null));Button(toolbar,"打开",LoadMap);Button(toolbar,"保存",()=>Save(false));toolbar.Items.Add(new ToolStripSeparator());
    Button(toolbar,"撤销",Undo);Button(toolbar,"重做",Redo);toolbar.Items.Add(new ToolStripSeparator());select=Button(toolbar,"选择 / 拖动",()=>SetMode(0));add=Button(toolbar,"＋ 位点",()=>SetMode(1));obstacle=Button(toolbar,"▧ 障碍",()=>SetMode(2));
@@ -97,7 +99,11 @@ namespace RcsMap {
    var bottom=new Panel{Dock=DockStyle.Bottom,Height=195};bottom.Controls.Add(segments);segments.Dock=DockStyle.Fill;segments.ReadOnly=true;
    var segtitle=new Label{Text="分段换算 · 电机端原始增量计数参考（不作为到点判断）",Dock=DockStyle.Top,Height=27,ForeColor=Color.FromArgb(73,94,118)};bottom.Controls.Add(segtitle);
    validation.Dock=DockStyle.Bottom;validation.Height=56;validation.Padding=new Padding(4,5,4,0);validation.AutoEllipsis=true;center.Controls.Add(canvas);center.Controls.Add(bottom);center.Controls.Add(validation);
-   Controls.Add(center);Controls.Add(right);Controls.Add(left);Controls.Add(toolbar);Controls.Add(footer);
+   var projectBar=new Panel{Dock=DockStyle.Top,Width=ClientSize.Width,Height=40,BackColor=Color.FromArgb(232,246,239)};
+   var associate=new Button{Text="关联工程…",Left=10,Top=4,Width=120,Height=31};associate.Click+=(s,e)=>AssociateProject();projectBar.Controls.Add(associate);
+   var unlink=new Button{Text="清除地图关联",Left=138,Top=4,Width=120,Height=31};unlink.Click+=(s,e)=>{BeginChange();doc.ProjectIoc=null;EndChange();};projectBar.Controls.Add(unlink);
+   projectCaption.SetBounds(270,7,Math.Max(120,projectBar.Width-282),27);projectCaption.Anchor=AnchorStyles.Left|AnchorStyles.Top|AnchorStyles.Right;projectCaption.AutoEllipsis=true;projectBar.Controls.Add(projectCaption);
+   Controls.Add(center);Controls.Add(right);Controls.Add(left);Controls.Add(projectBar);Controls.Add(toolbar);Controls.Add(footer);
    SetupGrid(points,new[]{"编号","X mm","Y mm","朝向 °","速度 mm/s","停留 s","动作"});points.Columns[0].ReadOnly=points.Columns[6].ReadOnly=true;
    points.CellDoubleClick+=(s,e)=>{if(e.RowIndex>=0&&e.ColumnIndex==6)EditAction();};
    SetupGrid(obstacles,new[]{"编号","X mm","Y mm","宽 mm","高 mm"});obstacles.Columns[0].ReadOnly=true;
@@ -123,7 +129,8 @@ namespace RcsMap {
    for(int i=0;i<doc.Obstacles.Count;i++){var o=doc.Obstacles[i];obstacles.Rows.Add(i,o.X,o.Y,o.Width,o.Height);}
    var errors=doc.Validate();validation.Text=errors.Count==0?"✓ 路线检查通过。灰红虚线：障碍膨胀包络。预览和计数均为理想模型。":"⚠ "+String.Join("  /  ",errors.Take(3).ToArray());validation.ForeColor=errors.Count==0?Color.FromArgb(22,126,104):Color.FromArgb(183,65,49);
    if(errors.Count==0)for(int i=1;i<doc.Points.Count;i++){var a=SegmentInfo.Calculate(doc.Settings,doc.Points[i-1],doc.Points[i],i-1);segments.Rows.Add("P"+(i-1)+"→P"+i,(a.Distance*1000).ToString("F0"),(a.Turn*180/Math.PI).ToString("F1"),a.Seconds.ToString("F2"),a.Counts[0].ToString("F0"),a.Counts[1].ToString("F0"),a.Counts[2].ToString("F0"),doc.Settings.Wheels==3?"—":a.Counts[3].ToString("F0"));}
-   SelectRows();refresh=false;canvas.Invalidate();Text="foxmolika 位点地图编辑器 0.2.2 · "+(filename==null?"未命名":Path.GetFileName(filename))+(savedJson!=null&&savedJson!=doc.Json()?" *":"");
+   SelectRows();refresh=false;canvas.Invalidate();Text="foxmolika 位点地图编辑器 0.3.0 · "+(filename==null?"未命名":Path.GetFileName(filename))+(savedJson!=null&&savedJson!=doc.Json()?" *":"");
+   try{string linked=ProjectExport.Resolve(doc,filename);projectCaption.Text=linked==null?"未关联工程：关联后，导出会自动加入路径3C3H和包含目录。":"目标工程："+linked;}catch{projectCaption.Text="关联路径无效，请重新关联工程。";}
   }
   void SelectRows(){bool was=refresh;refresh=true;points.ClearSelection();obstacles.ClearSelection();if(canvas.Selected>=0&&canvas.Selected<points.Rows.Count){points.CurrentCell=points.Rows[canvas.Selected].Cells[0];points.Rows[canvas.Selected].Selected=true;}if(canvas.SelectedObstacle>=0&&canvas.SelectedObstacle<obstacles.Rows.Count){obstacles.CurrentCell=obstacles.Rows[canvas.SelectedObstacle].Cells[0];obstacles.Rows[canvas.SelectedObstacle].Selected=true;}refresh=was;}
   void GridEdit(DataGridView g,int row,int col,bool obs){if(refresh||row<0||col<=0)return;double v;object cell=g.Rows[row].Cells[col].Value;
@@ -137,11 +144,12 @@ namespace RcsMap {
   void New(){Replace(new MapDocument(),null);}
   void Replace(MapDocument d,string file){if(!ConfirmDiscard())return;StopPreview();doc=d;filename=file;undo.Clear();redo.Clear();pending=null;savedJson=doc.Json();canvas.Selected=canvas.SelectedObstacle=-1;RefreshAll();canvas.Fit();}
   void LoadMap(){using(var dialog=new OpenFileDialog{Filter="foxmolika 地图 (*.rcsmap.json)|*.rcsmap.json|JSON (*.json)|*.json"})if(dialog.ShowDialog(this)==DialogResult.OK){try{var info=new FileInfo(dialog.FileName);if(info.Length>2*1024*1024)throw new Exception("地图文件超过2MB。");var loaded=MapDocument.Parse(File.ReadAllText(dialog.FileName));var errors=loaded.Validate(false);if(errors.Count>0)throw new Exception(String.Join("\r\n",errors.Take(10).ToArray()));Replace(loaded,dialog.FileName);}catch(Exception e){MessageBox.Show(this,"打开失败："+e.Message);}}}
-  bool Save(bool saveAs){try{if(filename==null||saveAs){using(var dialog=new SaveFileDialog{Filter="foxmolika 地图 (*.rcsmap.json)|*.rcsmap.json",FileName="我的路线.rcsmap.json"}){if(dialog.ShowDialog(this)!=DialogResult.OK)return false;filename=dialog.FileName;}}
-    AtomicSave(filename,doc.Json());savedJson=doc.Json();RefreshAll();status.Text="地图已保存："+filename;return true;}catch(Exception e){MessageBox.Show(this,"保存失败："+e.Message);return false;}}
+  bool Save(bool saveAs){string beforeFile=filename,beforeLink=doc.ProjectIoc;try{if(filename==null||saveAs){using(var dialog=new SaveFileDialog{Filter="foxmolika 地图 (*.rcsmap.json)|*.rcsmap.json",FileName="我的路线.rcsmap.json"}){if(dialog.ShowDialog(this)!=DialogResult.OK)return false;filename=dialog.FileName;}}
+    ProjectExport.Save(doc,beforeFile,filename);savedJson=doc.Json();RefreshAll();status.Text="地图已保存："+filename;return true;}catch(Exception e){filename=beforeFile;doc.ProjectIoc=beforeLink;MessageBox.Show(this,"保存失败："+e.Message);return false;}}
   public static void AtomicSave(string path,string text){string temp=path+"."+Guid.NewGuid().ToString("N")+".tmp";try{File.WriteAllText(temp,text,new System.Text.UTF8Encoding(false));if(File.Exists(path))File.Replace(temp,path,null);else File.Move(temp,path);}finally{if(File.Exists(temp))File.Delete(temp);}}
   void Import(){using(var dialog=new OpenFileDialog{Filter="foxmolika 配置头文件|rcs_config.h|头文件|*.h"})if(dialog.ShowDialog(this)==DialogResult.OK){try{BeginChange();bool dirs=doc.ImportChassis(File.ReadAllText(dialog.FileName));EndChange();MessageBox.Show(this,"已导入底盘几何、减速比、转速和命令超时。"+(dirs?"\r\n\r\n编码器方向已按底盘轮方向导入：这只适用于 C620 转子角度作编码器。若使用外置编码器，请逐轮核对方向。":"\r\n\r\n未找到轮方向宏，请手动确认编码器方向。")+"\r\n请另行确认编码器计数及车体包络半径。");}catch(Exception e){if(pending!=null)doc=MapDocument.Parse(pending);pending=null;RefreshAll();MessageBox.Show(this,e.Message);}}}
-  void Export(){StopPreview();try{Exporter.Generate(doc);using(var dialog=new ExportDialog())if(dialog.ShowDialog(this)==DialogResult.OK){Exporter.Export(doc,dialog.Destination);MessageBox.Show(this,"已生成6个独立 C/H 文件：\r\n"+dialog.Destination+"\r\n\r\n动作入口在 rcs_actions.c 的 USER CODE 区域。重导出保留用户区域并备份上一版；调用 rcs_route_init 绑定动作。依赖现有 rcs_chassis.c/h，不修改 main.c。", "导出成功");}}catch(Exception e){MessageBox.Show(this,e.Message,"导出未完成",MessageBoxButtons.OK,MessageBoxIcon.Warning);}}
+  void AssociateProject(){StopPreview();using(var dialog=new OpenFileDialog{Filter="CubeMX工程|*.ioc",Title="请先保存并关闭CubeMX工程，再选择.ioc"})if(dialog.ShowDialog(this)==DialogResult.OK){try{string result=ProjectExport.Associate(dialog.FileName);BeginChange();ProjectExport.Remember(doc,filename,dialog.FileName);EndChange();MessageBox.Show(this,result+"\r\n保存地图后会记住关联。现在可以点击“导出 C / H”直接导出到工程。","关联完成");}catch(Exception error){MessageBox.Show(this,error.Message,"关联未完成",MessageBoxButtons.OK,MessageBoxIcon.Warning);}}}
+  void Export(){StopPreview();try{Exporter.Generate(doc);string linked=ProjectExport.Resolve(doc,filename);using(var dialog=new ExportDialog(linked))if(dialog.ShowDialog(this)==DialogResult.OK){string message;if(dialog.ToProject)message=ProjectExport.Export(doc,linked);else{Exporter.Export(doc,dialog.Destination);message="已生成6个独立 C/H 文件：\r\n"+dialog.Destination+"\r\n此为独立导出；需要自行加入工程，也可使用上方“关联工程…”自动加入。";}MessageBox.Show(this,message+"\r\n\r\n动作入口在rcs_actions.c的USER CODE区域，重导出保留手写内容。调用rcs_route_init绑定动作，不修改main.c。","导出结果");}}catch(Exception e){MessageBox.Show(this,e.Message,"导出未完成",MessageBoxButtons.OK,MessageBoxIcon.Warning);}}
   void OpenGuide(){string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"使用说明.html");try{if(!File.Exists(path)){path=Path.Combine(Path.GetTempPath(),"foxmolika_MapEditor_0.1_使用说明.html");File.WriteAllText(path,Exporter.Resource("使用说明.html"));}System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true});}catch(Exception e){MessageBox.Show(this,e.Message);}}
   void KeysDown(object s,KeyEventArgs e){if(e.Control&&e.KeyCode==Keys.S){Save(e.Shift);e.SuppressKeyPress=true;}if(e.Control&&e.KeyCode==Keys.O){LoadMap();e.SuppressKeyPress=true;}if(e.Control&&e.KeyCode==Keys.Z){Undo();e.SuppressKeyPress=true;}if(e.Control&&e.KeyCode==Keys.Y){Redo();e.SuppressKeyPress=true;}if(e.KeyCode==Keys.Delete&&canvas.Focused){Delete();e.SuppressKeyPress=true;}if(e.KeyCode==Keys.Escape){SetMode(0);StopPreview();}}
   void StopPreview(){timer.Stop();preview.Text="▶ 路线预览";canvas.PreviewPose=null;canvas.Invalidate();}
@@ -150,16 +158,20 @@ namespace RcsMap {
    else{var b=doc.Points[simIndex+1];var seg=SegmentInfo.Calculate(doc.Settings,a,b,simIndex);double progress=seg.Seconds>0?Math.Max(0,Math.Min(1,(simT-a.Dwell)/seg.Seconds)):simT>=a.Dwell?1:0;canvas.PreviewPose=new[]{a.X+(b.X-a.X)*progress,a.Y+(b.Y-a.Y)*progress,(a.Yaw+SegmentInfo.Wrap(b.Yaw-a.Yaw)*progress)*Math.PI/180};if(simT>=a.Dwell+seg.Seconds){simIndex++;simT=0;}}
    status.Text="理想路线动画 · 不执行动作 C 代码，不模拟机构耗时或实车误差";canvas.Invalidate();}
   public void RenderPreview(string path){using(var bmp=new Bitmap(1100,720))using(var g=Graphics.FromImage(bmp)){var c=new MapCanvas{Document=doc,Width=1100,Height=720,Font=Font,Selected=0};c.Fit();c.Draw(g,new Rectangle(0,0,1100,720));bmp.Save(path,System.Drawing.Imaging.ImageFormat.Png);c.Dispose();}}
+  public void RenderEditorImage(string path){renderOnly=true;ShowInTaskbar=false;Opacity=0;Size=new Size(1120,800);Show();Refresh();Application.DoEvents();if(!projectCaption.Parent.Visible||projectCaption.Right>projectCaption.Parent.ClientSize.Width)throw new Exception("工程关联栏布局越界。");using(var bitmap=new Bitmap(Width,Height)){DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height));bitmap.Save(path,System.Drawing.Imaging.ImageFormat.Png);}Close();}
  }
  public class ExportDialog:Form {
-  TextBox path=new TextBox();public string Destination {get{return path.Text.Trim();}}
-  public ExportDialog(){Text="导出独立路径源码";ClientSize=new Size(700,220);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;MinimizeBox=false;StartPosition=FormStartPosition.CenterParent;Font=new Font("Microsoft YaHei UI",10);
-   Controls.Add(new Label{Text="导出新目录，或更新本版生成目录（保留 USER CODE）",AutoSize=true,Location=new Point(20,20)});
-   path.SetBounds(20,56,550,30);path.Text=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),"foxmolika_Route_"+DateTime.Now.ToString("yyyyMMdd_HHmmss"));Controls.Add(path);
-   var browse=new Button{Text="浏览…",Location=new Point(580,54),Size=new Size(100,32)};browse.Click+=(s,e)=>{using(var d=new FolderBrowserDialog{Description="选择空目录",ShowNewFolderButton=true})if(d.ShowDialog(this)==DialogResult.OK)path.Text=d.SelectedPath;};Controls.Add(browse);
-   Controls.Add(new Label{Text="生成 route / nav / actions 三组 .c/.h，共6个文件。\r\n仅更新完整、未改生成区域的本版目录；修改冲突会拒绝，上一版保留备份。",AutoSize=true,Location=new Point(20,100)});
-   var ok=new Button{Text="生成文件",Location=new Point(455,170),Size=new Size(110,32)};ok.Click+=(s,e)=>{if(String.IsNullOrWhiteSpace(path.Text)||!Path.IsPathRooted(path.Text.Trim())){MessageBox.Show(this,"请填写完整的绝对路径。");return;}DialogResult=DialogResult.OK;};Controls.Add(ok);
-   var cancel=new Button{Text="取消",DialogResult=DialogResult.Cancel,Location=new Point(580,170),Size=new Size(100,32)};Controls.Add(cancel);AcceptButton=ok;CancelButton=cancel;
+  TextBox path=new TextBox();CheckBox project=new CheckBox();public string Destination {get{return path.Text.Trim();}}public bool ToProject {get{return project.Checked;}}
+  public ExportDialog(string ioc=null){Text="导出路径源码";ClientSize=new Size(740,280);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;MinimizeBox=false;StartPosition=FormStartPosition.CenterParent;Font=new Font("Microsoft YaHei UI",10);
+   project.SetBounds(20,15,700,28);project.Text="导出到关联工程，并自动加入路径3C3H及包含目录";project.Enabled=!String.IsNullOrWhiteSpace(ioc);project.Checked=project.Enabled;Controls.Add(project);
+   var target=new TextBox{ReadOnly=true,Left=20,Top=48,Width=700,Text=ioc??"未关联工程。可取消本窗口，点击编辑器上方“关联工程…”。"};Controls.Add(target);
+   Controls.Add(new Label{Text="源码输出目录",AutoSize=true,Location=new Point(20,87)});
+   path.SetBounds(20,112,570,30);string standalone=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),"foxmolika_Route_"+DateTime.Now.ToString("yyyyMMdd_HHmmss"));Controls.Add(path);
+   var browse=new Button{Text="浏览…",Location=new Point(605,110),Size=new Size(110,32)};browse.Click+=(s,e)=>{using(var d=new FolderBrowserDialog{Description="选择空目录，或已有的本版六文件目录",ShowNewFolderButton=true})if(d.ShowDialog(this)==DialogResult.OK)path.Text=d.SelectedPath;};Controls.Add(browse);
+   Action mode=()=>{if(project.Checked){standalone=path.Text.Length==0?standalone:path.Text;path.Text=ProjectExport.Destination(ioc);}else path.Text=standalone;path.ReadOnly=project.Checked;browse.Enabled=!project.Checked;};project.CheckedChanged+=(s,e)=>mode();mode();
+   Controls.Add(new Label{Text="重导出保留USER CODE并备份上一版；冲突拒绝覆盖。\r\n工程模式自动登记文件；独立导出模式仍可选择其他目录。",AutoSize=true,Location=new Point(20,158)});
+   var ok=new Button{Text="生成文件",Location=new Point(475,228),Size=new Size(115,32)};ok.Click+=(s,e)=>{if(String.IsNullOrWhiteSpace(path.Text)||!Path.IsPathRooted(path.Text.Trim())){MessageBox.Show(this,"请填写完整的绝对路径。");return;}DialogResult=DialogResult.OK;};Controls.Add(ok);
+   var cancel=new Button{Text="取消",DialogResult=DialogResult.Cancel,Location=new Point(605,228),Size=new Size(110,32)};Controls.Add(cancel);AcceptButton=ok;CancelButton=cancel;
   }
  }
 }

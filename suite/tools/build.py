@@ -31,14 +31,12 @@ def main():
  run([cube/'jre/bin/javac.exe','--release','8','-d',build/'java',PROJECT/'tools/WorkspacePreferencesFactory.java'])
  csc=Path(os.environ.get('WINDIR','C:/Windows'))/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
  keil=build/'foxmolika_KeilHeaders.exe'
- run([csc,'/nologo','/target:exe','/platform:anycpu','/optimize+','/reference:System.Xml.Linq.dll','/reference:System.Xml.dll','/reference:System.Core.dll','/out:'+str(keil),PROJECT/'keil_headers/KeilHeaders.cs'])
+ run([csc,'/nologo','/target:exe','/platform:anycpu','/optimize+','/reference:System.Xml.Linq.dll','/reference:System.Xml.dll','/reference:System.Core.dll','/out:'+str(keil),PROJECT/'keil_headers/KeilHeaders.cs',PROJECT/'keil_headers/ProjectBinding.cs'])
  post=build/'foxmolika_PostGenerate.exe'
- post_source_hash=sha((PROJECT/'keil_headers/KeilHeaders.cs').read_bytes());post_stamp=build/'post-source.sha256'
- if not post.is_file() or not post_stamp.is_file() or post_stamp.read_text()!=post_source_hash:
-  run([csc,'/nologo','/target:exe','/define:RCS_POSTGEN','/platform:anycpu','/optimize+','/reference:System.Xml.Linq.dll','/reference:System.Xml.dll','/reference:System.Core.dll','/out:'+str(post),PROJECT/'keil_headers/KeilHeaders.cs'])
-  post_stamp.write_text(post_source_hash)
+ from build_integration import post_helper
+ shutil.copyfile(post_helper(),post)
  project_setup=build/'foxmolika_ProjectSetup.exe'
- run([csc,'/nologo','/target:winexe','/platform:anycpu','/optimize+','/reference:System.Windows.Forms.dll','/reference:System.Core.dll','/resource:'+str(post)+',payload/foxmolika_PostGenerate.exe','/out:'+str(project_setup),PROJECT/'keil_headers/ProjectSetup.cs'])
+ run([csc,'/nologo','/target:winexe','/platform:anycpu','/optimize+','/reference:System.Xml.Linq.dll','/reference:System.Xml.dll','/reference:System.Windows.Forms.dll','/reference:System.Core.dll','/resource:'+str(post)+',payload/foxmolika_PostGenerate.exe','/out:'+str(project_setup),PROJECT/'keil_headers/ProjectSetup.cs',PROJECT/'keil_headers/ProjectBinding.cs'])
  payload={'foxmolika_ProjectSetup.exe':project_setup,'foxmolika_MapEditor.exe':editor,'RCS.foxmolika.'+VERSION+'.pack':pack,'foxmolika_KeilHeaders.exe':keil,'使用说明.html':ROOT/'docs/使用说明.html',
   '地图编辑器说明.html':PROJECT/'map_editor/dist/使用说明.html','底盘接入说明.md':PROJECT/'docs/接入说明.md','LICENSE.txt':PROJECT/'LICENSE.txt',
   'examples/示例路线.rcsmap.json':PROJECT/'map_editor/examples/示例路线.rcsmap.json','examples/robot_route_task.c':PROJECT/'map_editor/examples/robot_route_task.c','examples/robot_route_task.h':PROJECT/'map_editor/examples/robot_route_task.h',

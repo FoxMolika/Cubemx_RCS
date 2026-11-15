@@ -81,6 +81,7 @@ namespace RcsMap {
   [DataMember] public List<Waypoint> Points {get;set;}
   [DataMember] public List<Obstacle> Obstacles {get;set;}
   [DataMember] public string ActionIncludes {get;set;}
+  [DataMember(EmitDefaultValue=false)] public string ProjectIoc {get;set;}
   public MapDocument(){Version=2;Settings=new RobotSettings();Points=new List<Waypoint>();Obstacles=new List<Obstacle>();ActionIncludes="/* 预留用户驱动头文件，例如 #include \"gripper.h\" */";}
   [OnDeserializing] void Restore(StreamingContext c){ActionIncludes="";}
   public static MapDocument Demo() {
@@ -95,6 +96,7 @@ namespace RcsMap {
     if(d.Version==1)d.Version=2;d.StructuralCheck();return d;}}
   public MapDocument Clone(){return Parse(Json());}
   public void StructuralCheck(){if(Version!=2||Settings==null||Points==null||Obstacles==null||Points.Count>512||Obstacles.Count>256||Points.Any(p=>p==null)||Obstacles.Any(o=>o==null))throw new Exception("地图格式/版本不正确，或元素过多。");
+   if(ProjectIoc!=null&&(ProjectIoc.Length>2048||ProjectIoc.IndexOf('\0')>=0))throw new Exception("关联工程路径不正确或过长。");
    int total=(ActionIncludes??"").Length;foreach(var p in Points)total+=(p.ActionStart??"").Length+(p.ActionCondition??"").Length+(p.ActionDone??"").Length+(p.ActionCancel??"").Length;
    if(total>256*1024)throw new Exception("动作代码总长度不能超过256K字符。");}
   public static bool Finite(double v){return !Double.IsNaN(v)&&!Double.IsInfinity(v);}

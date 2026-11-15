@@ -46,7 +46,7 @@ namespace RcsMap {
     points.Append("    { ").Append(String.Join(", ",new[]{F(p.X/1000),F(p.Y/1000),F(p.Yaw*Math.PI/180),F(p.Speed/1000),F(p.Dwell)})).Append(" },\n");
     specs.Append("    { ").Append(p.ActionEnabled?"1u":"0u").Append(", ").Append(F(p.ActionTimeout)).Append(" },\n");
     string expr=String.IsNullOrWhiteSpace(p.ActionCondition)?"1":p.ActionCondition;
-    // Keep legacy USER CODE defaults byte-equivalent, so 0.2.2 hand edits survive this style upgrade.
+    // Keep legacy USER CODE defaults byte-equivalent, so 0.3.0 hand edits survive this style upgrade.
     functions.Append(Render("waypoint_action.c.tpl",new Dictionary<string,string>{
      {"INDEX",i.ToString(CultureInfo.InvariantCulture)}, {"ID",id}, {"NAME",Name(p.ActionName)},
      {"CANCEL_REGION",UserRegions.Block(key+"_CANCEL",p.ActionCancel)},

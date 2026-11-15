@@ -10,9 +10,11 @@ using System.Reflection;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
+#if !RCS_MAP_EDITOR
 [assembly: AssemblyTitle("foxmolika Keil Header Fix")]
-[assembly: AssemblyVersion("0.3.6.0")]
-[assembly: AssemblyFileVersion("0.3.6.0")]
+[assembly: AssemblyVersion("0.3.7.0")]
+[assembly: AssemblyFileVersion("0.3.7.0")]
+#endif
 static class KeilHeaders {
  static readonly string[] Module={"rcs_chassis.h","rcs_control.h","rcs_hal.h"};
  static string Norm(string p){return p.Replace('\\','/').Trim();}
@@ -31,7 +33,7 @@ static class KeilHeaders {
   return found.Distinct(StringComparer.OrdinalIgnoreCase).ToList();}
  internal static int Fix(string project,Action<string> say){
   string dir=Path.GetDirectoryName(project);
-  var doc=XDocument.Load(project,LoadOptions.None);int added=0;bool anyGroup=false;
+  ProjectBinding.NoLink(project);byte[] original=File.ReadAllBytes(project);var doc=ProjectBinding.ReadXml(project);int added=0;bool anyGroup=false;
   foreach(var target in doc.Descendants("Target")){
    var include=target.Descendants("Cads").Elements("VariousControls").Elements("IncludePath").Select(e=>(string)e).FirstOrDefault()??"";
    foreach(var group in target.Descendants("Group")){
@@ -53,14 +55,15 @@ static class KeilHeaders {
    }
   }
   if(!anyGroup)throw new Exception("工程中没有包含 rcs_chassis.c 的分组。请先在 CubeMX 中启用 foxmolika 底盘组件并 Generate Code："+project);
+  var binding=ProjectBinding.ForKeil(project);if(binding!=null)added+=binding.UpdateRoute(doc,project,false);
   if(added==0){say("已是最新，无需修改："+project);return 0;}
-  string backup=project+".rcs-backup";if(!File.Exists(backup))File.Copy(project,backup);
-  string temp=project+".rcs-tmp";
+  string backup=project+".rcs-backup";ProjectBinding.NoLink(backup);if(!File.Exists(backup))File.Copy(project,backup);
+  string temp=project+".foxmolika-"+Guid.NewGuid().ToString("N")+".tmp";
   var settings=new XmlWriterSettings{Encoding=new UTF8Encoding(false),Indent=true,IndentChars="  "};
-  using(var w=XmlWriter.Create(temp,settings))doc.Save(w);
-  File.Copy(temp,project,true);File.Delete(temp);
-  say("已加入 "+added+" 个头文件到 Keil 工程："+project+"（Keil 已打开时请选择重新加载工程）");
+  try{using(var w=XmlWriter.Create(temp,settings))doc.Save(w);if(!File.ReadAllBytes(project).SequenceEqual(original))throw new IOException("Keil工程刚被其他程序修改，保留当前内容，请重新加载后再试。");File.Replace(temp,project,null);}finally{if(File.Exists(temp))File.Delete(temp);}
+  say("已更新 "+added+" 条文件登记/包含路径："+project+"（Keil 已打开时请选择重新加载工程）");
   return 0;}
+#if !RCS_MAP_EDITOR
  static int Main(string[] args){
   Console.OutputEncoding=new UTF8Encoding(false);
   string postLog=null;
@@ -79,4 +82,5 @@ static class KeilHeaders {
    return 0;
   }catch(Exception e){if(postLog!=null)File.WriteAllText(postLog,"FAIL "+DateTime.UtcNow.ToString("o")+"\r\n"+e.Message,new UTF8Encoding(false));Console.Error.WriteLine("失败："+e.Message);return 2;}
  }
+#endif
 }
