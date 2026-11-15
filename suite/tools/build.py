@@ -51,6 +51,8 @@ def main():
  args=[csc,'/nologo','/target:winexe','/platform:anycpu','/optimize+','/win32manifest:'+str(ROOT/'setup.manifest'),'/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.Xml.Linq.dll','/reference:System.Core.dll','/out:'+str(setup)]
  args+=['/resource:'+str(p)+',payload/'+name for name,p in payload.items()];args+=sorted((ROOT/'src').glob('*.cs'))
  log=run(args);(build/'compile.log').write_text(log or 'Build succeeded without warnings.\n',encoding='utf-8')
+ from windows_integrity import medium
+ medium(setup)
  shutil.copyfile(ROOT/'docs/使用说明.html',dist/'使用说明.html')
  (dist/'SHA256SUMS.txt').write_text(sha(setup.read_bytes())+'  '+setup.name+'\n',encoding='utf-8')
  print(setup);print('bytes:',setup.stat().st_size)

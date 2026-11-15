@@ -10,7 +10,7 @@ def run(exe,args):
 def main():
  sys.stdout.reconfigure(encoding='utf-8')
  path=ROOT/'build/acceptance.json';r=json.loads(path.read_text(encoding='utf-8'));integration=json.loads((PROJECT/'build/project_integration_validation.json').read_text(encoding='utf-8'))
- setup=ROOT/'dist/foxmolika_CubeMX_Setup_0.5.1_win-x64.exe';digest=hashlib.sha256(setup.read_bytes()).hexdigest()
+ setup=ROOT/'dist/foxmolika_CubeMX_Setup_0.5.2_win-x64.exe';digest=hashlib.sha256(setup.read_bytes()).hexdigest()
  assert integration['installer_sha256']==digest and integration['native_generation_twice']=='pass'
  cube=Path(r['cube_auto_discovery'][0]);area=Path(r['area']);home=area/'custom home';custom=area/'custom repository';ini=home/'.stm32cubemx/plugins/updater/updater.ini';ini.parent.mkdir(parents=True)
  ini.write_text('[Path]\nRepositoryPath='+custom.as_posix()+'/\n',encoding='utf-8');other=area/'custom install';assert not custom.exists()

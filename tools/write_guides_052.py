@@ -8,17 +8,22 @@ def page(title,body):return '<!doctype html><html lang="zh-CN"><meta charset="ut
 def main():
  body='''<p>2026-11-15 · STM32F407 HAL / CubeMX / Keil MDK · 独立 C/H 生成</p>
 <section><h2>1. 安装与打开编辑器</h2><ol>
-<li>保存并关闭 CubeMX。运行单文件 <code>foxmolika_CubeMX_Setup_0.5.1_win-x64.exe</code>，安装器自动寻找 CubeMX、导入内嵌软件包并核验注册，不需要手动导入 .pack，也不需要安装 Python。</li>
+<li>保存并关闭 CubeMX。运行单文件 <code>foxmolika_CubeMX_Setup_0.5.2_win-x64.exe</code>，安装器自动寻找 CubeMX、导入内嵌软件包并核验注册，不需要手动导入 .pack，也不需要安装 Python。</li>
 <li>目标电脑需要已有完整 STM32CubeMX；本次本机验收版本为 6.18.1。其他 CubeMX 版本没有自动视为已验收。</li>
 <li>安装后点击安装器的<strong>启动地图编辑器</strong>。以后可运行安装目录的 <code>foxmolika_MapEditor.exe</code>。</li>
-<li>默认安装目录为 <code>%LOCALAPPDATA%\\foxmolika_CubeMX_Suite_0.5.1</code>。安装器允许选择其他目录。编辑器是与 CubeMX 配套的独立窗口，不能在 CubeMX 画布里寻找地图入口。</li></ol>
+<li>默认安装目录为 <code>%LOCALAPPDATA%\\foxmolika_CubeMX_Suite_0.5.2</code>。安装器允许选择其他目录。编辑器是与 CubeMX 配套的独立窗口，不能在 CubeMX 画布里寻找地图入口。</li></ol>
 <p class="note">0.3.7、旧安装目录与旧工程不会被本次发布目录覆盖。建议复制工程后再迁移，保留能够工作的固件。</p></section>
+<section><h2>1.1 普通用户安装与“访问被拒绝”</h2>
+<p>0.5.2修复了此前发布EXE继承Low完整性标签的问题。普通用户应以<strong>Medium、非管理员</strong>运行；当前账号自己的<code>AppData/Local</code>通常可写。Low级别程序会被Windows禁止写入普通用户数据目录，即使文件夹DACL允许该账号写入。</p>
+<p>正常双击本版EXE即可。若外部目录重新给文件加了Low标签，安装器会明确提示；也提供<code>foxmolika_CubeMX_Installer_0.5.2.zip</code>，可在正常用户目录解压后运行其中的单个EXE。压缩包是兼容的分发方式，不需要手动导入.pack。</p>
+<p>安装前实际检查工具目录、暂存父目录、所需CubeMX仓库与注册路径的写权限；导入工作目录和临时文件在工具自己的目录，不再写CubeMX程序目录。真正不可写时会显示完整路径，可以用“浏览…”更换工具目录；若是CubeMX仓库不可写，则需在CubeMX改为当前用户可写仓库，或在确有权限需求时处理该仓库权限。安装器不自动修改ACL或改动仓库位置。</p>
+<p>错误报告默认保存到当前用户<code>%LOCALAPPDATA%/foxmolika/InstallerReports</code>，失败时依次尝试临时目录及安装器旁，并在弹窗中给出实际保存路径。报告记录异常、路径和实际Windows令牌状态，不上传。不同权限实例冲突会提示先关闭已有安装器。</p></section>
 <section><h2>2. CubeMX 选择组件，并主动关联工程</h2><ol>
-<li>打开 F407 的 .ioc，Select Components 中选择 <code>RCS.foxmolika 0.5.1</code>，在 foxmolika 页启用 Robotics/foxmolika 模式并配置底盘参数。</li>
+<li>打开 F407 的 .ioc，Select Components 中选择 <code>RCS.foxmolika 0.5.2</code>，在 foxmolika 页启用 Robotics/foxmolika 模式并配置底盘参数。</li>
 <li>保存并关闭 .ioc。点击安装器或地图编辑器顶部绿色栏的<strong>关联工程…</strong>，主动选择该 .ioc。仅安装软件不会自动关联任何工程。</li>
 <li>重新打开 .ioc，Generate Code，然后在 Keil 重载工程。生成后工具自动补齐底盘头文件。</li>
 <li>CAN 引脚、时钟、位时序、滤波、接收中断、启动和任务调用仍须按硬件完成。关联仅保证 HAL 依赖及文件登记，不等于已经接好电机。</li></ol>
-<p>关联记录在工程内，工具目录为 <code>foxmolika_Tools_051</code>。官方 0.3.6/0.3.7/0.4.0/0.4.1/0.5.0 生成后工具经哈希检查后可升级；旧工具保留。未知自定义生成后命令会保留并提示合并。</p></section>
+<p>关联记录在工程内，工具目录为 <code>foxmolika_Tools_052</code>。官方 0.3.6/0.3.7/0.4.0/0.4.1/0.5.0 生成后工具经哈希检查后可升级；旧工具保留。未知自定义生成后命令会保留并提示合并。</p></section>
 <section><h2>3. 航点流程：平移、动作、纠偏分开</h2>
 <pre>平移到点 → 停稳 → 到达后动作 → 独立纠偏 → 起步前动作 → 离开验收 → 下一点</pre>
 <p>选择一个点，点<strong>航点流程…</strong>。窗口同时显示<strong>① 到达航点后</strong>与<strong>③ 离开航点前</strong>两个独立动作框，中间是<strong>② 位置纠错</strong>。两个框各有添加、编辑、上移、下移和删除按钮，不再通过下拉框切换。主窗口表格也分成“到达后动作”和“离开前动作”两列，双击任一列即可打开流程。</p>
@@ -52,7 +57,7 @@ def main():
 <p>打包失败时显示原始日志的实际路径；落盘全部失败则明确提示。强制结束或断电不能保证当场报告，下次启动可补收未正常结束的会话记录。自动快照之后的最后修改可能丢失。</p></section>
 <section><h2>7. 立体地形：平台、坡道、桥上桥下</h2>
 <p>主窗口上方新增米色地形栏。点击<strong>立体示例</strong>可查看“地面→直坡道→桥面”的示例；点击<strong>立体地形…</strong>编辑当前地图。首次进入并应用后保存为v4格式；旧v1/v2迁移与v3平地地图继续支持，原文件请另存保留。v4不能交给旧编辑器使用。</p>
-<h3>0.5.1：直接拖动平台和坡道</h3>
+<h3>0.5.2：直接拖动平台和坡道</h3>
 <ol><li>在地形窗口切到<strong>俯视图</strong>，添加平台/坡道，或从左侧列表选中已有表面。</li>
 <li>保持<strong>拖动表面</strong>勾选，在色块空白处按住鼠标左键拖动。橙色边框表示选中，画布与左侧属性实时显示X/Y。点到蓝色航点时只选择该点；请从色块空白处拖。</li>
 <li>默认<strong>网格吸附</strong>；按住<strong>Shift</strong>临时取消吸附，也可取消勾选。整个移动包络受场地边界限制，边界优先于吸附，不能把元素拖出场地。</li>
@@ -67,7 +72,7 @@ def main():
 <li>使用<strong>俯视图 / 路线侧视图 / 三维预览</strong>检查路线，点击节点联动选择。侧视横轴为累计水平距离，标注分段空间路程与表面坡度；纵轴独立缩放。三维视图拖动旋转视角，滚轮缩放。预览显示上表面，净空计算包含配置的向下厚度。</li>
 <li>回到主窗口，选择<strong>当前编辑表面</strong>后再添加、拖动位点或画障碍；仅当前表面参与鼠标选取，防止点到桥上/桥下的另一层。从表格选点会切换到其所属表面。</li></ol>
 <p>检查包含表面越界、失效引用、未声明连接、高度断层、路线空隙、车体包络、坡度上限、表面限速和桥下净空。净空取决于车体总高度、余量和桥面厚度；请在“车体/能力参数”中填写真实包络与限制。默认参数仅为示例，不代表车辆已具备爬坡能力。坡道点需关闭普通纠错，不放停车/机构动作；这些动作应位于平地端点。</p>
-<p class="note"><strong>0.5.1扩展立体地图操作，不含坡道运动控制。</strong>立体路线可以保存、编辑和查看几何预览；涉及坡道或高台的路线会明确拒绝导出C/H与原有平地动态预览，不会悄悄忽略Z。全程地面路线在通过净空等检查后，继续使用原有平地固件。Z是规划值，没有实测高度闭环、自动寻路、IMU融合或真实车身姿态仿真。表面仅支持轴对齐矩形；台阶、升降平台和任意曲面待后续模块。</p>
+<p class="note"><strong>0.5.2扩展立体地图操作，不含坡道运动控制。</strong>立体路线可以保存、编辑和查看几何预览；涉及坡道或高台的路线会明确拒绝导出C/H与原有平地动态预览，不会悄悄忽略Z。全程地面路线在通过净空等检查后，继续使用原有平地固件。Z是规划值，没有实测高度闭环、自动寻路、IMU融合或真实车身姿态仿真。表面仅支持轴对齐矩形；台阶、升降平台和任意曲面待后续模块。</p>
 <p>地图窗口内编辑的是副本，点“应用地形”才提交到主窗口；取消不改变原地图。应用后仍须保存地图，可在主窗口撤销/重做。主窗口可保存未连完的立体草稿；重新打开时提示问题并允许继续修正，非有限数值、零尺寸等不可安全绘制的数据仍会拒绝。打开草稿不代表通过导出检查。</p></section>
 <section><h2>8. 接入与验证边界</h2>
 <p>任务侧使用 <code>rcs_route_init/reset/update/start</code> 或示例 <code>robot_route_task.c/.h</code>，持续调用底盘控制周期。必须提供真实时间与全部在用轮的新鲜编码器增量；生成器不自动配置编码器硬件、解绕原始角度或替代 CAN 板级接入。</p>
@@ -77,12 +82,12 @@ def main():
   image=R/'build/ui'/name
   if not image.exists():image=R/'map_editor/docs'/name
   if image.exists():body+='<section><h2>'+label+'</h2><img alt="'+label+'" src="data:image/png;base64,'+base64.b64encode(image.read_bytes()).decode()+'"></section>'
- full=page('foxmolika 0.5.1 安装与使用教程',body)
+ full=page('foxmolika 0.5.2 安装与使用教程',body)
  for name in ['docs/使用说明.html','suite/docs/使用说明.html']:(R/name).write_text(full,encoding='utf-8')
  image=R/'map_editor/docs/editor_ui.png'
  preview='<p>界面以已安装版本为准。</p>'
  if image.exists():preview='<img alt="foxmolika0.4地图编辑器实际界面" src="data:image/png;base64,'+base64.b64encode(image.read_bytes()).decode()+'">'
- editor=page('foxmolika 0.5.1 地图、动作与量角器',preview+body)
+ editor=page('foxmolika 0.5.2 地图、动作与量角器',preview+body)
  (R/'map_editor/docs/使用说明.html').write_text(editor,encoding='utf-8')
  (R/'docs/地图编辑器说明.html').write_text(editor,encoding='utf-8')
  (R/'suite/docs/地图编辑器说明.html').write_text(editor,encoding='utf-8')
@@ -92,5 +97,5 @@ def main():
  # whose targets are intentionally not separate files in its small installation.
  standalone=editor.replace('<p><a href="地图编辑器说明.html">地图编辑器说明</a> · <a href="底盘接入说明.md">底盘接入接口</a></p>','')
  (R/'map_editor/docs/使用说明.html').write_text(standalone,encoding='utf-8')
- print('Wrote synchronized 0.5.1 Chinese tutorials')
+ print('Wrote synchronized 0.5.2 Chinese tutorials')
 if __name__=='__main__':main()

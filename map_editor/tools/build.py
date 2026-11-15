@@ -25,15 +25,18 @@ def main():
     args+=sorted((ROOT/'src').glob('*.cs'))
     args+=[ROOT.parent/'keil_headers'/name for name in ['ProjectSetup.cs','KeilHeaders.cs','ProjectBinding.cs']]
     print(run(args))
+    from windows_integrity import medium
+    medium(exe)
     print(exe)
     # Build the standalone managed installer; no Python or runtime downloads.
     run([exe,'--demo',ROOT/'examples/示例路线.rcsmap.json'])
     run([exe,'--terrain-demo',ROOT/'examples/立体地图示例.rcsmap.json'])
     payload={"foxmolika_MapEditor.exe":exe,"使用说明.html":dist/'使用说明.html',"LICENSE.txt":ROOT.parent/'LICENSE.txt',"examples/示例路线.rcsmap.json":ROOT/'examples/示例路线.rcsmap.json',"examples/立体地图示例.rcsmap.json":ROOT/'examples/立体地图示例.rcsmap.json',
       "examples/robot_route_task.c":ROOT/'examples/robot_route_task.c',"examples/robot_route_task.h":ROOT/'examples/robot_route_task.h',"sdk/rcs_chassis.c":ROOT.parent/'firmware/rcs_chassis.c',"sdk/rcs_chassis.h":ROOT.parent/'firmware/rcs_chassis.h'}
-    setup=dist/'foxmolika_MapEditor_Setup_0.5.1_win-x64.exe'
+    setup=dist/'foxmolika_MapEditor_Setup_0.5.2_win-x64.exe'
     args=[CSC,'/nologo','/target:winexe','/platform:anycpu','/optimize+','/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.Core.dll','/reference:System.IO.Compression.dll','/reference:System.IO.Compression.FileSystem.dll','/reference:System.Xml.Linq.dll','/out:'+str(setup)]
     args+=['/resource:'+str(p)+',payload/'+n for n,p in payload.items()];args+=[ROOT/'installer.cs'];print(run(args));print(setup)
+    medium(setup)
     shutil.copyfile(ROOT/'examples/示例路线.rcsmap.json',dist/'示例路线.rcsmap.json')
     (dist/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in [exe,setup,dist/'使用说明.html',dist/'示例路线.rcsmap.json']),encoding='utf-8')
 if __name__=='__main__':main()

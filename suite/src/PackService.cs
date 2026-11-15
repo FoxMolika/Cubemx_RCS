@@ -7,7 +7,7 @@ using System.Text;
 using System.Xml.Linq;
 namespace RcsSuite {
  static class PackService {
-  internal const string Version="0.5.1";
+  internal const string Version="0.5.2";
   internal static readonly Encoding Utf8=new UTF8Encoding(false);
   internal static string Q(string s){if(s.IndexOf('"')>=0||s.IndexOf('\n')>=0||s.IndexOf('\r')>=0)throw new Exception("路径含不支持的字符。");return "\""+s+"\"";}
   internal static string Repo(string home){string ini=Path.Combine(home,@".stm32cubemx\plugins\updater\updater.ini");if(File.Exists(ini))foreach(string raw in File.ReadAllLines(ini)){
@@ -48,21 +48,23 @@ namespace RcsSuite {
    // Skip the network update pass for this process: on a fresh profile it holds
    // the updater lock while swmgr starts, so 'swmgr install' answers
    // "Updater is busy"/KO. Only the local, hash-verified MIT package is imported.
-   string args="-Dfile.encoding=UTF-8 -DMX_UPDATER_SKIP_UPDATE=true -Duser.home="+Q(home)+" ";
-   if(isolated){Directory.CreateDirectory(Path.Combine(home,"tmp"));args+="-Djava.io.tmpdir="+Q(Path.Combine(home,"tmp"))+" -Djava.util.prefs.PreferencesFactory=WorkspacePreferencesFactory ";}
+   string runtime=Payload.In(work,".foxmolika-runtime-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(runtime);string temp=Path.Combine(runtime,"tmp");Directory.CreateDirectory(temp);
+   string args="-Dfile.encoding=UTF-8 -DMX_UPDATER_SKIP_UPDATE=true -Duser.home="+Q(home)+" -Djava.io.tmpdir="+Q(temp)+" ";
+   if(isolated)args+="-Djava.util.prefs.PreferencesFactory=WorkspacePreferencesFactory ";
    args+="-cp "+Q(Path.Combine(work,"validation")+";"+exe)+" com.st.microxplorer.maingui.STM32CubeMX -q "+Q(script);
    File.WriteAllText(Path.Combine(work,tag+"-command.txt"),java+"\n"+args,Utf8);
-   var info=new ProcessStartInfo(java,args){WorkingDirectory=cube,UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=Utf8,StandardErrorEncoding=Utf8};
+   var info=new ProcessStartInfo(java,args){WorkingDirectory=runtime,UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=Utf8,StandardErrorEncoding=Utf8};
+   info.EnvironmentVariables["TEMP"]=temp;info.EnvironmentVariables["TMP"]=temp;
    // CubeMX enables the CLI 'accept' mode only with this process-local switch.
    // The command imports ONLY the embedded, hash-verified RCS MIT package.
    // Verified with CubeMX 6.18.1; other versions may need the manual import path.
    info.EnvironmentVariables["MX_LIC_ACCEPT"]="true";object gate=new object();
-   using(var logWriter=new StreamWriter(log,false,Utf8))using(var p=new Process{StartInfo=info}){
+   try{using(var logWriter=new StreamWriter(log,false,Utf8))using(var p=new Process{StartInfo=info}){
     DataReceivedEventHandler save=(s,e)=>{if(e.Data!=null)lock(gate){logWriter.WriteLine(e.Data);logWriter.Flush();}};p.OutputDataReceived+=save;p.ErrorDataReceived+=save;
     report("正在调用 CubeMX 自动"+(tag=="remove-pack"?"移除":"导入")+"内嵌扩展包……");p.Start();p.BeginOutputReadLine();p.BeginErrorReadLine();
     if(!p.WaitForExit(180000)){p.Kill();p.WaitForExit();throw new Exception("CubeMX 处理超时，未确认成功。请查看 "+log);}
     p.WaitForExit();if(p.ExitCode!=0)throw new Exception("CubeMX 返回 "+p.ExitCode+"，请查看 "+log);
-   }
+   }}finally{try{PackTransaction.Inventory(runtime);Directory.Delete(runtime,true);}catch(IOException){report("运行临时文件保留："+runtime);}catch(UnauthorizedAccessException){report("运行临时文件保留："+runtime);}}
   }
   // MX_UPDATER_SKIP_UPDATE normally lets the first import succeed. Keep a
   // bounded retry for slow machines where the local updater plugin is still
