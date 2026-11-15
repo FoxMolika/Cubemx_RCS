@@ -40,14 +40,18 @@ namespace RcsMap {
  public sealed class TerrainLeg {
   public double Horizontal,Length,Slope,Z0,Z1,Handoff;
   public TerrainSurface From,To;
+  public List<TerrainSpan> Spans;
+  public double SpeedLimit {get{return Spans.Min(s=>s.Surface.SpeedLimit);}}
+  public double MaxSlope {get{return Spans.Max(s=>Math.Abs(s.Angle));}}
  }
- public static class TerrainGeometry {
+ public static partial class TerrainGeometry {
   public const string Ground="ground";
   public static string Key(string id){return String.IsNullOrEmpty(id)?Ground:id;}
   public static TerrainSurface Surface(MapDocument d,string id){if(Key(id)==Ground)return new TerrainSurface{Id=Ground,Name="地面",X=0,Y=0,Width=d.Settings.Width,Depth=d.Settings.Height,SpeedLimit=d.Settings.MaxSpeed};return d.Terrain==null?null:d.Terrain.Surfaces.FirstOrDefault(s=>s.Id==id);}
   public static double Height(MapDocument d,Waypoint p){var s=Surface(d,p.SurfaceId);return s==null?Double.NaN:s.HeightAt(p.X,p.Y);}
-  public static bool HasRelief(MapDocument d){return d.Terrain!=null&&d.Points.Any(p=>{var s=Surface(d,p.SurfaceId);return s==null||s.Kind!=SurfaceKind.水平平台||Math.Abs(s.Z0)>1e-6;});}
-  public static void RequireFlat(MapDocument d){if(HasRelief(d))throw new InvalidOperationException("此路线包含高台/坡道：0.6.0仅支持立体地图编辑、几何预览与检查，尚无实车坡道控制。不能导出平地C/H或运行平地动态预览。请保留立体地图，使用独立平地路线接入现有固件。");}
+  public static bool HasRelief(MapDocument d){if(d.Terrain==null)return false;if(d.Points.Any(p=>{var s=Surface(d,p.SurfaceId);return s==null||s.Kind!=SurfaceKind.水平平台||Math.Abs(s.Z0)>1e-6;}))return true;
+   for(int i=1;i<d.Points.Count;i++){TerrainLeg leg;string error;if(TryLeg(d,d.Points[i-1],d.Points[i],out leg,out error)&&leg.Spans.Any(s=>s.Surface.Kind!=SurfaceKind.水平平台||Math.Abs(s.Z0)>1e-6||Math.Abs(s.Z1)>1e-6))return true;}return false;}
+  public static void RequireFlat(MapDocument d){if(HasRelief(d))throw new InvalidOperationException("此路线包含高台/坡道：0.6.1仅支持立体地图编辑、几何预览与检查，尚无实车坡道控制。不能导出平地C/H或运行平地动态预览。请保留立体地图，使用独立平地路线接入现有固件。");}
   // A draft may have disconnected routes or unfinished assignments. It still
   // needs bounded finite drawing data and valid base settings before opening.
   public static bool CanOpenDraft(MapDocument d){if(d.Terrain==null)return false;try{d.StructuralCheck();var settings=d.Clone();settings.Version=3;settings.Terrain=null;settings.Points.Clear();settings.Obstacles.Clear();if(settings.Validate(false).Count>0)return false;
@@ -71,7 +75,7 @@ namespace RcsMap {
    for(int i=0;i<d.Points.Count;i++){var p=d.Points[i];var s=Surface(d,p.SurfaceId);if(!s.Contains(p.X,p.Y))e.Add("P"+i+"不在所属表面内。");
     if(s.Kind!=SurfaceKind.水平平台&&(p.CorrectionMode!=0||p.ArrivalActions.Any(a=>a.Enabled)||p.DepartureActions.Any(a=>a.Enabled)))e.Add("P"+i+"位于坡道：请将停车动作和位置纠错移到平地端点。");
     if(i==0||i==d.Points.Count-1){if(s.Kind!=SurfaceKind.水平平台)e.Add("起点和终点必须在水平平台。");else if(!s.Contains(p.X,p.Y,r))e.Add("端点车体包络超出所属平台。");}
-    if(i>0){TerrainLeg leg;string error;if(!TryLeg(d,d.Points[i-1],p,out leg,out error))e.Add("P"+(i-1)+"→P"+i+"："+error);else{if(p.Speed>Math.Min(leg.From.SpeedLimit,leg.To.SpeedLimit))e.Add("P"+i+"段速度超过所属表面限速。");if(!LegFits(d,d.Points[i-1],p,leg,r))e.Add("P"+(i-1)+"→P"+i+"：车体包络超出通行表面/坡道侧边。");}}
+    if(i>0){TerrainLeg leg;string error;if(!TryLeg(d,d.Points[i-1],p,out leg,out error))e.Add("P"+(i-1)+"→P"+i+"："+error);else{if(p.Speed>leg.SpeedLimit)e.Add("P"+i+"段速度超过所属表面限速。");if(!LegFits(d,d.Points[i-1],p,leg,r))e.Add("P"+(i-1)+"→P"+i+"：车体包络超出通行表面/坡道侧边。");}}
    }
    e.AddRange(ClearanceErrors(d));return e;
   }
@@ -86,45 +90,6 @@ namespace RcsMap {
   }
   static bool Clip(double p,double q,ref double lo,ref double hi){if(Math.Abs(p)<1e-12)return q>=-1e-6;double t=q/p;if(p<0){if(t>hi)return false;lo=Math.Max(lo,t);}else{if(t<lo)return false;hi=Math.Min(hi,t);}return true;}
   static bool Interval(TerrainSurface s,double ax,double ay,double bx,double by,out double lo,out double hi){lo=0;hi=1;return Clip(ax-bx,ax-s.X,ref lo,ref hi)&&Clip(bx-ax,s.X+s.Width-ax,ref lo,ref hi)&&Clip(ay-by,ay-s.Y,ref lo,ref hi)&&Clip(by-ay,s.Y+s.Depth-ay,ref lo,ref hi);}
-  public static bool TryLeg(MapDocument d,Waypoint a,Waypoint b,out TerrainLeg leg,out string error){leg=null;error="";var sa=Surface(d,a.SurfaceId);var sb=Surface(d,b.SurfaceId);if(sa==null||sb==null){error="表面已删除";return false;}if(!sa.Contains(a.X,a.Y)||!sb.Contains(b.X,b.Y)){error="端点不在所属表面";return false;}
-   double dx=b.X-a.X,dy=b.Y-a.Y,h=Math.Sqrt(dx*dx+dy*dy),z0=sa.HeightAt(a.X,a.Y),z1=sb.HeightAt(b.X,b.Y),join=0;
-   if(sa.Id!=sb.Id){if(d.Terrain==null||!d.Terrain.Connections.Any(c=>(Key(c.A)==sa.Id&&Key(c.B)==sb.Id)||(Key(c.B)==sa.Id&&Key(c.A)==sb.Id))){error="跨表面未声明通行连接";return false;}
-    if(!SurfacesMeet(sa,sb)){error="连接面存在高度断层或没有接合边";return false;}double al,ah,bl,bh;
-    if(!Interval(sa,a.X,a.Y,b.X,b.Y,out al,out ah)||!Interval(sb,a.X,a.Y,b.X,b.Y,out bl,out bh)||al>1e-6||bh<1-1e-6||ah<bl-1e-6){error="路线中间有空隙，需要增加坡道/平台及航点";return false;}
-    double lo=Math.Max(al,bl),hi=Math.Min(ah,bh);double v0=sa.HeightAt(a.X+lo*dx,a.Y+lo*dy)-sb.HeightAt(a.X+lo*dx,a.Y+lo*dy),v1=sa.HeightAt(a.X+hi*dx,a.Y+hi*dy)-sb.HeightAt(a.X+hi*dx,a.Y+hi*dy);
-    if(Math.Abs(v0)<1e-6)join=lo;else if(Math.Abs(v1)<1e-6)join=hi;else if(v0*v1<0)join=lo+(hi-lo)*v0/(v0-v1);else{error="路线穿越处高度不连续";return false;}
-   }
-   double zj=sa.HeightAt(a.X+join*dx,a.Y+join*dy),l0=Math.Sqrt(h*h*join*join+(zj-z0)*(zj-z0)),l1=Math.Sqrt(h*h*(1-join)*(1-join)+(z1-zj)*(z1-zj));
-   leg=new TerrainLeg{Horizontal=h,Length=sa.Id==sb.Id?Math.Sqrt(h*h+(z1-z0)*(z1-z0)):l0+l1,Z0=z0,Z1=z1,Handoff=join,From=sa,To=sb,Slope=Math.Atan2(z1-z0,h)*180/Math.PI};return true;
-  }
-  static bool LegFits(MapDocument d,Waypoint a,Waypoint b,TerrainLeg leg,double r){
-   if(leg.From.Id==leg.To.Id)return leg.From.Contains(a.X,a.Y,r)&&leg.From.Contains(b.X,b.Y,r);
-   foreach(var s in new[]{leg.From,leg.To})if(s.Kind==SurfaceKind.沿X直坡道){if(Math.Min(a.Y,b.Y)-r<s.Y-1e-6||Math.Max(a.Y,b.Y)+r>s.Y+s.Depth+1e-6)return false;}else if(s.Kind==SurfaceKind.沿Y直坡道){if(Math.Min(a.X,b.X)-r<s.X-1e-6||Math.Max(a.X,b.X)+r>s.X+s.Width+1e-6)return false;}
-   foreach(double ox in new[]{-r,r})foreach(double oy in new[]{-r,r}){double al,ah,bl,bh;bool aa=Interval(leg.From,a.X+ox,a.Y+oy,b.X+ox,b.Y+oy,out al,out ah),bb=Interval(leg.To,a.X+ox,a.Y+oy,b.X+ox,b.Y+oy,out bl,out bh);bool covered=aa&&al<=1e-6&&ah>=1-1e-6||bb&&bl<=1e-6&&bh>=1-1e-6||aa&&bb&&Math.Min(al,bl)<=1e-6&&Math.Max(ah,bh)>=1-1e-6&&Math.Max(al,bl)<=Math.Min(ah,bh)+1e-6;if(!covered)return false;}return true;
-  }
-  public static bool ObstacleHits(MapDocument d,Waypoint a,Waypoint b,Obstacle o){if(d.Terrain==null)return MapDocument.SegmentHits(a.X,a.Y,b.X,b.Y,o,d.Settings.Radius+d.Settings.PositionTolerance);TerrainLeg l;string error;if(!TryLeg(d,a,b,out l,out error))return Key(o.SurfaceId)==Key(a.SurfaceId)&&MapDocument.SegmentHits(a.X,a.Y,b.X,b.Y,o,d.Settings.Radius+d.Settings.PositionTolerance);
-   double j=l.From.Id==l.To.Id?1:l.Handoff,x=a.X+(b.X-a.X)*j,y=a.Y+(b.Y-a.Y)*j,r=d.Settings.Radius+d.Settings.PositionTolerance;
-   return (Key(o.SurfaceId)==l.From.Id&&MapDocument.SegmentHits(a.X,a.Y,x,y,o,r))||(Key(o.SurfaceId)==l.To.Id&&MapDocument.SegmentHits(x,y,b.X,b.Y,o,r));
-  }
-  // For each straight subsegment, solve the exact XY overlap interval with every
-  // overhead rectangle, then compare linear surface elevations at its endpoints.
-  static List<string> ClearanceErrors(MapDocument d){var e=new List<string>();if(d.Terrain==null)return e;double required=d.Terrain.BodyHeight+d.Terrain.ClearanceMargin,r=d.Settings.Radius+d.Settings.PositionTolerance;
-   for(int i=0;i<d.Points.Count;i++){var b=d.Points[i];var a=i==0?b:d.Points[i-1];TerrainLeg l;string ignored;if(!TryLeg(d,a,b,out l,out ignored))continue;double j=l.From.Id==l.To.Id?1:l.Handoff;
-    foreach(var span in new[]{new[]{0.0,j},new[]{j,1.0}}){if(span[1]-span[0]<1e-9&&i>0)continue;var floor=span[0]<j-1e-9||i==0?l.From:l.To;double ax=a.X+(b.X-a.X)*span[0],ay=a.Y+(b.Y-a.Y)*span[0],bx=a.X+(b.X-a.X)*span[1],by=a.Y+(b.Y-a.Y)*span[1];
-     foreach(var top in d.Terrain.Surfaces){if(top.Id==floor.Id)continue;var expanded=new TerrainSurface{X=top.X-r,Y=top.Y-r,Width=top.Width+2*r,Depth=top.Depth+2*r};double lo,hi;if(!Interval(expanded,ax,ay,bx,by,out lo,out hi))continue;
-      double gradient=top.Kind==SurfaceKind.水平平台?0:Math.Abs(top.Z1-top.Z0)/(top.Kind==SurfaceKind.沿X直坡道?top.Width:top.Depth);
-      double allowance=top.Thickness+r*gradient;
-      double h0=top.HeightAt(ax+(bx-ax)*lo,ay+(by-ay)*lo)-floor.HeightAt(ax+(bx-ax)*lo,ay+(by-ay)*lo)-allowance,h1=top.HeightAt(ax+(bx-ax)*hi,ay+(by-ay)*hi)-floor.HeightAt(ax+(bx-ax)*hi,ay+(by-ay)*hi)-allowance;
-      // Adjacent connecting faces are road, not a ceiling. A crossing overhead
-      // face with positive separation requires clearance (zero thickness model).
-      bool connected=d.Terrain.Connections.Any(c=>(Key(c.A)==floor.Id&&Key(c.B)==top.Id)||(Key(c.B)==floor.Id&&Key(c.A)==top.Id));
-      if(connected&&((floor.Id!=Ground&&top.Id!=Ground)||(l.From.Id!=l.To.Id&&(top.Id==l.From.Id||top.Id==l.To.Id))))continue;
-      double upper0=top.HeightAt(ax+(bx-ax)*lo,ay+(by-ay)*lo)-floor.HeightAt(ax+(bx-ax)*lo,ay+(by-ay)*lo),upper1=top.HeightAt(ax+(bx-ax)*hi,ay+(by-ay)*hi)-floor.HeightAt(ax+(bx-ax)*hi,ay+(by-ay)*hi);
-      if(Math.Max(upper0,upper1)>1e-6&&Math.Min(h0,h1)<required-1e-6)e.Add("P"+Math.Max(0,i-1)+"→P"+i+"在“"+top.Name+"”下方净空不足（计入向下厚度、车体高度及余量）。");
-     }
-    }
-   }return e.Distinct().ToList();
-  }
   public static MapDocument Demo(){var d=new MapDocument{Version=4,Terrain=new TerrainMap()};d.Settings.Radius=220;d.Settings.MaxSpeed=400;d.Settings.Width=7000;d.Settings.Height=5000;
    var ramp=new TerrainSurface{Name="上桥坡道",Kind=SurfaceKind.沿X直坡道,X=1800,Y=1900,Width=2000,Depth=1200,Z0=0,Z1=500,SpeedLimit=200};var deck=new TerrainSurface{Name="桥面 / 二层平台",X=3800,Y=1500,Width=2400,Depth=2000,Z0=500,SpeedLimit=300};d.Terrain.Surfaces.AddRange(new[]{ramp,deck});d.Terrain.Connections.Add(new SurfaceConnection{A=Ground,B=ramp.Id});d.Terrain.Connections.Add(new SurfaceConnection{A=ramp.Id,B=deck.Id});
    d.Points.AddRange(new[]{new Waypoint(800,2500,0,150),new Waypoint(2100,2500,0,150){SurfaceId=ramp.Id,CorrectionMode=0},new Waypoint(3500,2500,0,150){SurfaceId=ramp.Id,CorrectionMode=0},new Waypoint(5000,2500,0,150){SurfaceId=deck.Id}});return d;

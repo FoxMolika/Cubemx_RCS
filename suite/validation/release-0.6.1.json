@@ -1,10 +1,13 @@
 {
-  "version": "0.6.0",
+  "version": "0.6.1",
   "passed": true,
-  "installer_sha256": "b0603bfef880127dfbc377d8cf2289d6d6c9604f610f75373556253228415bc1",
-  "editor_sha256": "4aae7ddcc77f4ce57f65cf301ec34648497c7cd4998f8bbe9d639ed4787d4250",
-  "pack_sha256": "01a87ede76dd62779da888097a556081cbadceebc5be90cf2ef93ea240d9143f",
+  "installer_sha256": "e05596c97849bc6cc9661a839656b6caac93226cb664446cd823b6782cfb0038",
+  "editor_sha256": "c1fc4d4d671489e83b4ab7b1d6495b490896a682f2ba487686aa9938076e6293",
+  "pack_sha256": "f5b41f0f470fd705861e0714cbc5c0d28f6e3793cc8c9cedca58eff4b78179c5",
+  "continuous_surface_checks": 67,
+  "original_060_files_unchanged": 244,
   "features": [
+    "continuous connected-surface traversal without forced task waypoints",
     "unified main-window waypoint and terrain workspace",
     "exposed platform/ramp/connection/layer controls",
     "shared document, global undo/redo and recovery snapshots",
@@ -25,7 +28,7 @@
     "crash_checks": 54,
     "route_integration_scenarios": 21,
     "project_setup_scenarios": 13,
-    "revision_scenarios": 12,
+    "revision_scenarios": 13,
     "installer_transaction_scenarios": 8
   },
   "actual_CubeMX": "6.18.1; fresh isolated profiles, automatic import, alternate empty repository, native generate/regenerate, uninstall",
@@ -39,10 +42,10 @@
   "original_051_files_unchanged": 232,
   "terrain_checks": 95,
   "actual_drag_checks": 38,
-  "embedded_resources_verified": 17,
+  "embedded_resources_verified": 18,
   "ordinary_user_install": {
     "passed": true,
-    "installer_sha256": "b0603bfef880127dfbc377d8cf2289d6d6c9604f610f75373556253228415bc1",
+    "installer_sha256": "e05596c97849bc6cc9661a839656b6caac93226cb664446cd823b6782cfb0038",
     "installer_integrity_rid": 8192,
     "low_token_reproduction": {
       "Administrator": "false",
@@ -71,8 +74,9 @@
     "fallback_diagnostics": true,
     "cube_installation_root_unchanged": true,
     "installed_workspace_checks": 41,
+    "installed_continuous_report": "PASS 67 continuous-surface checks",
     "normal_native_uninstall": true,
-    "area": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.6.0\\build\\permissions_d9c45eb3"
+    "area": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.6.1\\build\\permissions_a24a8fc1"
   },
   "published_installer_integrity_rid": 8192,
   "original_052_files_unchanged": 237,
@@ -80,8 +84,8 @@
   "hardware_test": false,
   "flashed": false,
   "second_physical_PC_test": false,
-  "ui_review": "actual unified main window at 1440px and 1120px; top/profile/3D and shared point/property editors inspected; event-level main-window workflow tests passed",
-  "delegated_review": "two parallel DeepSeek text reviews: shared state/draft architecture and original modal deadlock regression design. Codex implemented and verified actual control events, rendered UI, ordinary-user installation and native generation",
+  "ui_review": "two-endpoint continuous route profile and 3D inspected; actual unified main window at 1440px and 1120px; top/profile/3D and shared point/property editors inspected; event-level main-window workflow tests passed",
+  "delegated_review": "parallel DeepSeek design/edge-case reviews plus bounded topology review; Codex implemented, checked actual geometry/state/UI and ran installed/native regression",
   "limitations": [
     "nonplanar routes are geometry-only: no slope firmware export or flat dynamic preview",
     "axis-aligned rectangular surfaces only; no steps/lifts/automatic routing/IMU fusion",

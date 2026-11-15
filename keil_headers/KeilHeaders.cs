@@ -12,8 +12,8 @@ using System.Xml;
 using System.Xml.Linq;
 #if !RCS_MAP_EDITOR
 [assembly: AssemblyTitle("foxmolika Keil Header Fix")]
-[assembly: AssemblyVersion("0.6.0.0")]
-[assembly: AssemblyFileVersion("0.6.0.0")]
+[assembly: AssemblyVersion("0.6.1.0")]
+[assembly: AssemblyFileVersion("0.6.1.0")]
 #endif
 static class KeilHeaders {
  static readonly string[] Module={"rcs_chassis.h","rcs_control.h","rcs_hal.h"};

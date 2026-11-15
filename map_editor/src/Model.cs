@@ -74,6 +74,7 @@ namespace RcsMap {
   public override string ToString(){return (Enabled?"":"[禁用] ")+Name+" · "+new[]{"自定义","绝对旋转","相对旋转","等待"}[Math.Max(0,Math.Min(3,Kind))];}
  }
  [DataContract] public class Waypoint {
+  [DataMember(EmitDefaultValue=false)] public int TerrainTravelMode {get;set;}
   [DataMember(EmitDefaultValue=false)] public string SurfaceId {get;set;}
   [DataMember] public double X {get;set;} [DataMember] public double Y {get;set;}
   [DataMember] public double Yaw {get;set;} [DataMember] public double Speed {get;set;}

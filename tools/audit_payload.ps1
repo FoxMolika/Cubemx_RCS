@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $taskRoot = Split-Path -Parent $PSScriptRoot
-$taskExe = Join-Path $taskRoot 'suite/dist/foxmolika_CubeMX_Setup_0.6.0_win-x64.exe'
+$taskExe = Join-Path $taskRoot 'suite/dist/foxmolika_CubeMX_Setup_0.6.1_win-x64.exe'
 $taskAssembly = [System.Reflection.Assembly]::Load([System.IO.File]::ReadAllBytes($taskExe))
 $taskHashes = @{}
 foreach ($taskName in $taskAssembly.GetManifestResourceNames()) {

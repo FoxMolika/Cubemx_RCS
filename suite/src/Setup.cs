@@ -13,8 +13,8 @@ using System.Windows.Forms;
 using System.Xml.Linq;
 [assembly:AssemblyTitle("foxmolika CubeMX Suite Setup")]
 [assembly:AssemblyProduct("foxmolika Chassis and Waypoint Suite")]
-[assembly:AssemblyVersion("0.6.0.0")]
-[assembly:AssemblyFileVersion("0.6.0.0")]
+[assembly:AssemblyVersion("0.6.1.0")]
+[assembly:AssemblyFileVersion("0.6.1.0")]
 namespace RcsSuite {
  static class Payload {
   internal static XDocument Manifest {get{using(var s=Assembly.GetExecutingAssembly().GetManifestResourceStream("payload/manifest.xml"))return XDocument.Load(s);}}
@@ -50,13 +50,13 @@ namespace RcsSuite {
    new XElement("Pending",new XAttribute("Home",home),new XAttribute("Cube",cube),new XAttribute("Isolated",isolated),new XAttribute("PackDirectory",packDir),new XAttribute("NewlyIntroduced",newly)).Save(pending);
    PackService.Install(cube,home,isolated,dir,newly,report);
    foreach(var f in Payload.AppFiles)if(Payload.HashFile(Payload.In(dir,(string)f.Attribute("Name")))!=(string)f.Attribute("Sha256"))throw new Exception("安装文件核验失败。");
-   new XElement("VerifiedInstallation",new XAttribute("Version",PackService.Version),new XAttribute("PackVersion",PackService.Version),new XAttribute("EditorVersion","0.6.0"),new XAttribute("Cube",cube),new XAttribute("Home",home),new XAttribute("PackDirectory",PackService.PackDir(home)),new XAttribute("Registered",PackService.Registered(home)),new XAttribute("FilesVerified",PackService.FilesMatch(PackService.PackDir(home))),new XAttribute("IsolatedTest",isolated),new XAttribute("Utc",DateTime.UtcNow.ToString("o"))).Save(success);
+   new XElement("VerifiedInstallation",new XAttribute("Version",PackService.Version),new XAttribute("PackVersion",PackService.Version),new XAttribute("EditorVersion","0.6.1"),new XAttribute("Cube",cube),new XAttribute("Home",home),new XAttribute("PackDirectory",PackService.PackDir(home)),new XAttribute("Registered",PackService.Registered(home)),new XAttribute("FilesVerified",PackService.FilesMatch(PackService.PackDir(home))),new XAttribute("IsolatedTest",isolated),new XAttribute("Utc",DateTime.UtcNow.ToString("o"))).Save(success);
    var verified=XElement.Load(success);verified.Add(InstallAccess.Token());verified.Save(success);
    if(File.Exists(pending))File.Delete(pending);report("安装成功：编辑器已就绪，底盘包已自动导入并核验。无需手动导入 .pack。");
   }
   internal static void Remove(string dir,Action<string> report){dir=Path.GetFullPath(dir);Payload.Owned(dir);Payload.Preflight(dir);string receipt=Path.Combine(dir,"cube-pack-receipt.xml"),pending=Path.Combine(dir,"cube-pack-pending.xml");var record=File.Exists(receipt)?XElement.Load(receipt):File.Exists(pending)?XElement.Load(pending):null;InstallAccess.Preflight(dir,record==null?Environment.GetFolderPath(Environment.SpecialFolder.UserProfile):(string)record.Attribute("Home"),record!=null&&String.Equals((string)record.Attribute("NewlyIntroduced"),"true",StringComparison.OrdinalIgnoreCase),report);PackService.Remove(dir,report);
    foreach(var f in Payload.AppFiles){string p=Payload.In(dir,(string)f.Attribute("Name"));if(File.Exists(p))File.Delete(p);}
-   foreach(string n in new[]{"install-success.xml","cube-pack-receipt.xml","cube-pack-pending.xml","import-pack.script","import-pack.log","import-pack-command.txt","import-pack-attempt1.log","import-pack-attempt2.log","import-pack-attempt3.log","remove-pack.script","remove-pack.log","remove-pack-command.txt","suite-error.log"}){string p=Path.Combine(dir,n);if(File.Exists(p))File.Delete(p);}
+   foreach(string n in new[]{"install-success.xml","cube-pack-receipt.xml","cube-pack-pending.xml","import-pack.script","import-pack.log","import-pack-command.txt","import-pack-attempt1.log","import-pack-attempt2.log","import-pack-attempt3.log","remove-pack.script","remove-pack.log","remove-pack-attempt1.log","remove-pack-attempt2.log","remove-pack-attempt3.log","remove-pack-command.txt","suite-error.log"}){string p=Path.Combine(dir,n);if(File.Exists(p))File.Delete(p);}
    foreach(string sub in new[]{"validation","examples","sdk"}){string p=Path.Combine(dir,sub);if(Directory.Exists(p)&&!Directory.EnumerateFileSystemEntries(p).Any())Directory.Delete(p);}
    string savedSetup=Path.Combine(dir,"foxmolika_Setup.exe");if(File.Exists(savedSetup)&&!String.Equals(savedSetup,Assembly.GetExecutingAssembly().Location,StringComparison.OrdinalIgnoreCase))File.Delete(savedSetup);
    File.Delete(Path.Combine(dir,"suite-owned.xml"));if(!Directory.EnumerateFileSystemEntries(dir).Any())Directory.Delete(dir);

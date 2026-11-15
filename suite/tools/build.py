@@ -40,6 +40,7 @@ def main():
  payload={'foxmolika_ProjectSetup.exe':project_setup,'foxmolika_MapEditor.exe':editor,'RCS.foxmolika.'+VERSION+'.pack':pack,'foxmolika_KeilHeaders.exe':keil,'使用说明.html':ROOT/'docs/使用说明.html',
   '地图编辑器说明.html':PROJECT/'map_editor/dist/使用说明.html','底盘接入说明.md':PROJECT/'docs/接入说明.md','LICENSE.txt':PROJECT/'LICENSE.txt',
   'examples/示例路线.rcsmap.json':PROJECT/'map_editor/examples/示例路线.rcsmap.json','examples/robot_route_task.c':PROJECT/'map_editor/examples/robot_route_task.c','examples/robot_route_task.h':PROJECT/'map_editor/examples/robot_route_task.h',
+  'examples/连续通行示例.rcsmap.json':PROJECT/'map_editor/examples/连续通行示例.rcsmap.json',
   'examples/立体地图示例.rcsmap.json':PROJECT/'map_editor/examples/立体地图示例.rcsmap.json',
   'sdk/rcs_chassis.c':PROJECT/'firmware/rcs_chassis.c','sdk/rcs_chassis.h':PROJECT/'firmware/rcs_chassis.h',
   'validation/WorkspacePreferencesFactory.class':build/'java/WorkspacePreferencesFactory.class','validation/WorkspacePreferencesFactory$MemoryPreferences.class':build/'java/WorkspacePreferencesFactory$MemoryPreferences.class'}

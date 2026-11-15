@@ -7,7 +7,7 @@ using System.Text;
 using System.Xml.Linq;
 namespace RcsSuite {
  static class PackService {
-  internal const string Version="0.6.0";
+  internal const string Version="0.6.1";
   internal static readonly Encoding Utf8=new UTF8Encoding(false);
   internal static string Q(string s){if(s.IndexOf('"')>=0||s.IndexOf('\n')>=0||s.IndexOf('\r')>=0)throw new Exception("路径含不支持的字符。");return "\""+s+"\"";}
   internal static string Repo(string home){string ini=Path.Combine(home,@".stm32cubemx\plugins\updater\updater.ini");if(File.Exists(ini))foreach(string raw in File.ReadAllLines(ini)){
@@ -108,7 +108,15 @@ namespace RcsSuite {
    if(!String.Equals(Path.GetFullPath(dir),Path.GetFullPath(PackDir(home)),StringComparison.OrdinalIgnoreCase))throw new Exception("安装记录的包目录与当前仓库不同，保留该包。");
    if(Directory.Exists(dir)&&!FilesMatch(dir))throw new Exception("CubeMX 包已被修改，已保留它。卸载未完成。");
    if(!CubeLocator.Valid(cube))throw new Exception("原 CubeMX 路径已变化，请先安装/修复，重新指定 CubeMX 后再卸载。");
-   RequireClosed();Run(cube,home,Boolean.Parse((string)e.Attribute("Isolated")),work,"swmgr remove RCS.foxmolika."+Version,"remove-pack",report);
+    RequireClosed();for(int attempt=1;;attempt++){
+     Run(cube,home,Boolean.Parse((string)e.Attribute("Isolated")),work,"swmgr remove RCS.foxmolika."+Version,"remove-pack",report);
+     if(!Directory.Exists(dir))return;
+     string log=Path.Combine(work,"remove-pack.log"),text=File.Exists(log)?File.ReadAllText(log,Utf8):"";
+     if(text.IndexOf("Updater is busy",StringComparison.OrdinalIgnoreCase)<0||attempt>=4)break;
+     if(!FilesMatch(dir))throw new Exception("CubeMX 包在重试前发生变化，已保留它。卸载未完成。");
+     File.Copy(log,Path.Combine(work,"remove-pack-attempt"+attempt+".log"),true);
+     report("CubeMX 更新组件仍在初始化，"+(attempt*5)+" 秒后重试移除……");System.Threading.Thread.Sleep(attempt*5000);
+    }
    // CubeMX retains the version in its catalog as Status=Manual even after a
    // successful uninstall. That catalog row is not an installed-file record.
    if(Directory.Exists(dir))throw new Exception("CubeMX 尚未移除包文件，保留安装记录。");

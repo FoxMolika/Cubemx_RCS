@@ -1,4 +1,4 @@
-"""Actual 0.3.7 -> 0.6.0 executable migration, read-only old release."""
+"""Actual 0.3.7 -> 0.6.1 executable migration, read-only old release."""
 from pathlib import Path
 import hashlib,json,re,subprocess,sys,uuid,shutil
 ROOT=Path(__file__).resolve().parents[1]
@@ -11,7 +11,7 @@ def run(exe,*args,ok=True):
 def main():
  old=ROOT.parent/'foxmolika_CubeMX_0.3.7/map_editor/dist/foxmolika_MapEditor.exe'
  new=ROOT/'map_editor/dist/foxmolika_MapEditor.exe'
- area=ROOT/'build'/('migration060_'+uuid.uuid4().hex[:8]);area.mkdir(parents=True)
+ area=ROOT/'build'/('migration061_'+uuid.uuid4().hex[:8]);area.mkdir(parents=True)
  source=area/'legacy.rcsmap.json';out=area/'export'
  if old.is_file():
   run(old,'--demo',source)
@@ -34,5 +34,5 @@ def main():
  assert rejected=={p.name:p.read_bytes() for p in out.iterdir()},'outside-region edits must remain unchanged'
  assert source.read_bytes()==original,'old map must stay unchanged'
  result={'passed':True,'four_user_regions_preserved':True,'repeated_export_byte_stable':True,'outside_edits_rejected_without_changes':True,'legacy_map_unchanged':True,'area':str(area)}
- (ROOT/'build/migration060.json').write_text(json.dumps(result,indent=2),encoding='utf-8');print(json.dumps(result,indent=2))
+ (ROOT/'build/migration061.json').write_text(json.dumps(result,indent=2),encoding='utf-8');print(json.dumps(result,indent=2))
 if __name__=='__main__':main()
