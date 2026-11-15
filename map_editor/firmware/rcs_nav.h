@@ -56,6 +56,38 @@ typedef enum {
     RCS_NAV_ACTION_TIMEOUT,
     RCS_NAV_ACTION_DRIFT
 } rcs_nav_fault;
+/* Phase engine: units radians/metres/seconds. Caller retains plan arrays. */
+typedef enum {
+    RCS_STEP_CUSTOM = 0,
+    RCS_STEP_ROTATE_ABSOLUTE = 1,
+    RCS_STEP_ROTATE_RELATIVE = 2,
+    RCS_STEP_WAIT = 3
+} rcs_step_kind;
+typedef struct {
+    rcs_step_kind kind;
+    float value, timeout_s, max_wz_radps, alpha_radps2, tolerance_rad;
+    float settle_s, drift_limit_m;
+    int8_t direction;
+    size_t custom_index;
+} rcs_step;
+typedef struct {
+    const rcs_step *arrival;
+    size_t arrival_count;
+    const rcs_step *departure;
+    size_t departure_count;
+    float arrival_radius_m, correction_speed_mps, correction_timeout_s;
+    float settle_s, drift_limit_m;
+    uint8_t correction_mode, correction_retries, departure_at_end;
+} rcs_point_plan;
+typedef enum {
+    RCS_STAGE_MOVE = 0,
+    RCS_STAGE_SETTLE,
+    RCS_STAGE_ARRIVAL,
+    RCS_STAGE_CORRECT_XY,
+    RCS_STAGE_CORRECT_YAW,
+    RCS_STAGE_DEPARTURE,
+    RCS_STAGE_EXIT
+} rcs_nav_stage;
 typedef struct {
     rcs_nav_config cfg;
     const rcs_waypoint *points;
@@ -69,6 +101,14 @@ typedef struct {
     void *action_context;
     float action_s;
     uint8_t action_active, action_done;
+    const rcs_point_plan *plans;
+    rcs_nav_stage stage, fault_stage;
+    size_t action_index, fault_action;
+    rcs_step current_step;
+    float stage_s, settled_s, heading_target, yaw_unwrapped;
+    float spin_target, anchor_x, anchor_y;
+    uint8_t correction_pass;
+
 } rcs_navigator;
 /* No heap, no HAL calls, no motor activation, single-task API. Keep points alive. */
 /**
@@ -85,6 +125,10 @@ int rcs_nav_init(rcs_navigator *n, const rcs_nav_config *cfg, const rcs_waypoint
  */
 int rcs_nav_bind_actions(rcs_navigator *n, const rcs_action_spec *specs, size_t count, rcs_action_fn callback,
                          void *context);
+/* Plans replace implicit waypoint yaw movement. Callback receives custom_index,
+ * not waypoint index. Typed motion is owned by the engine, never user callbacks. */
+int rcs_nav_bind_plan(rcs_navigator *n, const rcs_point_plan *plans, size_t count, rcs_action_fn callback,
+                      void *context);
 /* Physically place/locate the car first. Discard any encoder deltas before reset.
  * Reset clears fault and requires a NEW fresh feedback update before start. */
 /**

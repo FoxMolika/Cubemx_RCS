@@ -32,3 +32,6 @@ int rcs_route_init(rcs_navigator *navigator, void *action_context);
 #ifdef __cplusplus
 }
 #endif
+
+extern const char rcs_route_revision[];
+extern const rcs_point_plan rcs_route_plan[RCS_ROUTE_POINT_COUNT];

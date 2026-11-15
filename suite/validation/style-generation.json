@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "checks": [
+    "valid generated function",
+    "two-space block indentation rejected",
+    "multiple statements rejected",
+    "for-header exemption cannot hide extra statements",
+    "semicolon character literal accepted",
+    "multiline comment semicolons accepted",
+    "for header recognized without a specific space spelling",
+    "function requires its own adjacent documentation",
+    "TAB rejected outside USER CODE",
+    "long generated line rejected",
+    "handwritten region preserved and exempt",
+    "unmatched region refused",
+    "candidate checker false-pass reproduced: 2-space indent",
+    "actual 0.2.0 -> 0.3.0 in-place export preserves handwritten code and literal template tokens",
+    "new template regeneration is byte-idempotent",
+    "upgraded route outputs pass full style gate",
+    "dual edit conflicts still refuse without overwriting"
+  ],
+  "editor_sha256": "85c18fc254de09c650c655045aaae58e8abcc7443364fbae5c8da5dccf647017",
+  "legacy_origin": "actual old 0.2.0 EXE",
+  "area": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.3.7\\build\\style-tests-1775aa31",
+  "runtime_formatter_required": false
+}

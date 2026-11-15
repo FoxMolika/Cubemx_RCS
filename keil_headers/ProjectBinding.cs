@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using System.Xml;
+using System.Security.Cryptography;
 
 // Shared by the association wizard, map editor and CubeMX post-generation tool.
 internal sealed class ProjectBinding {
@@ -151,9 +152,55 @@ internal sealed class ProjectBinding {
                 try { return Same(FilePath(dir, v), RouteDirectory); } catch (ArgumentException) { return false; }
             });
             if (!contains) { include.Value = include.Value.TrimEnd(';') + (include.Value.Trim().Length == 0 ? "" : ";") + Relative(dir, RouteDirectory); changed++; }
+            changed += EnsureBuildGuard(target,project);
         }
         if (!eligible) throw new IOException("Keil工程尚未包含foxmolika底盘，请先在CubeMX启用组件并Generate Code。");
         return changed;
+    }
+    internal int EnsureBuildGuard(XElement target,string project) {
+        string receipt=Path.Combine(Root,"foxmolika_Tools_040","route-build.xml");
+        if(!File.Exists(receipt))return 0;
+        var common=target.Descendants("TargetCommonOption").FirstOrDefault();
+        if(common==null)throw new IOException("Keil缺少目标构建选项，无法登记路线版本检查。");
+        var before=common.Element("BeforeMake");
+        if(before==null){before=new XElement("BeforeMake");common.Add(before);}
+        string dir=Path.GetDirectoryName(project);
+        string tool=Relative(dir,Path.Combine(Root,"foxmolika_Tools_040","foxmolika_PostGenerate.exe"));
+        string relativeRoot=Relative(dir,Root+Path.DirectorySeparatorChar).TrimEnd('/','\\');
+        string command="\""+tool.Replace('/', '\\')+"\" --check-route \""+relativeRoot+"\"";
+        for(int slot=1;slot<=2;slot++) {
+            var name=before.Element("UserProg"+slot+"Name");
+            var enabled=before.Element("RunUserProg"+slot);
+            var stop=before.Element("nStopB"+slot+"X");
+            string previous=name==null?"":name.Value;
+            if(previous.Contains("foxmolika_PostGenerate.exe")&&previous.Contains("--check-route") ||
+               String.IsNullOrWhiteSpace(previous)&&(enabled==null||enabled.Value!="1")) {
+                if(name!=null&&name.Value==command&&enabled!=null&&enabled.Value=="1"&&stop!=null&&stop.Value=="2")return 0;
+                if(name==null){name=new XElement("UserProg"+slot+"Name");before.Add(name);}name.Value=command;
+                if(enabled==null){enabled=new XElement("RunUserProg"+slot);before.Add(enabled);}enabled.Value="1";
+                // uVision index 1 is >=0; index 2 stops only on nonzero return.
+                if(stop==null){stop=new XElement("nStopB"+slot+"X");before.Add(stop);}stop.Value="2";
+                return 1;
+            }
+        }
+        throw new IOException("Keil的两个构建前命令已被占用，未覆盖。请合并路线版本检查命令后重新导出。");
+    }
+    static string FileHash(string path) { using(var h=SHA256.Create())using(var s=File.OpenRead(path))
+        return BitConverter.ToString(h.ComputeHash(s)).Replace("-","").ToLowerInvariant(); }
+    internal static string CheckRouteVersion(string root) {
+        root=Path.GetFullPath(root);
+        string receipt=Path.Combine(root,"foxmolika_Tools_040","route-build.xml");NoLink(receipt);
+        var xml=ReadXml(receipt).Root;
+        if(xml==null||xml.Name!="FoxmolikaExport"||(string)xml.Attribute("Schema")!="1" ||
+           (string)xml.Attribute("Route")!=RouteRelative)throw new IOException("路线版本记录无效，请重新导出地图。");
+        string map=(string)xml.Attribute("Map");
+        if(String.IsNullOrWhiteSpace(map))throw new IOException("路线版本记录缺少地图文件。");
+        string path=Path.GetFullPath(Path.Combine(root,map.Replace('/',Path.DirectorySeparatorChar)));
+        if(!File.Exists(path)||FileHash(path)!=(string)xml.Attribute("MapSha256"))
+            throw new IOException("地图已修改或移动。请在foxmolika编辑器中保存并重新导出C/H，然后再编译。");
+        if(FileHash(Inside(root,RouteRelative+"/rcs_route.c"))!=(string)xml.Attribute("RouteSha256"))
+            throw new IOException("路线配置源码与最近导出不一致，请检查并重新导出。");
+        return "PASS foxmolika route revision "+(string)xml.Attribute("Revision");
     }
     internal void Preflight() {
         foreach (string project in Projects()) {

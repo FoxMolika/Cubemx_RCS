@@ -11,8 +11,7 @@
 @GLOBALS_REGION@
 /* 动作配置 ------------------------------------------------------------------------------------------*/
 
-const rcs_action_spec rcs_route_actions[RCS_ROUTE_POINT_COUNT] = {
-@SPEC_ROWS@};
+/* Actions are described by rcs_route_plan; dispatch IDs identify custom actions. */
 
 /* 航点私有动作 --------------------------------------------------------------------------------------*/
 @FUNCTIONS@
@@ -21,7 +20,7 @@ const rcs_action_spec rcs_route_actions[RCS_ROUTE_POINT_COUNT] = {
 /**
  * @brief 将导航事件分发到对应航点的动作函数
  * @param context 用户机构状态，可为空
- * @param point 当前航点下标
+ * @param point 全局自定义动作分发编号（不是航点下标）
  * @param phase 启动、轮询或取消事件
  * @param elapsed_s 当前动作已运行时间，秒
  * @return BUSY 继续等待，DONE 完成，ERROR 机构异常
@@ -29,6 +28,9 @@ const rcs_action_spec rcs_route_actions[RCS_ROUTE_POINT_COUNT] = {
 rcs_action_result rcs_route_action(void *context, size_t point,
                                    rcs_action_phase phase, float elapsed_s)
 {
+    (void)context;
+    (void)phase;
+    (void)elapsed_s;
     switch (point) {
 @CASES@    default:
         return RCS_ACTION_ERROR;

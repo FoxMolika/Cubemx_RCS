@@ -1,0 +1,28 @@
+{
+  "version": "0.3.7",
+  "native_generation_twice": "pass",
+  "can_HAL_and_driver": "pass",
+  "four_headers_automatic": "pass",
+  "delete_then_regenerate": "pass",
+  "route_files_automatic": "pass: 3C3H and relative include",
+  "route_regenerate": "pass",
+  "route_user_code_unchanged": true,
+  "installed_editor_sha256": "85c18fc254de09c650c655045aaae58e8abcc7443364fbae5c8da5dccf647017",
+  "route_directory": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.3.7\\suite\\build\\工程关联 验收 f1c7c7ea\\tester123\\Application\\foxmolikaRoute",
+  "main_unchanged": true,
+  "main_sha256": "1fc917c359b543baaa0a02954cebb919c9e6a1988c9460b69c420effa7523689",
+  "project_setup_sha256": "2d4537c8bc9051b34372ee50114b8d3ddcacd3359b715e09f56fd5f69ecd462a",
+  "post_helper_sha256": "7b345d87e5562d929ae041db4637fdf4953e79ce546d39ea74f292e39809c484",
+  "installer_sha256": "23a1382e727c2aada7b9cd1d63734436c3e4c1ab45fd02a79a6ba618651aed54",
+  "project_directory": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.3.7\\suite\\build\\工程关联 验收 f1c7c7ea\\tester123",
+  "keil": "pass: ARM Compiler 6.22, 0 errors, 0 warnings",
+  "hardware_test": false,
+  "route_sources_compiled": "pass: route/nav/actions",
+  "keil_summary": [
+    "*** Using Compiler 'V6.22', folder: 'C:\\Users\\FoxMolia\\AppData\\Local\\Keil_v5\\ARM\\ARMCLANG\\Bin'",
+    "Program Size: Code=2724 RO-data=440 RW-data=12 ZI-data=1644  ",
+    "\"tester123\\tester123.axf\" - 0 Error(s), 0 Warning(s)."
+  ],
+  "keil_project_sha256": "c668c13eda77d645391ef602f26327bc01d1d7ca6ed06e74e4c5c63f98a8c4c6",
+  "axf_sha256": "fba6ce31c58906cc104703dc529c7992962a0db2d61966965e3c2a8d0cd29196"
+}

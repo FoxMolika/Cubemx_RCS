@@ -1,0 +1,21 @@
+{
+  "checks": [
+    "new file parses with real CubeMX; upgrade + portable hook + exact backup + main unchanged",
+    "repeat association byte-idempotent",
+    "foreign HAL modules, groups, definitions and includes retained",
+    "empty HAL key handled; required sections created",
+    "foreign generation hook refused without modifying project",
+    "ambiguous INI refused without overwriting",
+    "modified project helper protected",
+    "wrong_mcu rejected before mutation",
+    "wrong_IDE rejected before mutation",
+    "newer_pack rejected before mutation",
+    "legacy_RCS_component refused without changing project",
+    "both_brands_selected refused without changing project",
+    "legacy_RCS_hook refused without changing project"
+  ],
+  "passed": true,
+  "project_setup_sha256": "2d4537c8bc9051b34372ee50114b8d3ddcacd3359b715e09f56fd5f69ecd462a",
+  "post_helper_sha256": "7b345d87e5562d929ae041db4637fdf4953e79ce546d39ea74f292e39809c484",
+  "test_area": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.3.7\\build\\project_setup_fbfb86b4"
+}

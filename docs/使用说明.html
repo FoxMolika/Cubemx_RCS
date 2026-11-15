@@ -1,90 +1,42 @@
-<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>foxmolika 0.3.7 使用教程：关联工程与打开地图编辑器</title>
-<style>
-body{margin:0;background:#eef4fa;color:#24394e;font:16px/1.85 "Microsoft YaHei",sans-serif}
-main{max-width:1000px;margin:28px auto;padding:30px 42px;background:white;border-radius:12px}
-h1,h2,h3{line-height:1.5;color:#173954}h1{font-size:30px}h2{margin-top:34px}
-nav{display:flex;flex-wrap:wrap;gap:10px}a{color:#12649a}nav a{padding:7px 12px;background:#edf4fa;border-radius:6px}
-.key{background:#e9f6ef;border-left:5px solid #238563;padding:16px 20px}.note{background:#fff4dc;padding:14px 18px}
-code,pre{background:#edf3f8;font-family:Consolas,"Microsoft YaHei",monospace;overflow-wrap:anywhere}pre{padding:14px;white-space:pre-wrap}
-li{margin:10px 0}table{width:100%;border-collapse:collapse}th,td{padding:10px;border:1px solid #d5e0ea;text-align:left;vertical-align:top}
-@media(max-width:650px){main{margin:0;padding:20px}h1{font-size:25px}}
-</style></head><body><main>
-<h1>foxmolika 底盘与地图编辑器 · 0.3.7</h1>
-<p>单文件套件：RCS.foxmolika 0.3.7 ＋ 地图编辑器 0.3.0。更新：2026-11-10。</p>
-<div class="key"><b>第一次使用，请先完成这两件事：</b>
-<ol><li><b>每个工程主动关联一次：</b>安装器的 <b>“关联工程…”</b> → <b>“选择 .ioc 并关联 / 升级”</b>。安装器或地图编辑器均可关联；完成后重新打开工程再 Generate Code，Keil 自动列出底盘4H；地图工程模式导出会自动登记路径3C3H。</li>
-<li><b>打开地形／路径编辑器：</b>安装器的 <b>“启动地图编辑器”</b>，或运行安装目录的 <code>foxmolika_MapEditor.exe</code>。它是独立窗口，没有 CubeMX 内部的绘图菜单。</li></ol>
-<b>安装成功只表示工具和 .pack 已就绪，不代表你的 .ioc 已关联。新建 test2 等新工程也要单独关联。</b></div>
-<div class="key"><b>0.3.7：底盘与地图路径共用工程关联</b><ol>
-<li>先在 CubeMX 选择并启用 <b>RCS.foxmolika 0.3.7</b>，保存 .ioc 并关闭工程。</li>
-<li>在地图编辑器上方点 <b>“关联工程…”</b>，选择这个 .ioc；它与安装器的关联工具使用同一逻辑。保存地图后会记住目标工程。</li>
-<li>点击 <b>“导出 C / H”</b>，保持勾选 <b>“导出到关联工程，并自动加入路径3C3H及包含目录”</b>，确认目标工程和目录后生成。</li>
-<li>源码固定输出到工程内 <code>Application/foxmolikaRoute</code>，自动加入 Keil 的 <b>Application/foxmolikaRoute</b> 分组和头文件搜索目录。Keil 已打开时请重载。</li>
-<li>重新打开 .ioc 并 Generate Code，生成后工具会补回底盘4H和已导出的路径3C3H及包含目录。未导出路径时不创建空分组。</li></ol>
-<p>还未生成 Keil 工程也可以先导出；文件会保存在工程内，待第一次 Generate Code 后自动登记。实际任务调度和硬件函数仍接在自己的任务 .c/.h 中，不向 main.c 写入运行逻辑。</p></div><nav><a href="#install">① 安装</a><a href="#associate">② 关联工程</a><a href="#generate">③ 生成与查看 .h</a><a href="#map">④ 打开地图编辑器</a><a href="#actions">航点动作</a><a href="#help">常见问题</a></nav>
-
-<p class="note"><b>从 foxmolika 0.3.6 升级：</b>安装0.3.7后，保存关闭工程，在地图编辑器或安装器重新关联一次。工具可按发布SHA自动升级官方0.3.6生成后工具，旧目录保留；被修改或自定义的生成后操作会拒绝覆盖。</p><h2 id="rename">从旧 RCS 版本切换到 foxmolika</h2>
-<p>本版在 CubeMX 中使用新包 <b>RCS.foxmolika 0.3.7</b> 和新组件 <b>Robotics / foxmolika</b>，左侧页面与启用模式也改为 <b>foxmolika / Robotics foxmolika</b>。旧 RCS 包继续保留，安装本版不会自动改写旧工程。</p>
-<ol><li>先备份工程。打开 CubeMX，取消旧 RCS.Chassis 组件，选择并启用 RCS.foxmolika 的组件；不要同时启用两套，否则会重复编译相同的 C 接口。</li>
-<li>如已使用旧版自动补头文件，在 Project Manager 的生成后操作中，仅清除旧 <code>RCS_Tools_035/RCS_PostGenerate.exe</code> 等 RCS 工具；其他自定义操作应保留并合并。</li>
-<li>保存关闭 .ioc，再用本版 <b>“关联工程…”</b> 关联，重新打开 .ioc 后 Generate Code 并重载 Keil。</li></ol>
-<p>生成文件仍为 <code>rcs_*.c/.h</code>，调用接口仍为 <code>RCS_*</code>，地图文件仍为 <code>.rcsmap.json</code>。这些兼容名称保留，已有任务代码和航点 USER CODE 不必因为产品改名重写。</p>
-<h2 id="install">① 安装单文件套件</h2>
-<ol><li>本机先安装完整 STM32CubeMX。已验证版本为 <b>6.18.1</b>；本套件不含 ST 官方 CubeMX。</li>
-<li>保存并关闭 CubeMX。使用平时运行 CubeMX 的同一 Windows 用户，运行 <code>foxmolika_CubeMX_Setup_0.3.7_win-x64.exe</code>。</li>
-<li>确认 CubeMX 安装位置；没有自动找到时，点“选择程序…”选本机 <code>STM32CubeMX.exe</code>。</li>
-<li>确认“本套工具的保存目录”，点击 <b>“安装 / 修复”</b>。等待自动导入和哈希核验成功，无需手动导入 .pack。</li></ol>
-<p>默认目录为 <code>%LOCALAPPDATA%\foxmolika_CubeMX_Suite_0.3.7</code>。在资源管理器地址栏粘贴该路径即可打开；如果安装时改过目录，请打开自己选择的位置。运行不需要 Python 或 clang-format。</p>
-
-<h2 id="associate">② 在 CubeMX 选好组件，再主动关联工程</h2>
-<ol><li>打开 <b>STM32F407 HAL</b> 工程，工具链选择 <b>MDK-ARM</b>。</li>
-<li>进入 <b>Software Packs → Select Components</b>，选择 <b>RCS.foxmolika 0.3.7</b> 下的 <b>Robotics / foxmolika</b> 组件。</li>
-<li>在左侧 <b>Middleware and Software Packs → foxmolika</b> 中，启用 <b>Robotics foxmolika</b> 模式。填写轮型、轮径、轮距、CAN、电机 ID 等参数。</li>
-<li><b>保存 .ioc 并关闭 CubeMX 中这个工程。</b>关联会修改 .ioc；关闭后操作可避免 CubeMX 用内存中的旧配置覆盖修改。</li>
-<li>回到套件安装器，在“安装 / 修复”“启动地图编辑器”等按钮的同一行，点击最右边的 <b>“关联工程…”</b>。安装器已关闭时，可重新运行它，确认保存目录仍是安装目录；也可以直接运行安装目录的 <code>foxmolika_ProjectSetup.exe</code>。</li>
-<li>弹出的“foxmolika 工程关联 0.3.7”窗口中，点击 <b>“选择 .ioc 并关联 / 升级”</b>，选择该工程的 <b>.ioc 文件</b>，等待“完成”。</li>
-<li><b>重新打开刚才的 .ioc</b>，检查选中的 foxmolika 组件为 0.3.7，再执行下一步 Generate Code。</li></ol>
-<div class="note"><b>关联范围：</b>每个工程一次；新工程需要重新关联。它会合并 <code>.extSettings</code> 以启用 CAN HAL，并把工程内的生成后工具登记到 CubeMX。已有 foxmolika 组件可升级到本版；旧 RCS 工程按上方切换步骤操作，原 .ioc / .extSettings 留有 <code>.rcs-before-037</code> 备份。工程已有其他生成后操作时会拒绝覆盖，需要先合并操作；校验通过的官方0.3.6工具可自动升级。</div>
-<p>关联不替你配置物理 CAN 引脚、波特率、滤波器或接收中断。请按硬件接线配置 CAN1 / CAN2；选择 <code>RCS_CAN_BUS</code> 只选择使用哪个句柄。</p>
-
-<h2 id="generate">③ Generate Code 后，查看独立的 .c / .h</h2>
-<ol><li>在重新打开的 CubeMX 工程里点击 <b>Generate Code</b>，等待生成后操作结束。</li>
-<li>打开 Keil 的 <code>MDK-ARM/工程名.uvprojx</code>。如果 Keil 已经打开，接受“重新加载工程”，或关闭后再打开。</li>
-<li>展开底盘分组（通常为 <code>Middlewares/foxmolika/Robotics/foxmolika</code>）：应直接看到下面 <b>3 个 .c 和 4 个 .h</b>，无需先编译。</li></ol>
-<table><tr><th>文件</th><th>作用／位置</th></tr>
-<tr><td><code>rcs_chassis.c / .h</code><br><code>rcs_control.c / .h</code><br><code>rcs_hal.c / .h</code></td><td>运动学、速度环与 HAL 适配。通常位于 <code>Middlewares/Third_Party/RCS_Robotics/RCS_foxmolika/</code>。</td></tr>
-<tr><td><code>rcs_config.h</code></td><td>由 CubeMX 参数生成；实际位置随工程结构可能为底盘目录、<code>Inc/</code> 或 <code>Core/Inc/</code>。在 Keil 中右键文件查看路径即可确认。</td></tr></table>
-<p>自动补全日志：<code>foxmolika_Tools_037/headers-result.txt</code>。保留工程里的整个 <code>foxmolika_Tools_037</code> 文件夹，生成后工具使用相对路径。<code>foxmolika_KeilHeaders.exe</code> 是手动诊断备用，不是正常流程中每次都要运行的步骤。</p>
-<p>生成器不向 <code>main.c</code> 插入底盘逻辑。请在自己的任务文件里绑定 CAN、接收反馈，周期调用 <code>RCS_Process</code>，并按需要调用 <code>RCS_Arm</code>、<code>RCS_SetVelocity</code>、<code>RCS_Lock</code>。默认 PID 为零，必须按实车调参。</p>
-
-<h2 id="map">④ 地形／地图／路径编辑器在哪里打开？</h2>
-<p>这三个叫法指的是同一个配套程序：<b>foxmolika 位点地图编辑器 0.3.0</b>。</p>
-<table><tr><th>打开方式</th><th>具体操作</th></tr>
-<tr><td>安装器中打开</td><td>运行本套件安装器，确认保存目录，点击 <b>“启动地图编辑器”</b>。</td></tr>
-<tr><td>直接打开</td><td>资源管理器地址栏输入 <code>%LOCALAPPDATA%\foxmolika_CubeMX_Suite_0.3.7</code>，双击 <code>foxmolika_MapEditor.exe</code>。自定义安装位置请用对应目录。</td></tr></table>
-<p><b>当前版本在独立窗口中绘图，并未嵌入 CubeMX。</b>不要在 CubeMX 的插件菜单中寻找绘图入口。</p>
-<ol><li>点击“新建”，设置场地宽、高与网格（mm）；用“＋ 位点”在画布放点，用“▧ 障碍”画矩形障碍。</li>
-<li>在表格中设置 X、Y、朝向、速度、停留。0° 向右、90° 向上；连续两个点用相同 X/Y、不同朝向即可原地转头。</li>
-<li>导入底盘的 <code>rcs_config.h</code>，核对轮径、布局、减速比；按实际编码器设置每电机转的有效计数和各轮方向。最大采样间隔须小于底盘命令超时。</li>
-<li>将地图保存为 <code>.rcsmap.json</code>，它与 CubeMX 的 <code>.ioc</code> 是两个不同文件。</li>
-<li>路线检查通过后点击 <b>“导出 C / H”</b>，得到 <code>rcs_route.c/h</code>、<code>rcs_nav.c/h</code>、<code>rcs_actions.c/h</code>，共 <b>3C3H</b>。</li>
-<li>在地图编辑器关联工程后，选择“导出到关联工程”即可自动加入三个 .c、三个 .h 和包含目录。在自己的任务中调用 <code>rcs_route_init</code> 和导航更新接口。安装目录的 <code>examples/robot_route_task.c/h</code> 提供接入示例；编辑器“使用说明”有完整编码器接口说明。</li></ol>
-<p class="note"><b>工程模式会自动登记底盘4H和路径3C3H。</b>未勾选工程模式的独立导出仍需自行添加。工具不创建或启动路径任务；地图里的障碍物用于路线检查，本版没有自动规划、动态避障或外部定位。</p>
-
-<h2 id="actions">航点插入夹爪、舵机、升降动作</h2>
-<p>选择航点 → <b>“航点动作…”</b>，或双击动作列。填写启动一次、完成条件、完成清理、取消清理与超时；也可导出后在 <code>rcs_actions.c</code> 的 <code>USER CODE</code> 区域接入自己的驱动。预留区不包含真实机构驱动，默认完成条件 <code>1</code> 只表示空动作完成。</p>
-<p>执行顺序：到达位置与朝向并减速 → 启动动作 → 逐周期检查完成 → 完成清理 → 停留 → 下一点。用户代码必须快速返回；时间等待用完成条件，避免阻塞延时。使用 <code>rcs_route_init</code> 绑定动作。</p>
-<p>0.3.0 使用可读的模板生成代码，保留航点稳定 ID 和 USER CODE。重新导出会保留手写内容，不重排用户区；同一区域同时在界面和 C 文件中改动会拒绝覆盖。地图和导出的 C 文件都应保存。</p>
-
-<h2 id="help">常见问题与恢复</h2>
-<table><tr><th>现象</th><th>检查顺序</th></tr>
-<tr><td>安装成功，但 Keil 看不到 .h</td><td>确认是当前这个 .ioc 已关联 → 保存关闭后重新打开 .ioc → Generate Code → 查看 <code>foxmolika_Tools_037/headers-result.txt</code> → Keil 重载。只安装 .pack 或创建新工程不会自动关联。</td></tr>
-<tr><td>生成后日志不存在</td><td>确认工程内生成后工具文件夹存在，CubeMX 使用的是关联后的 .ioc；查看 Project Manager 的生成后操作是否指向 <code>foxmolika_Tools_037/foxmolika_PostGenerate.exe</code>。不要覆盖已有的其他操作。</td></tr>
-<tr><td>找不到地图编辑器</td><td>确认安装器保存目录正确，点击“启动地图编辑器”；或直接运行目录中的 <code>foxmolika_MapEditor.exe</code>。只手动导入 .pack 不会安装编辑器。</td></tr>
-<tr><td>CAN HAL 未启用／找不到 CAN 类型</td><td>完成关联再重新生成，检查 HAL 配置中的 CAN 模块与驱动源文件。硬件初始化仍需自己配置。</td></tr>
-<tr><td>导入失败或包被修改</td><td>查看安装目录的 <code>import-pack.log</code>、<code>suite-error.log</code>。安装器核验全部文件，拒绝覆盖同版本的不同内容，保留其他版本和用户资料。修复失败的事务保留在仓库 <code>.foxmolika-tx</code>。</td></tr></table>
-<p>卸载：重新运行安装器，选原目录，点击“卸载此套工具”。只移除本套件引入且未被修改的包和工具；工程、地图及用户新增文件保留。</p>
-<p>适用范围：Windows x64、STM32F407 HAL、M3508/C620；已验证 CubeMX 6.18.1。其他 IDE 的头文件自动登记、CubeMX 内嵌绘图、真实机构驱动不在本版范围。安装器未代码签名；未烧录或实车验收。完整验证和版本比较见随源码交付的 docs 目录。</p>
-<h2>导出保护与恢复</h2><p>只有空目录或完整的本工具六文件目录可更新；USER CODE保留，双方同时修改同一区域会拒绝。另一目录的同名路径模块也会拒绝，避免重复编译。若源码导出后工程文件被占用，界面明确提示“路径文件已导出，但Keil登记尚未完成”，不会假报全部成功；解除占用后重试导出或Generate Code。</p><p>保留工程根的 <code>.foxmolika-project.xml</code> 和 <code>foxmolika_Tools_037</code>。地图使用相对路径记住.ioc，工程和地图一起搬移后仍可用；跨盘保存时可能使用绝对路径，搬移后可重新关联。“清除地图关联”只清除当前地图的目标，不删除工程文件或生成后工具。</p></main></body></html>
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>foxmolika 0.4.0 安装与使用教程</title><style>body{max-width:1080px;margin:36px auto;padding:0 24px;color:#23344a;background:#f6f8fc;font:17px/1.8 "Microsoft YaHei",sans-serif}h1,h2{color:#135b77}section{background:white;padding:22px 28px;margin:20px 0;border-radius:12px}code,pre{background:#edf2f7;border-radius:5px;padding:3px 7px}pre{padding:14px;white-space:pre-wrap}table{border-collapse:collapse;width:100%}th,td{border:1px solid #cbd7e3;padding:9px;text-align:left}img{max-width:100%;border:1px solid #d6e0eb}a{color:#136c9b}.note{border-left:4px solid #2d8c98;padding-left:14px}</style><h1>foxmolika 0.4.0 安装与使用教程</h1><p>2026-11-14 · STM32F407 HAL / CubeMX / Keil MDK · 独立 C/H 生成</p>
+<section><h2>1. 安装与打开编辑器</h2><ol>
+<li>保存并关闭 CubeMX。运行单文件 <code>foxmolika_CubeMX_Setup_0.4.0_win-x64.exe</code>，安装器自动寻找 CubeMX、导入内嵌软件包并核验注册，不需要手动导入 .pack，也不需要安装 Python。</li>
+<li>目标电脑需要已有完整 STM32CubeMX；本次本机验收版本为 6.18.1。其他 CubeMX 版本没有自动视为已验收。</li>
+<li>安装后点击安装器的<strong>启动地图编辑器</strong>。以后可运行安装目录的 <code>foxmolika_MapEditor.exe</code>。</li>
+<li>默认安装目录为 <code>%LOCALAPPDATA%\foxmolika_CubeMX_Suite_0.4.0</code>。安装器允许选择其他目录。编辑器是与 CubeMX 配套的独立窗口，不能在 CubeMX 画布里寻找地图入口。</li></ol>
+<p class="note">0.3.7、旧安装目录与旧工程不会被本次发布目录覆盖。建议复制工程后再迁移，保留能够工作的固件。</p></section>
+<section><h2>2. CubeMX 选择组件，并主动关联工程</h2><ol>
+<li>打开 F407 的 .ioc，Select Components 中选择 <code>RCS.foxmolika 0.4.0</code>，在 foxmolika 页启用 Robotics/foxmolika 模式并配置底盘参数。</li>
+<li>保存并关闭 .ioc。点击安装器或地图编辑器顶部绿色栏的<strong>关联工程…</strong>，主动选择该 .ioc。仅安装软件不会自动关联任何工程。</li>
+<li>重新打开 .ioc，Generate Code，然后在 Keil 重载工程。生成后工具自动补齐底盘头文件。</li>
+<li>CAN 引脚、时钟、位时序、滤波、接收中断、启动和任务调用仍须按硬件完成。关联仅保证 HAL 依赖及文件登记，不等于已经接好电机。</li></ol>
+<p>关联记录在工程内，工具目录为 <code>foxmolika_Tools_040</code>。官方 0.3.6/0.3.7 生成后工具经哈希检查后可升级；未知自定义生成后命令会保留并提示合并。</p></section>
+<section><h2>3. 航点流程：平移、动作、纠偏分开</h2>
+<pre>平移到点 → 停稳 → 到达后动作 → 独立纠偏 → 起步前动作 → 离开验收 → 下一点</pre>
+<p>选择一个点，点<strong>航点流程…</strong>。在“到达后动作”和“起步前动作”分别添加、编辑、上移、下移或删除动作。旋转不再依靠重叠位点表达，普通行驶只平移。</p>
+<table><tr><th>动作类型</th><th>填写内容</th><th>执行含义</th></tr>
+<tr><td>绝对旋转</td><td>地图目标角度、方向、限速、角加速度、容差、停稳与漂移上限</td><td>XY 命令为零，仅转向</td></tr>
+<tr><td>相对旋转</td><td>相对动作开始时车头的角度</td><td>开始时锁存目标，支持累计转角</td></tr>
+<tr><td>等待</td><td>秒数、超时</td><td>保持底盘零命令，控制与反馈继续运行</td></tr>
+<tr><td>自定义机构</td><td>公共头文件、启动、完成条件、完成清理、取消清理</td><td>调用夹爪/舵机/升降已有函数，必须非阻塞</td></tr></table>
+<p>纠偏设置包括关闭/位置/位置与朝向/只验收、到达半径、精调速度、超时、次数、停稳和漂移限制。平移精调与朝向精调串行；已完成的机构动作不会因纠偏重试而重放。旋转成功会更新后续目标朝向。</p>
+<p>终点默认不执行起步前组；需要在终点执行时，勾选“终点也执行起步前动作”。通过后结束任务，不再向外发起一段行驶。</p></section>
+<section><h2>4. 量角器：量方向，也量相对转角</h2>
+<p>点击<strong>量角器</strong>，选择 A、B 位点。可查看 A→B 对 +X、+Y 的有向角，以及与水平/竖直网格线的夹角。地图 +X 向右、+Y 向上，逆时针为正。</p>
+<p>选择动作组和插入位置，参考朝向按此前计划动作推导；也可手动输入。面板显示从参考朝向面向连线所需的相对转角。例如连线 45°、车头 90°，需要顺时针 45°。全向车的行进方向与车头方向不必一致。</p>
+<p>生成旋转动作时选择到达后或起步前。保留位点引用时，拖动位点会重新计算方向；固定角度则保持数值。删除引用点会使校验失败。两点重合没有连线方向，不能生成“朝向连线”的动作。</p></section>
+<section><h2>5. 保存地图、导出 C/H，再编译</h2><ol>
+<li>保存地图。旧 v1/v2 地图会迁移为 v3 并另存，原地图保留；旧机构动作映射到起步前，角度变化映射为旋转动作，停留映射为等待。</li>
+<li>点<strong>导出 C / H</strong>，选择<strong>导出到关联工程</strong>。输出到 <code>Application/foxmolikaRoute</code>，自动登记路线的 3C3H 和包含目录。</li>
+<li>在 Keil 重载工程并 Rebuild。底盘 3C4H 加路线 3C3H 仍是独立源码，不向 main.c 插入业务。</li>
+<li>保存地图后再次修改，必须重新导出。关联导出会登记 Keil 构建前版本检查；地图改了没导出、路线配置源码被更改或地图路径失效时会阻止构建并给出提示。</li></ol>
+<p>状态栏显示已保存/未保存和当前版本已导出/未导出。生成的 <code>rcs_route_revision</code> 供核对，不代表调试器已经加载了同一份固件。请使用同一输出目录配套的 AXF 与 HEX。</p>
+<p>重新导出会保留 USER CODE。不要修改生成区域来绕开校验。独立导出没有关联工程时，需要自行登记文件；构建前检查针对关联工程配置。</p></section>
+<section><h2>6. 崩溃日志：本地 ZIP 与恢复副本</h2>
+<p>不可恢复异常时编辑器停止业务操作，尽力记录诊断并生成本地 ZIP，报错窗口显示完整路径，可复制路径、打开文件夹或关闭。<strong>不上传、不发送邮件。</strong></p>
+<p>默认位置：<code>%LOCALAPPDATA%\foxmolika\CrashReports</code>。ZIP 包含异常堆栈、版本、运行环境与有限操作记录，不附地图、用户代码、工程、Keil 编译日志或许可证。恢复地图单独保存在本地，原文件不覆盖；下次启动可选择恢复。</p>
+<p>打包失败时显示原始日志的实际路径；落盘全部失败则明确提示。强制结束或断电不能保证当场报告，下次启动可补收未正常结束的会话记录。自动快照之后的最后修改可能丢失。</p></section>
+<section><h2>7. 接入与验证边界</h2>
+<p>任务侧使用 <code>rcs_route_init/reset/update/start</code> 或示例 <code>robot_route_task.c/.h</code>，持续调用底盘控制周期。必须提供真实时间与全部在用轮的新鲜编码器增量；生成器不自动配置编码器硬件、解绕原始角度或替代 CAN 板级接入。</p>
+<p>轮速 PID 初值仍需调参。编码器纠偏修正的是估计坐标，不能自动识别全部打滑误差；实车旋转中心还取决于轮速跟随、安装几何与接地状态。软件测试、ARM 编译和实车验收分开记录。</p>
+<p><a href="地图编辑器说明.html">地图编辑器说明</a> · <a href="底盘接入说明.md">底盘接入接口</a></p></section></html>

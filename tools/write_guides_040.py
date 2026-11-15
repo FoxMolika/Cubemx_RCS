@@ -1,0 +1,67 @@
+"""Author synchronized standalone HTML tutorials for the 0.4 workflow."""
+from pathlib import Path
+import base64
+R=Path(__file__).resolve().parents[1]
+STYLE='body{max-width:1080px;margin:36px auto;padding:0 24px;color:#23344a;background:#f6f8fc;font:17px/1.8 "Microsoft YaHei",sans-serif}h1,h2{color:#135b77}section{background:white;padding:22px 28px;margin:20px 0;border-radius:12px}code,pre{background:#edf2f7;border-radius:5px;padding:3px 7px}pre{padding:14px;white-space:pre-wrap}table{border-collapse:collapse;width:100%}th,td{border:1px solid #cbd7e3;padding:9px;text-align:left}img{max-width:100%;border:1px solid #d6e0eb}a{color:#136c9b}.note{border-left:4px solid #2d8c98;padding-left:14px}'
+def page(title,body):return '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>'+title+'</title><style>'+STYLE+'</style><h1>'+title+'</h1>'+body+'</html>'
+
+def main():
+ body='''<p>2026-11-14 · STM32F407 HAL / CubeMX / Keil MDK · 独立 C/H 生成</p>
+<section><h2>1. 安装与打开编辑器</h2><ol>
+<li>保存并关闭 CubeMX。运行单文件 <code>foxmolika_CubeMX_Setup_0.4.0_win-x64.exe</code>，安装器自动寻找 CubeMX、导入内嵌软件包并核验注册，不需要手动导入 .pack，也不需要安装 Python。</li>
+<li>目标电脑需要已有完整 STM32CubeMX；本次本机验收版本为 6.18.1。其他 CubeMX 版本没有自动视为已验收。</li>
+<li>安装后点击安装器的<strong>启动地图编辑器</strong>。以后可运行安装目录的 <code>foxmolika_MapEditor.exe</code>。</li>
+<li>默认安装目录为 <code>%LOCALAPPDATA%\\foxmolika_CubeMX_Suite_0.4.0</code>。安装器允许选择其他目录。编辑器是与 CubeMX 配套的独立窗口，不能在 CubeMX 画布里寻找地图入口。</li></ol>
+<p class="note">0.3.7、旧安装目录与旧工程不会被本次发布目录覆盖。建议复制工程后再迁移，保留能够工作的固件。</p></section>
+<section><h2>2. CubeMX 选择组件，并主动关联工程</h2><ol>
+<li>打开 F407 的 .ioc，Select Components 中选择 <code>RCS.foxmolika 0.4.0</code>，在 foxmolika 页启用 Robotics/foxmolika 模式并配置底盘参数。</li>
+<li>保存并关闭 .ioc。点击安装器或地图编辑器顶部绿色栏的<strong>关联工程…</strong>，主动选择该 .ioc。仅安装软件不会自动关联任何工程。</li>
+<li>重新打开 .ioc，Generate Code，然后在 Keil 重载工程。生成后工具自动补齐底盘头文件。</li>
+<li>CAN 引脚、时钟、位时序、滤波、接收中断、启动和任务调用仍须按硬件完成。关联仅保证 HAL 依赖及文件登记，不等于已经接好电机。</li></ol>
+<p>关联记录在工程内，工具目录为 <code>foxmolika_Tools_040</code>。官方 0.3.6/0.3.7 生成后工具经哈希检查后可升级；未知自定义生成后命令会保留并提示合并。</p></section>
+<section><h2>3. 航点流程：平移、动作、纠偏分开</h2>
+<pre>平移到点 → 停稳 → 到达后动作 → 独立纠偏 → 起步前动作 → 离开验收 → 下一点</pre>
+<p>选择一个点，点<strong>航点流程…</strong>。在“到达后动作”和“起步前动作”分别添加、编辑、上移、下移或删除动作。旋转不再依靠重叠位点表达，普通行驶只平移。</p>
+<table><tr><th>动作类型</th><th>填写内容</th><th>执行含义</th></tr>
+<tr><td>绝对旋转</td><td>地图目标角度、方向、限速、角加速度、容差、停稳与漂移上限</td><td>XY 命令为零，仅转向</td></tr>
+<tr><td>相对旋转</td><td>相对动作开始时车头的角度</td><td>开始时锁存目标，支持累计转角</td></tr>
+<tr><td>等待</td><td>秒数、超时</td><td>保持底盘零命令，控制与反馈继续运行</td></tr>
+<tr><td>自定义机构</td><td>公共头文件、启动、完成条件、完成清理、取消清理</td><td>调用夹爪/舵机/升降已有函数，必须非阻塞</td></tr></table>
+<p>纠偏设置包括关闭/位置/位置与朝向/只验收、到达半径、精调速度、超时、次数、停稳和漂移限制。平移精调与朝向精调串行；已完成的机构动作不会因纠偏重试而重放。旋转成功会更新后续目标朝向。</p>
+<p>终点默认不执行起步前组；需要在终点执行时，勾选“终点也执行起步前动作”。通过后结束任务，不再向外发起一段行驶。</p></section>
+<section><h2>4. 量角器：量方向，也量相对转角</h2>
+<p>点击<strong>量角器</strong>，选择 A、B 位点。可查看 A→B 对 +X、+Y 的有向角，以及与水平/竖直网格线的夹角。地图 +X 向右、+Y 向上，逆时针为正。</p>
+<p>选择动作组和插入位置，参考朝向按此前计划动作推导；也可手动输入。面板显示从参考朝向面向连线所需的相对转角。例如连线 45°、车头 90°，需要顺时针 45°。全向车的行进方向与车头方向不必一致。</p>
+<p>生成旋转动作时选择到达后或起步前。保留位点引用时，拖动位点会重新计算方向；固定角度则保持数值。删除引用点会使校验失败。两点重合没有连线方向，不能生成“朝向连线”的动作。</p></section>
+<section><h2>5. 保存地图、导出 C/H，再编译</h2><ol>
+<li>保存地图。旧 v1/v2 地图会迁移为 v3 并另存，原地图保留；旧机构动作映射到起步前，角度变化映射为旋转动作，停留映射为等待。</li>
+<li>点<strong>导出 C / H</strong>，选择<strong>导出到关联工程</strong>。输出到 <code>Application/foxmolikaRoute</code>，自动登记路线的 3C3H 和包含目录。</li>
+<li>在 Keil 重载工程并 Rebuild。底盘 3C4H 加路线 3C3H 仍是独立源码，不向 main.c 插入业务。</li>
+<li>保存地图后再次修改，必须重新导出。关联导出会登记 Keil 构建前版本检查；地图改了没导出、路线配置源码被更改或地图路径失效时会阻止构建并给出提示。</li></ol>
+<p>状态栏显示已保存/未保存和当前版本已导出/未导出。生成的 <code>rcs_route_revision</code> 供核对，不代表调试器已经加载了同一份固件。请使用同一输出目录配套的 AXF 与 HEX。</p>
+<p>重新导出会保留 USER CODE。不要修改生成区域来绕开校验。独立导出没有关联工程时，需要自行登记文件；构建前检查针对关联工程配置。</p></section>
+<section><h2>6. 崩溃日志：本地 ZIP 与恢复副本</h2>
+<p>不可恢复异常时编辑器停止业务操作，尽力记录诊断并生成本地 ZIP，报错窗口显示完整路径，可复制路径、打开文件夹或关闭。<strong>不上传、不发送邮件。</strong></p>
+<p>默认位置：<code>%LOCALAPPDATA%\\foxmolika\\CrashReports</code>。ZIP 包含异常堆栈、版本、运行环境与有限操作记录，不附地图、用户代码、工程、Keil 编译日志或许可证。恢复地图单独保存在本地，原文件不覆盖；下次启动可选择恢复。</p>
+<p>打包失败时显示原始日志的实际路径；落盘全部失败则明确提示。强制结束或断电不能保证当场报告，下次启动可补收未正常结束的会话记录。自动快照之后的最后修改可能丢失。</p></section>
+<section><h2>7. 接入与验证边界</h2>
+<p>任务侧使用 <code>rcs_route_init/reset/update/start</code> 或示例 <code>robot_route_task.c/.h</code>，持续调用底盘控制周期。必须提供真实时间与全部在用轮的新鲜编码器增量；生成器不自动配置编码器硬件、解绕原始角度或替代 CAN 板级接入。</p>
+<p>轮速 PID 初值仍需调参。编码器纠偏修正的是估计坐标，不能自动识别全部打滑误差；实车旋转中心还取决于轮速跟随、安装几何与接地状态。软件测试、ARM 编译和实车验收分开记录。</p>
+<p><a href="地图编辑器说明.html">地图编辑器说明</a> · <a href="底盘接入说明.md">底盘接入接口</a></p></section>'''
+ full=page('foxmolika 0.4.0 安装与使用教程',body)
+ for name in ['docs/使用说明.html','suite/docs/使用说明.html']:(R/name).write_text(full,encoding='utf-8')
+ image=R/'map_editor/docs/editor_ui.png'
+ preview='<p>界面以已安装版本为准。</p>'
+ if image.exists():preview='<img alt="foxmolika0.4地图编辑器实际界面" src="data:image/png;base64,'+base64.b64encode(image.read_bytes()).decode()+'">'
+ editor=page('foxmolika 0.4.0 地图、动作与量角器',preview+body)
+ (R/'map_editor/docs/使用说明.html').write_text(editor,encoding='utf-8')
+ (R/'docs/地图编辑器说明.html').write_text(editor,encoding='utf-8')
+ (R/'suite/docs/地图编辑器说明.html').write_text(editor,encoding='utf-8')
+ for folder in ['docs','suite/docs','map_editor/docs']:
+  (R/folder/'底盘接入说明.md').write_bytes((R/'docs/接入说明.md').read_bytes())
+ # Embedded standalone editor guide contains the complete workflow; remove links
+ # whose targets are intentionally not separate files in its small installation.
+ standalone=editor.replace('<p><a href="地图编辑器说明.html">地图编辑器说明</a> · <a href="底盘接入说明.md">底盘接入接口</a></p>','')
+ (R/'map_editor/docs/使用说明.html').write_text(standalone,encoding='utf-8')
+ print('Wrote synchronized 0.4.0 Chinese tutorials')
+if __name__=='__main__':main()

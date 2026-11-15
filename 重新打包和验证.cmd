@@ -1,21 +1,27 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-python map_editor\tools\verify.py
+python tools\write_guides_040.py
 if errorlevel 1 goto failed
-python tools\test_style_generation.py
-if errorlevel 1 goto failed
-python tools\test_route_project.py
-if errorlevel 1 goto failed
-python tools\check_guides.py
-if errorlevel 1 goto failed
-python tools\style_audit.py
+python map_editor\tools\build.py
 if errorlevel 1 goto failed
 python tools\verify.py
 if errorlevel 1 goto failed
 python suite\tools\build.py
 if errorlevel 1 goto failed
+python tools\check_guides.py
+if errorlevel 1 goto failed
+python map_editor\tools\verify_phases.py --no-build
+if errorlevel 1 goto failed
+python map_editor\tools\test_crash.py
+if errorlevel 1 goto failed
+python tools\test_migration_040.py
+if errorlevel 1 goto failed
+python tools\test_revision_guard.py
+if errorlevel 1 goto failed
 python tools\test_project_setup.py
+if errorlevel 1 goto failed
+python tools\test_route_project.py
 if errorlevel 1 goto failed
 python suite\tools\test_transactions.py
 if errorlevel 1 goto failed
@@ -25,17 +31,16 @@ python tools\verify_project_integration.py
 if errorlevel 1 goto failed
 python tools\finish_keil_validation.py
 if errorlevel 1 goto failed
-python tools\package_fixed_project.py
+python tools\test_keil_guard.py
 if errorlevel 1 goto failed
 python suite\tools\finish_tests.py
 if errorlevel 1 goto failed
-python suite\tools\release.py
+python tools\release_040.py
 if errorlevel 1 goto failed
-python tools\audit_release.py
-if errorlevel 1 goto failed
+echo Verified release ready in dist.
 pause
 exit /b 0
 :failed
-echo Build or validation failed. No new release was published.
+echo Validation failed. No new release was published.
 pause
 exit /b 1

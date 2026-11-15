@@ -8,16 +8,20 @@ using System.Reflection;
 using System.Security.Cryptography;
 #if !RCS_MAP_EDITOR
 [assembly:AssemblyTitle("foxmolika CubeMX Project Setup")]
-[assembly:AssemblyVersion("0.3.7.0")]
-[assembly:AssemblyFileVersion("0.3.7.0")]
+[assembly:AssemblyVersion("0.4.0.0")]
+[assembly:AssemblyFileVersion("0.4.0.0")]
 #endif
 static class ProjectSetup {
  const string Legacy036Hash="f4302cc3cf520485f92224c5eda1771f3becf026efbdd50a71f1bee474ba1a49";
+ const string Legacy037Hash="7b345d87e5562d929ae041db4637fdf4953e79ce546d39ea74f292e39809c484";
  static bool LegacyHook(string root,string hook){
-  if(!hook.Replace('\\','/').Equals("foxmolika_Tools_036/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase))return false;
+  string normalized=hook.Replace('\\','/');
+  string expected=normalized.Equals("foxmolika_Tools_036/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy036Hash:
+   normalized.Equals("foxmolika_Tools_037/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy037Hash:null;
+  if(expected==null)return false;
   string file=ProjectBinding.Inside(root,hook);ProjectBinding.NoLink(Path.GetDirectoryName(file));ProjectBinding.NoLink(file);
   if(!File.Exists(file))return false;
-  using(var h=SHA256.Create())using(var s=File.OpenRead(file))return BitConverter.ToString(h.ComputeHash(s)).Replace("-","").ToLowerInvariant()==Legacy036Hash;
+  using(var h=SHA256.Create())using(var s=File.OpenRead(file))return BitConverter.ToString(h.ComputeHash(s)).Replace("-","").ToLowerInvariant()==expected;
  }
  static readonly Encoding Utf8=new UTF8Encoding(false,true);
  static string Section(string s){var m=Regex.Match(s.Trim(),@"^\[([^\]]+)\]$");return m.Success?m.Groups[1].Value:null;}
@@ -41,28 +45,28 @@ static class ProjectSetup {
   if(!Regex.IsMatch(ioc,@"(?m)^ProjectManager\.TargetToolchain=MDK-ARM"))throw new Exception("自动头文件补全仅验收MDK-ARM工程，请先在CubeMX选择Keil MDK工具链。");
   if(Regex.IsMatch(ioc,@"(?m)^Mcu\.ThirdParty\d+=RCS\.Chassis\."))throw new Exception("工程仍选用了旧RCS.Chassis组件。请在CubeMX取消旧组件，选择并启用RCS.foxmolika，然后保存并关闭工程后重新关联。两个组件不能同时启用。");
   var versions=Regex.Matches(ioc,@"RCS\.foxmolika\.(\d+\.\d+\.\d+)").Cast<Match>().Select(m=>m.Groups[1].Value).Distinct().ToArray();if(versions.Length==0)throw new Exception("请先在CubeMX里选择并启用RCS.foxmolika组件，保存.ioc。");
-  if(versions.Any(v=>new Version(v)>new Version("0.3.7")))throw new Exception("工程使用较新版本，未执行降级。");
+  if(versions.Any(v=>new Version(v)>new Version("0.4.0")))throw new Exception("工程使用较新版本，未执行降级。");
   var binding=ProjectBinding.Plan(path,ioc);binding.Preflight();
-  string updated=ioc;if(upgrade)foreach(string v in versions){updated=updated.Replace("RCS.foxmolika."+v,"RCS.foxmolika.0.3.7").Replace("RCS.foxmolika_VS_RoboticsJjfoxmolika_"+v,"RCS.foxmolika_VS_RoboticsJjfoxmolika_0.3.7");}
-  const string hook="foxmolika_Tools_037/foxmolika_PostGenerate.exe";var oldHook=Regex.Match(updated,@"(?m)^ProjectManager\.UAScriptAfterPath=(.*)$");string previous=oldHook.Success?oldHook.Groups[1].Value.Trim():"";
-  if(previous.Length>0&&!previous.Replace('\\','/').Equals(hook,StringComparison.OrdinalIgnoreCase)&&!(upgrade&&LegacyHook(binding.Root,previous)))throw new Exception("工程已有生成后操作，未覆盖："+previous+"。仅支持自动升级校验通过的官方0.3.6工具；其他自定义操作请先合并。");
+  string updated=ioc;if(upgrade)foreach(string v in versions){updated=updated.Replace("RCS.foxmolika."+v,"RCS.foxmolika.0.4.0").Replace("RCS.foxmolika_VS_RoboticsJjfoxmolika_"+v,"RCS.foxmolika_VS_RoboticsJjfoxmolika_0.4.0");}
+  const string hook="foxmolika_Tools_040/foxmolika_PostGenerate.exe";var oldHook=Regex.Match(updated,@"(?m)^ProjectManager\.UAScriptAfterPath=(.*)$");string previous=oldHook.Success?oldHook.Groups[1].Value.Trim():"";
+  if(previous.Length>0&&!previous.Replace('\\','/').Equals(hook,StringComparison.OrdinalIgnoreCase)&&!(upgrade&&LegacyHook(binding.Root,previous)))throw new Exception("工程已有生成后操作，未覆盖："+previous+"。仅支持自动升级校验通过的官方0.3.6/0.3.7工具；其他自定义操作请先合并。");
   if(oldHook.Success)updated=updated.Remove(oldHook.Index,oldHook.Length).Insert(oldHook.Index,"ProjectManager.UAScriptAfterPath="+hook+(oldHook.Value.EndsWith("\r")?"\r":""));else updated+= (updated.EndsWith("\n")?"":"\r\n")+"ProjectManager.UAScriptAfterPath="+hook+"\r\n";
   byte[] payload;using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("payload/foxmolika_PostGenerate.exe")){if(stream==null)throw new Exception("缺少内嵌生成后工具。");using(var memory=new MemoryStream()){stream.CopyTo(memory);payload=memory.ToArray();}}
   string tool=Path.Combine(Path.GetDirectoryName(path),hook.Replace('/',Path.DirectorySeparatorChar));if(File.Exists(tool)&&!File.ReadAllBytes(tool).SequenceEqual(payload))throw new Exception("工程已有不同内容的生成后工具，未覆盖："+tool);
   string ext=Path.Combine(Path.GetDirectoryName(path),".extSettings");byte[] old=Read(ext);string original=old==null?"":Utf8.GetString(old).TrimStart('\uFEFF');string merged=Merge(original);
   byte[] markerOld=Read(binding.Marker),markerNew=binding.Bytes();bool changeMarker=markerOld==null||!markerOld.SequenceEqual(markerNew);
-  bool changeIoc=updated!=ioc,changeExt=merged!=original;string suffix=".rcs-before-037";
+  bool changeIoc=updated!=ioc,changeExt=merged!=original;string suffix=".rcs-before-040";
   if(changeIoc&&!File.Exists(path+suffix))File.WriteAllBytes(path+suffix,iocBytes);if(changeExt&&old!=null&&!File.Exists(ext+suffix))File.WriteAllBytes(ext+suffix,old);
   if(changeMarker&&markerOld!=null&&!File.Exists(binding.Marker+suffix))File.WriteAllBytes(binding.Marker+suffix,markerOld);
   Directory.CreateDirectory(Path.GetDirectoryName(tool));if(!File.Exists(tool))Atomic(tool,payload);
   try{if(changeExt)Atomic(ext,Utf8.GetBytes(merged));if(changeMarker)Atomic(binding.Marker,markerNew);if(changeIoc)Atomic(path,Utf8.GetBytes(updated));}
   catch{if(changeMarker){if(markerOld!=null)Atomic(binding.Marker,markerOld);else if(File.Exists(binding.Marker))File.Delete(binding.Marker);}if(changeExt){if(old!=null)Atomic(ext,old);else if(File.Exists(ext))File.Delete(ext);}throw;}
-  return "底盘与路径工程关联完成。请返回CubeMX重新打开.ioc并Generate Code。\r\n已启用CAN HAL与生成后自动登记。\r\n地图编辑器可直接导出到 "+ProjectBinding.RouteRelative+"，自动加入路径3C3H和包含目录。\r\n硬件CAN配置和任务调用仍由你接入。\r\n"+(upgrade?"已切换RCS.foxmolika 0.3.7；请先安装本套件。\r\n":"")+"原文件如有修改，备份为 *.rcs-before-037。";
+  return "底盘与路径工程关联完成。请返回CubeMX重新打开.ioc并Generate Code。\r\n已启用CAN HAL与生成后自动登记。\r\n地图编辑器可直接导出到 "+ProjectBinding.RouteRelative+"，自动加入路径3C3H和包含目录。\r\n硬件CAN配置和任务调用仍由你接入。\r\n"+(upgrade?"已切换RCS.foxmolika 0.4.0；请先安装本套件。\r\n":"")+"原文件如有修改，备份为 *.rcs-before-040。";
  }
 #if !RCS_MAP_EDITOR
  [STAThread] static int Main(string[] args){try{if(args.Length>0){string p=args.FirstOrDefault(x=>!x.StartsWith("/"));if(p==null)throw new Exception("需要.ioc路径。");Console.WriteLine(Apply(p,args.Any(x=>x.Equals("/UPGRADE",StringComparison.OrdinalIgnoreCase))));return 0;}
-  Application.EnableVisualStyles();using(var form=new Form{Text="foxmolika 工程关联 0.3.7",Width=640,Height=310,StartPosition=FormStartPosition.CenterScreen}){
-   var info=new Label{Left=20,Top=20,Width=580,Height=145,Text="底盘和地图路径共用一次工程关联。\r\n\r\n启用CAN HAL，生成后自动补底盘4H；\r\n地图导出到Application/foxmolikaRoute，自动加入3C3H及包含路径。\r\n使用RCS.foxmolika 0.3.7；需先安装套件。\r\n不向main.c插入底盘或路径任务调用。"};form.Controls.Add(info);
+  Application.EnableVisualStyles();using(var form=new Form{Text="foxmolika 工程关联 0.4.0",Width=640,Height=310,StartPosition=FormStartPosition.CenterScreen}){
+   var info=new Label{Left=20,Top=20,Width=580,Height=145,Text="底盘和地图路径共用一次工程关联。\r\n\r\n启用CAN HAL，生成后自动补底盘4H；\r\n地图导出到Application/foxmolikaRoute，自动加入3C3H及包含路径。\r\n使用RCS.foxmolika 0.4.0；需先安装套件。\r\n不向main.c插入底盘或路径任务调用。"};form.Controls.Add(info);
    var button=new Button{Text="选择 .ioc 并关联 / 升级",Left=20,Top=180,Width=270,Height=40};button.Click+=(s,e)=>{using(var d=new OpenFileDialog{Filter="CubeMX工程|*.ioc",Title="保存并关闭CubeMX工程后，选择.ioc"})if(d.ShowDialog(form)==DialogResult.OK){try{MessageBox.Show(form,Apply(d.FileName,true),"完成");}catch(Exception ex){MessageBox.Show(form,ex.Message,"未完成");}}};form.Controls.Add(button);Application.Run(form);}return 0;
  }catch(Exception e){try{File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"project-setup-error.log"),e.ToString(),Utf8);}catch{}Console.Error.WriteLine(e.Message);return 2;}}
 #endif

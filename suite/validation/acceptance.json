@@ -1,0 +1,32 @@
+{
+  "single_file_only": true,
+  "without_machine_environment_variable": true,
+  "cube_auto_discovery": [
+    "C:\\Users\\FoxMolia\\AppData\\Local\\Programs\\STM32CubeMX"
+  ],
+  "initial_home_existed": false,
+  "native_import_and_all_hashes": "pass",
+  "repeat_install": "pass",
+  "repair_missing_registration": "pass",
+  "installed_editor_selftest": "pass",
+  "preserve_preexisting_pack": "pass",
+  "refuse_missing_cube_and_unknown_folder": "pass",
+  "modified_pack_install_and_uninstall": "refused and preserved",
+  "installed_editor_version": "0.3.0",
+  "installed_editor_report": "PASS: 72 checks. Actual managed EXE model/export tests; no hardware tested.",
+  "installed_directory": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.3.7\\suite\\build\\空白配置 验收_a1ddf46b\\一体安装 目录",
+  "test_home": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.3.7\\suite\\build\\空白配置 验收_a1ddf46b\\全新 CubeMX 配置",
+  "pack_directory": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.3.7\\suite\\build\\空白配置 验收_a1ddf46b\\全新 CubeMX 配置\\STM32Cube\\Repository\\Packs\\RCS\\foxmolika\\0.3.7",
+  "area": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.3.7\\suite\\build\\空白配置 验收_a1ddf46b",
+  "second_physical_pc_or_windows_vm": "not tested",
+  "hardware_test": false,
+  "keil_headers": "pass: 4 headers added to CubeMX MDK project, idempotent",
+  "native_generation": "pass: Omni4, diameter180mm, 3C4H; no main hooks",
+  "native_main_sha256": "5f39b679c150e378afa6d5ec3179e6204cb66aec9e5e39040a55f3dc06ed4ac4",
+  "custom_empty_repository": "pass",
+  "executable_path_selection": "pass",
+  "native_package_uninstall": "pass",
+  "clean_uninstall": "pass",
+  "uninstall_user_files": "preserved",
+  "installer_sha256": "23a1382e727c2aada7b9cd1d63734436c3e4c1ab45fd02a79a6ba618651aed54"
+}

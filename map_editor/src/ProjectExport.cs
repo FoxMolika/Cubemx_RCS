@@ -31,6 +31,7 @@ namespace RcsMap {
             var binding = ProjectBinding.Load(Path.GetDirectoryName(Path.GetFullPath(ioc)));
             binding.Preflight();
             Exporter.Export(document, binding.RouteDirectory);
+            RevisionGuard.Bind(binding);
             try {
                 var projects = binding.Projects();
                 if (projects.Count == 0 || !ProjectBinding.HasChassis(ProjectBinding.ReadXml(projects[0])))

@@ -27,7 +27,7 @@ namespace RcsMap {
   // Own checksummed generated files only; USER CODE is merged by stable waypoint ID.
   public static void Export(MapDocument d,string dir) {
    dir=Path.GetFullPath(dir);Dictionary<string,byte[]> originals;var files=Prepare(d,dir,out originals);bool existing=originals.Count>0;
-   if(existing&&files.All(f=>new UTF8Encoding(false).GetBytes(f.Value).SequenceEqual(originals[f.Key])))return;
+   if(existing&&files.All(f=>new UTF8Encoding(false).GetBytes(f.Value).SequenceEqual(originals[f.Key]))){RevisionGuard.Record(d,dir);return;}
    string parent=Path.GetDirectoryName(dir);Directory.CreateDirectory(parent);string temp=Path.Combine(parent,".rcs-export-"+Guid.NewGuid().ToString("N"));
    string backup=Path.Combine(parent,".rcs-route-backup-"+Guid.NewGuid().ToString("N"));
    Directory.CreateDirectory(temp);try{foreach(var f in files)File.WriteAllText(Path.Combine(temp,f.Key),f.Value,new UTF8Encoding(false));
@@ -36,6 +36,7 @@ namespace RcsMap {
     else if(Directory.Exists(dir)){if(Directory.GetFileSystemEntries(dir).Length>0)throw new IOException("导出期间目标目录新增了文件，未覆盖。");Directory.Delete(dir);}
     try{Directory.Move(temp,dir);}catch(Exception installError){if(existing&&Directory.Exists(backup)){try{if(!Directory.Exists(dir))Directory.Move(backup,dir);else throw new IOException("目标目录已被其他进程创建。");}catch(Exception restoreError){throw new IOException("更新失败，原文件仍保存在："+backup+"。恢复错误："+restoreError.Message,installError);}}throw;}
    }finally{if(Directory.Exists(temp))Directory.Delete(temp,true);}
+   RevisionGuard.Record(d,dir);
   }
  }
 }

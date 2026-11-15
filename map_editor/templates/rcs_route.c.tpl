@@ -43,6 +43,11 @@ const rcs_waypoint rcs_route_points[RCS_ROUTE_POINT_COUNT] = {
 const rcs_segment rcs_route_segments[RCS_ROUTE_SEGMENT_COUNT] = {
 @SEGMENT_ROWS@};
 
+const char rcs_route_revision[] = "@REVISION@";
+@PLAN_ARRAYS@
+const rcs_point_plan rcs_route_plan[RCS_ROUTE_POINT_COUNT] = {
+@PLAN_ROWS@};
+
 /* 导出函数 ------------------------------------------------------------------------------------------*/
 
 /**
@@ -57,6 +62,6 @@ int rcs_route_init(rcs_navigator *navigator, void *action_context)
         return 0;
     }
 
-    return rcs_nav_bind_actions(navigator, rcs_route_actions, RCS_ROUTE_POINT_COUNT,
+    return rcs_nav_bind_plan(navigator, rcs_route_plan, RCS_ROUTE_POINT_COUNT,
                                 rcs_route_action, action_context);
 }

@@ -12,8 +12,8 @@ using System.Xml;
 using System.Xml.Linq;
 #if !RCS_MAP_EDITOR
 [assembly: AssemblyTitle("foxmolika Keil Header Fix")]
-[assembly: AssemblyVersion("0.3.7.0")]
-[assembly: AssemblyFileVersion("0.3.7.0")]
+[assembly: AssemblyVersion("0.4.0.0")]
+[assembly: AssemblyFileVersion("0.4.0.0")]
 #endif
 static class KeilHeaders {
  static readonly string[] Module={"rcs_chassis.h","rcs_control.h","rcs_hal.h"};
@@ -68,6 +68,9 @@ static class KeilHeaders {
   Console.OutputEncoding=new UTF8Encoding(false);
   string postLog=null;
   try{
+   if(args.Length==2&&args[0]=="--check-route"){
+    Console.WriteLine(ProjectBinding.CheckRouteVersion(args[1]));return 0;
+   }
 #if RCS_POSTGEN
    string toolDir=Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
    postLog=Path.Combine(toolDir,"headers-result.txt");

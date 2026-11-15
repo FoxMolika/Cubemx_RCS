@@ -1,0 +1,413 @@
+{
+  "meaning": "These are style descriptors, not functional/API similarity percentages.",
+  "archives": {
+    "RCS_Template_F407_hal.zip": {
+      "sha256": "2dab71d93697cb34483bbd4d11f6a3fe0a1ccb2eececc80ba00bfeb9a53606b1",
+      "selected_files": [
+        "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_adc.h",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_can.h",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_cxx.h",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_exti.h",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_gpio.h",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_os.h",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_private_config.h",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_tim.h",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_types.h",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_uart.h",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_adc.c",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_can.c",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_exti.c",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_gpio.c",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_os.c",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_tim.c",
+        "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_uart.c"
+      ],
+      "decoded_files": [
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_adc.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_can.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_cxx.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_exti.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_gpio.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_os.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_private_config.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_tim.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_types.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/inc/rcs_uart.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_adc.c",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_can.c",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_exti.c",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_gpio.c",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_os.c",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_tim.c",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_hal/RCS/RCS_HAL/src/rcs_uart.c",
+          "encoding": "utf-8-sig"
+        }
+      ],
+      "excluded_files": [],
+      "metrics": {
+        "nonblank_lines": 2243,
+        "mean_characters_per_nonblank_line": 31.66,
+        "comment_only_line_percent": 39.55,
+        "lines_with_TAB": 715
+      }
+    },
+    "RCS_Template_F407_std.zip": {
+      "sha256": "3211fa8c6529d343e0ff1dba01d523667547211ddf09e00bb51ba08bcda9ec33",
+      "selected_files": [
+        "RCS_Template_F407_std/USER/A1motor.c",
+        "RCS_Template_F407_std/USER/A1motor.h",
+        "RCS_Template_F407_std/USER/App_Cfg.h",
+        "RCS_Template_F407_std/USER/BleTask.c",
+        "RCS_Template_F407_std/USER/BleTask.h",
+        "RCS_Template_F407_std/USER/ChassisTask.c",
+        "RCS_Template_F407_std/USER/ChassisTask.h",
+        "RCS_Template_F407_std/USER/Ch_Ctrl.c",
+        "RCS_Template_F407_std/USER/Ch_Ctrl.h",
+        "RCS_Template_F407_std/USER/Core407_RCS12_Debug.c",
+        "RCS_Template_F407_std/USER/Core407_RCS12_Debug.h",
+        "RCS_Template_F407_std/USER/Core407_RCS12_PinMapping.c",
+        "RCS_Template_F407_std/USER/Core407_RCS12_PinMapping.h",
+        "RCS_Template_F407_std/USER/FSM.c",
+        "RCS_Template_F407_std/USER/FSM.h",
+        "RCS_Template_F407_std/USER/FSM_Blink_example.c",
+        "RCS_Template_F407_std/USER/FSM_Blink_example.h",
+        "RCS_Template_F407_std/USER/GpsTask.c",
+        "RCS_Template_F407_std/USER/GpsTask.h",
+        "RCS_Template_F407_std/USER/GPS_DSP.c",
+        "RCS_Template_F407_std/USER/GPS_DSP.h",
+        "RCS_Template_F407_std/USER/Linux_orangepi.c",
+        "RCS_Template_F407_std/USER/Linux_orangepi.h",
+        "RCS_Template_F407_std/USER/located_position.h",
+        "RCS_Template_F407_std/USER/located_postion.c",
+        "RCS_Template_F407_std/USER/main.c",
+        "RCS_Template_F407_std/USER/MainTask.c",
+        "RCS_Template_F407_std/USER/MainTask.h",
+        "RCS_Template_F407_std/USER/mylib.h",
+        "RCS_Template_F407_std/USER/R1_UpCtrl_Motion.c",
+        "RCS_Template_F407_std/USER/R1_UpCtrl_Motion.h",
+        "RCS_Template_F407_std/USER/R2_CombCtrl.c",
+        "RCS_Template_F407_std/USER/R2_CombCtrl.h",
+        "RCS_Template_F407_std/USER/R2_Upctrl.c",
+        "RCS_Template_F407_std/USER/R2_Upctrl.h",
+        "RCS_Template_F407_std/USER/RCS-PROVINCE-COMPETITION.c",
+        "RCS_Template_F407_std/USER/RCS-PROVINCE-COMPETITION.h",
+        "RCS_Template_F407_std/USER/RCS_Debug.c",
+        "RCS_Template_F407_std/USER/RCS_Debug.h",
+        "RCS_Template_F407_std/USER/RTE/Compiler/EventRecorderConf.h",
+        "RCS_Template_F407_std/USER/RTE/_Target_1/RTE_Components.h",
+        "RCS_Template_F407_std/USER/sbus_receiver.c",
+        "RCS_Template_F407_std/USER/sbus_receiver.h",
+        "RCS_Template_F407_std/USER/stm32f4xx.h",
+        "RCS_Template_F407_std/USER/stm32f4xx_conf.h",
+        "RCS_Template_F407_std/USER/stm32f4xx_it.c",
+        "RCS_Template_F407_std/USER/stm32f4xx_it.h",
+        "RCS_Template_F407_std/USER/stp23.c",
+        "RCS_Template_F407_std/USER/stp23.h",
+        "RCS_Template_F407_std/USER/system_stm32f4xx.c",
+        "RCS_Template_F407_std/USER/system_stm32f4xx.h",
+        "RCS_Template_F407_std/USER/Tester.c",
+        "RCS_Template_F407_std/USER/Tester.h",
+        "RCS_Template_F407_std/USER/UpctrlTask.c",
+        "RCS_Template_F407_std/USER/UpctrlTask.h"
+      ],
+      "decoded_files": [
+        {
+          "name": "RCS_Template_F407_std/USER/A1motor.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/A1motor.h",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/App_Cfg.h",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/BleTask.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/BleTask.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/ChassisTask.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/ChassisTask.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/Ch_Ctrl.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/Ch_Ctrl.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/Core407_RCS12_Debug.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/Core407_RCS12_Debug.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/Core407_RCS12_PinMapping.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/Core407_RCS12_PinMapping.h",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/FSM.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/FSM.h",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/FSM_Blink_example.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/FSM_Blink_example.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/GpsTask.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/GpsTask.h",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/GPS_DSP.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/GPS_DSP.h",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/Linux_orangepi.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/Linux_orangepi.h",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/located_position.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/located_postion.c",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/main.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/MainTask.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/MainTask.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/mylib.h",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/R1_UpCtrl_Motion.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/R1_UpCtrl_Motion.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/R2_CombCtrl.c",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/R2_CombCtrl.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/R2_Upctrl.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/R2_Upctrl.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/RCS-PROVINCE-COMPETITION.c",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/RCS-PROVINCE-COMPETITION.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/RCS_Debug.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/RCS_Debug.h",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/RTE/Compiler/EventRecorderConf.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/RTE/_Target_1/RTE_Components.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/sbus_receiver.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/sbus_receiver.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/stm32f4xx.h",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/stm32f4xx_conf.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/stm32f4xx_it.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/stm32f4xx_it.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/stp23.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/stp23.h",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/system_stm32f4xx.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/Tester.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/Tester.h",
+          "encoding": "utf-8-sig"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/UpctrlTask.c",
+          "encoding": "gb18030"
+        },
+        {
+          "name": "RCS_Template_F407_std/USER/UpctrlTask.h",
+          "encoding": "utf-8-sig"
+        }
+      ],
+      "excluded_files": [
+        {
+          "name": "RCS_Template_F407_std/USER/system_stm32f4xx.c",
+          "reason": "Neither strict UTF-8 nor GB18030; excluded from metrics rather than replacing bytes."
+        }
+      ],
+      "metrics": {
+        "nonblank_lines": 16380,
+        "mean_characters_per_nonblank_line": 66.24,
+        "comment_only_line_percent": 22.59,
+        "lines_with_TAB": 2266
+      }
+    }
+  },
+  "baseline_034": {
+    "nonblank_lines": 327,
+    "mean_characters_per_nonblank_line": 45.9,
+    "comment_only_line_percent": 6.73,
+    "lines_with_TAB": 0
+  },
+  "deepseek_candidate": {
+    "nonblank_lines": 794,
+    "mean_characters_per_nonblank_line": 31.31,
+    "comment_only_line_percent": 29.97,
+    "lines_with_TAB": 0
+  },
+  "generated_037": {
+    "nonblank_lines": 883,
+    "mean_characters_per_nonblank_line": 29.62,
+    "comment_only_line_percent": 39.98,
+    "lines_with_TAB": 0
+  },
+  "scope": "HAL framework files and standard USER files only; vendor CMSIS and test libraries excluded."
+}

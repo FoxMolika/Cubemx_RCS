@@ -1,0 +1,43 @@
+{
+  "version": "0.4.0",
+  "passed": true,
+  "installer_sha256": "c74f11650cb6984722777cb5de9f3e755dc5f02353e847d559e4fbbba3c0e31f",
+  "editor_sha256": "5dc10c08da2736081eae01791f8fd5003f0170ea83fbabf0ddfa7e7bf2ff8c66",
+  "pack_sha256": "e24eb099cc37d54b4f628a69d44f9de35ef11d205010b4fa4af5a20fec6e0b7c",
+  "features": [
+    "arrival/correction/departure stages",
+    "typed rotations and mechanisms",
+    "protractor",
+    "local crash ZIP",
+    "Keil stale-map prebuild guard"
+  ],
+  "tests": {
+    "core_assertions": 1555,
+    "generated_layouts": 3,
+    "generated_assertions_per_layout": 4205,
+    "phase_assertions": 11551,
+    "editor_model_checks": 33,
+    "crash_checks": 54,
+    "route_integration_scenarios": 21,
+    "project_setup_scenarios": 13,
+    "revision_scenarios": 7,
+    "installer_transaction_scenarios": 8
+  },
+  "actual_CubeMX": "6.18.1; fresh isolated profiles, automatic import, alternate empty repository, native generate/regenerate, uninstall",
+  "actual_Keil": "ARM Compiler 6.22; route/nav/actions compiled; 0 errors, 0 warnings",
+  "actual_stale_map_blocks_Keil_build": true,
+  "route_user_code_and_main_preserved": true,
+  "original_037_files_unchanged": 168,
+  "embedded_resources_verified": 16,
+  "hardware_test": false,
+  "flashed": false,
+  "second_physical_PC_test": false,
+  "ui_review": "actual offscreen WinForms rendering inspected; live Keil UI access approval timed out, command-line builds verified",
+  "delegated_review": "generic state-machine/diagnostic review only; local implementation, tests and integration verified",
+  "limitations": [
+    "encoder-only correction cannot observe all real slip",
+    "existing hardware driver support unchanged",
+    "custom-action preview is a placeholder",
+    "hard termination/power loss cannot guarantee immediate crash ZIP"
+  ]
+}

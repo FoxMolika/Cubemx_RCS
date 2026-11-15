@@ -1,0 +1,19 @@
+{
+  "version": "0.3.7",
+  "test_type": "actual single EXE with controlled CLI fixtures, not physical CubeMX failures",
+  "cases": [
+    "partial repair failure restores exact original; preserves partial; retry succeeds",
+    "fresh partial failure leaves no blocking target; retry succeeds",
+    "failure before target creation restores original",
+    "process termination leaves journal; next install recovers then succeeds",
+    "interrupted commit keeps verified native install and completes receipt",
+    "rollback failure preserves journal/backup and original error; retry after unlock succeeds",
+    "0.3.7 coexists with prior-version fixture; prior bytes and IOC unchanged",
+    "foxmolika install preserves legacy RCS package-directory fixture and old IOC"
+  ],
+  "installer_sha256": "23a1382e727c2aada7b9cd1d63734436c3e4c1ab45fd02a79a6ba618651aed54",
+  "pack_sha256": "06b28add74ff371fafa0f12eb7f9623582f1ea4c81a1a54ce959f3e9b0317c60",
+  "test_directory": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.3.7\\suite\\build\\事务回归 空间_d027e6a1",
+  "physical_cross_volume_test": false,
+  "passed": true
+}

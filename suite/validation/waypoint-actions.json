@@ -1,0 +1,14 @@
+{
+  "editor_sha256": "85c18fc254de09c650c655045aaae58e8abcc7443364fbae5c8da5dccf647017",
+  "waypoint_actions": "PASS 349 waypoint action checks (generated C + lifecycle faults)",
+  "editor_binary_selftest": "PASS: 72 checks. Actual managed EXE model/export tests; no hardware tested.",
+  "c99_strict_builds_and_encoder_simulations": [
+    "layout=0 closed-loop ideal encoder simulation: 32.82s, 3282 frames, last pose 0.719 3.200 3.091\nPASS 16536 checks",
+    "layout=1 closed-loop ideal encoder simulation: 32.71s, 3271 frames, last pose 0.719 3.200 3.091\nPASS 16481 checks",
+    "layout=2 closed-loop ideal encoder simulation: 32.71s, 3271 frames, last pose 0.719 3.200 3.091\nPASS 16481 checks"
+  ],
+  "task_adapter": "PASS task adapter arm gating, feedback failure and command failure",
+  "test_area": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.3.7\\map_editor\\build\\验收 空间_083065fa",
+  "installer": "separately validated",
+  "hardware_test": false
+}

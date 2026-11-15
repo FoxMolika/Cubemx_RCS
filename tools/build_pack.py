@@ -18,7 +18,7 @@ def metadata(version=VERSION):
     rel=PACK+'.'+version
     pd=E.Element('package',schemaVersion='1.6.3')
     for k,v in [('vendor','RCS'),('name','foxmolika'),('description','foxmolika F407 HAL chassis: Mecanum X and tangent Omni'),('url','https://example.invalid/foxmolika/'),('license','LICENSE.txt')]: child(pd,k).text=v
-    releases=child(pd,'releases');child(releases,'release',version=version,date='2026-11-10').text='0.3.7: unified chassis/map project association; automatically register route 3C3H and include paths in MDK, restore after CubeMX regeneration, preserve user code. Firmware C APIs unchanged.'
+    releases=child(pd,'releases');child(releases,'release',version=version,date='2026-11-14').text='0.4.0: phased arrival/correction/departure actions, isolated rotation, protractor and local crash ZIP; portable CubeMX association.'
     keys=child(pd,'keywords');child(keys,'keyword').text='IMPLEMENTED_WITH_STM32CUBEMX'
     conds=child(pd,'conditions');cond=child(conds,'condition',id='STM32F407');child(cond,'require',Dname='STM32F407*')
     comps=child(pd,'components');comp=child(comps,'component',Cclass='Robotics',Cgroup='foxmolika',Cversion=version,condition='STM32F407',maxInstances='1')
@@ -81,6 +81,7 @@ def build():
     proto=_re.sub(r'\[([^\]]+)\]\([^)]+\)',r'\1',(ROOT/'README.md').read_text(encoding='utf-8'))
     data['Documentation/Prototype.md']=proto.encode('utf-8')
     data['Documentation/使用说明.html']=(ROOT/'docs/使用说明.html').read_bytes()
+    data['Documentation/地图编辑器说明.html']=(ROOT/'docs/地图编辑器说明.html').read_bytes()
     for name,b in data.items():
         p=tree/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b)
     dist=ROOT/'dist';dist.mkdir(exist_ok=True);out=dist/(REL+'.pack')

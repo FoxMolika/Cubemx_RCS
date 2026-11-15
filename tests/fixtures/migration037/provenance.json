@@ -1,0 +1,13 @@
+{
+  "old_editor_SHA256": "85c18fc254de09c650c655045aaae58e8abcc7443364fbae5c8da5dccf647017",
+  "source": "actual released 0.3.7 EXE --demo and --export",
+  "file_SHA256": {
+    "map.rcsmap.json": "507072ce6603330d00b2e8bc8a3f2d38c7fb017f634d1bafe47a93d7587378ca",
+    "export\\rcs_actions.c": "dca7a70e62cd0a1d5d5583d3660cbcd90cc571de93f89df5884f0423d290262c",
+    "export\\rcs_actions.h": "67389d9a2f4977f76b154b8fa5678af2f0daa62fd22e90ca1518bf5e65fc120f",
+    "export\\rcs_nav.c": "5387d9e071676217e58ffec8e3863477cef0e0baca029b659f98d33ccd12b5ab",
+    "export\\rcs_nav.h": "92fb88086513e798e7ce6e66f45d0ec52a2405f9c43a2740b1bef94e0718a144",
+    "export\\rcs_route.c": "b6e2052bab34e340ab63050c168aed0ecc511aaba37e842e08d6c11edb276e36",
+    "export\\rcs_route.h": "89234413c558009973b6c85650d786521149f2e34435f0377274c535c6978eee"
+  }
+}

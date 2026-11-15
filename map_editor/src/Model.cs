@@ -53,10 +53,39 @@ namespace RcsMap {
    PositionTolerance=20;YawTolerance=3;MaxDtMs=100;CommandTimeoutMs=200;LegTimeout=120;
   }
  }
+ [DataContract] public class RouteAction {
+  [DataMember] public string Id {get;set;}
+  [DataMember] public string Name {get;set;}
+  [DataMember] public int Kind {get;set;} // 0 custom, 1 absolute rotation, 2 relative rotation, 3 wait
+  [DataMember] public bool Enabled {get;set;}
+  [DataMember] public double Value {get;set;}
+  [DataMember] public int Direction {get;set;}
+  [DataMember] public double MaxWz {get;set;} [DataMember] public double Alpha {get;set;}
+  [DataMember] public double Tolerance {get;set;} [DataMember] public double SettleMs {get;set;}
+  [DataMember] public double DriftLimit {get;set;}
+  [DataMember] public double Timeout {get;set;}
+  [DataMember] public string Start {get;set;} [DataMember] public string Condition {get;set;}
+  [DataMember] public string Done {get;set;} [DataMember] public string Cancel {get;set;}
+  [DataMember] public string FromPoint {get;set;} [DataMember] public string ToPoint {get;set;}
+  [DataMember] public string UserKey {get;set;}
+  public RouteAction(){Defaults();}
+  [OnDeserializing] void Restore(StreamingContext c){Defaults();}
+  void Defaults(){Id=Guid.NewGuid().ToString("N");Name="新动作";MaxWz=90;Alpha=180;Tolerance=3;SettleMs=100;DriftLimit=50;Enabled=true;Timeout=30;Start=Done=Cancel="/* 用户代码 */";Condition="1";}
+  public override string ToString(){return (Enabled?"":"[禁用] ")+Name+" · "+new[]{"自定义","绝对旋转","相对旋转","等待"}[Math.Max(0,Math.Min(3,Kind))];}
+ }
  [DataContract] public class Waypoint {
   [DataMember] public double X {get;set;} [DataMember] public double Y {get;set;}
   [DataMember] public double Yaw {get;set;} [DataMember] public double Speed {get;set;}
   [DataMember] public double Dwell {get;set;}
+  [DataMember] public List<RouteAction> ArrivalActions {get;set;}
+  [DataMember] public List<RouteAction> DepartureActions {get;set;}
+  [DataMember] public int CorrectionMode {get;set;}
+  [DataMember] public bool RunFinalDeparture {get;set;}
+  [DataMember] public double DriftLimit {get;set;}
+  [DataMember] public double CorrectionTimeout {get;set;}
+  [DataMember] public int CorrectionPasses {get;set;}
+  [DataMember] public double ArrivalRadius {get;set;} [DataMember] public double CorrectionSpeed {get;set;}
+  [DataMember] public double SettleMs {get;set;}
   [DataMember] public string Id {get;set;}
   [DataMember] public bool ActionEnabled {get;set;}
   [DataMember] public string ActionName {get;set;}
@@ -67,7 +96,7 @@ namespace RcsMap {
   [DataMember] public string ActionCancel {get;set;}
   public Waypoint(){Defaults();}
   [OnDeserializing] void Restore(StreamingContext c){Defaults();}
-  void Defaults(){Id=Guid.NewGuid().ToString("N");Speed=400;ActionName="机构动作";ActionTimeout=10;ActionStart="/* 预留：夹爪、舵机或升降启动函数，只调用一次。 */";ActionCondition="1";ActionDone="/* 预留：动作完成后的清理，例如停止升降电机。 */";ActionCancel="/* 预留：停止、故障或超时后的机构清理。 */";}
+  void Defaults(){ArrivalActions=new List<RouteAction>();DepartureActions=new List<RouteAction>();CorrectionMode=1;ArrivalRadius=40;CorrectionSpeed=100;SettleMs=100;DriftLimit=50;CorrectionTimeout=10;CorrectionPasses=2;Id=Guid.NewGuid().ToString("N");Speed=400;ActionName="机构动作";ActionTimeout=10;ActionStart="/* 预留：夹爪、舵机或升降启动函数，只调用一次。 */";ActionCondition="1";ActionDone="/* 预留：动作完成后的清理，例如停止升降电机。 */";ActionCancel="/* 预留：停止、故障或超时后的机构清理。 */";}
   public Waypoint(double x,double y,double yaw,double speed,double dwell=0):this(){X=x;Y=y;Yaw=yaw;Speed=speed;Dwell=dwell;}
  }
  [DataContract] public class Obstacle {
@@ -77,27 +106,38 @@ namespace RcsMap {
  }
  [DataContract] public class MapDocument {
   [DataMember] public int Version {get;set;}
+  public bool MigratedFromLegacy {get;private set;}
   [DataMember] public RobotSettings Settings {get;set;}
   [DataMember] public List<Waypoint> Points {get;set;}
   [DataMember] public List<Obstacle> Obstacles {get;set;}
   [DataMember] public string ActionIncludes {get;set;}
   [DataMember(EmitDefaultValue=false)] public string ProjectIoc {get;set;}
-  public MapDocument(){Version=2;Settings=new RobotSettings();Points=new List<Waypoint>();Obstacles=new List<Obstacle>();ActionIncludes="/* 预留用户驱动头文件，例如 #include \"gripper.h\" */";}
+  public MapDocument(){Version=3;Settings=new RobotSettings();Points=new List<Waypoint>();Obstacles=new List<Obstacle>();ActionIncludes="/* 预留用户驱动头文件，例如 #include \"gripper.h\" */";}
   [OnDeserializing] void Restore(StreamingContext c){ActionIncludes="";}
   public static MapDocument Demo() {
    var d=new MapDocument();d.Obstacles.Add(new Obstacle(2400,1500,1100,1000));
    d.Points.AddRange(new[]{new Waypoint(600,600,0,400,0.5),new Waypoint(4200,600,0,500),
     new Waypoint(5200,1600,90,400,1),new Waypoint(5200,3200,90,400),
-    new Waypoint(700,3200,180,500,1)});return d;
+    new Waypoint(700,3200,180,500,1)});
+   for(int i=0;i<d.Points.Count;i++){var p=d.Points[i];if(i>0&&p.Yaw!=d.Points[i-1].Yaw)p.ArrivalActions.Add(new RouteAction{Kind=1,Name="转到 "+p.Yaw+"°",Value=p.Yaw});if(p.Dwell>0){p.DepartureActions.Add(new RouteAction{Kind=3,Name="等待",Value=p.Dwell});p.RunFinalDeparture=true;p.Dwell=0;}}return d;
   }
   public string Json(){using(var m=new MemoryStream()){new DataContractJsonSerializer(typeof(MapDocument)).WriteObject(m,this);return Encoding.UTF8.GetString(m.ToArray());}}
   public static MapDocument Parse(string s){if(s==null||s.Length>2*1024*1024)throw new Exception("地图文件过大（最大2MB）。");
-   using(var m=new MemoryStream(Encoding.UTF8.GetBytes(s))){var d=(MapDocument)new DataContractJsonSerializer(typeof(MapDocument),new DataContractJsonSerializerSettings{MaxItemsInObjectGraph=20000}).ReadObject(m);
-    if(d.Version==1)d.Version=2;d.StructuralCheck();return d;}}
+   using(var m=new MemoryStream(Encoding.UTF8.GetBytes(s))){var d=(MapDocument)new DataContractJsonSerializer(typeof(MapDocument),new DataContractJsonSerializerSettings{MaxItemsInObjectGraph=100000}).ReadObject(m);
+    if(d==null||d.Points==null||d.Points.Any(p=>p==null))throw new Exception("地图结构无效。");if(d.Version==1||d.Version==2){d.MigratedFromLegacy=true;foreach(var p in d.Points){
+     p.ArrivalActions=new List<RouteAction>();p.DepartureActions=new List<RouteAction>();
+     int i=d.Points.IndexOf(p);double previous=i==0?p.Yaw:d.Points[i-1].Yaw;
+     if(Math.Abs(SegmentInfo.Wrap(p.Yaw-previous))>1e-7)p.ArrivalActions.Add(new RouteAction{Id=LegacyId(p.Id,"rotation"),Name="旧地图朝向",Kind=1,Value=p.Yaw});
+     if(p.ActionEnabled)p.DepartureActions.Add(new RouteAction{Id=p.Id,UserKey="WP_"+p.Id.ToUpperInvariant(),Name=p.ActionName,Timeout=p.ActionTimeout,Start=p.ActionStart,Condition=p.ActionCondition,Done=p.ActionDone,Cancel=p.ActionCancel});
+     if(p.Dwell>0)p.DepartureActions.Add(new RouteAction{Id=LegacyId(p.Id,"wait"),Name="旧地图停留",Kind=3,Value=p.Dwell,Timeout=p.Dwell+1});
+     p.RunFinalDeparture=true;p.ActionEnabled=false;p.Dwell=0;
+    }d.Version=3;}d.StructuralCheck();return d;}}
+  static string LegacyId(string point,string kind){using(var sha=System.Security.Cryptography.SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes((point??"")+":"+kind))).Replace("-","").Substring(0,32).ToLowerInvariant();}
   public MapDocument Clone(){return Parse(Json());}
-  public void StructuralCheck(){if(Version!=2||Settings==null||Points==null||Obstacles==null||Points.Count>512||Obstacles.Count>256||Points.Any(p=>p==null)||Obstacles.Any(o=>o==null))throw new Exception("地图格式/版本不正确，或元素过多。");
+  public void StructuralCheck(){if(Version!=3||Settings==null||Points==null||Obstacles==null||Points.Count>512||Obstacles.Count>256||Points.Any(p=>p==null)||Obstacles.Any(o=>o==null))throw new Exception("地图格式/版本不正确，或元素过多。");
    if(ProjectIoc!=null&&(ProjectIoc.Length>2048||ProjectIoc.IndexOf('\0')>=0))throw new Exception("关联工程路径不正确或过长。");
-   int total=(ActionIncludes??"").Length;foreach(var p in Points)total+=(p.ActionStart??"").Length+(p.ActionCondition??"").Length+(p.ActionDone??"").Length+(p.ActionCancel??"").Length;
+   foreach(var p in Points)if(p.ArrivalActions==null||p.DepartureActions==null||p.ArrivalActions.Count+p.DepartureActions.Count>64||p.ArrivalActions.Any(a=>a==null)||p.DepartureActions.Any(a=>a==null))throw new Exception("动作组格式无效或单点动作超过64条。");
+   int total=Points.Sum(p=>p.ArrivalActions.Concat(p.DepartureActions).Sum(a=>(a.Start??"").Length+(a.Condition??"").Length+(a.Done??"").Length+(a.Cancel??"").Length))+(ActionIncludes??"").Length;foreach(var p in Points)total+=(p.ActionStart??"").Length+(p.ActionCondition??"").Length+(p.ActionDone??"").Length+(p.ActionCancel??"").Length;
    if(total>256*1024)throw new Exception("动作代码总长度不能超过256K字符。");}
   public static bool Finite(double v){return !Double.IsNaN(v)&&!Double.IsInfinity(v);}
   static void Range(List<string> e,double v,double lo,double hi,string label){if(!Finite(v)||v<lo||v>hi)e.Add(label+"：范围 "+lo+"～"+hi);}
@@ -126,6 +166,17 @@ namespace RcsMap {
     Range(e,p.ActionTimeout,0.001,3600,"P"+i+" 动作超时");
     if((p.ActionName??"").Length>64)e.Add("动作名称最多64字。");
     foreach(string code in new[]{p.ActionStart,p.ActionCondition,p.ActionDone,p.ActionCancel})if((code??"").Length>16384||(code??"").IndexOf('\0')>=0)e.Add("动作代码不能含空字符或超过16K字符。");
+   }
+   foreach(var p in Points){
+    if(p.CorrectionMode<0||p.CorrectionMode>3||p.CorrectionPasses<1||p.CorrectionPasses>10)e.Add("纠偏配置无效。");
+    Range(e,p.ArrivalRadius,1,1000,"到达范围 mm");Range(e,p.CorrectionSpeed,1,s.MaxSpeed,"纠偏速度 mm/s");Range(e,p.SettleMs,0,10000,"停稳时间 ms");Range(e,p.DriftLimit,1,1000,"动作漂移上限 mm");Range(e,p.CorrectionTimeout,.1,3600,"纠偏超时");
+    foreach(var a in p.ArrivalActions.Concat(p.DepartureActions)){
+     if(a.Id==null||!Regex.IsMatch(a.Id,@"\A[0-9a-fA-F]{32}\z")||!ids.Add("A"+a.Id))e.Add("动作ID无效或重复。");
+     if(a.Kind<0||a.Kind>3||a.Direction< -1||a.Direction>1)e.Add("动作类型/旋转方向无效。");
+     Range(e,a.MaxWz,1,360,"动作角速度");Range(e,a.Alpha,1,2000,"动作角加速度");Range(e,a.Tolerance,.1,30,"角度容差");Range(e,a.SettleMs,0,10000,"动作停稳时间");Range(e,a.DriftLimit,1,1000,"动作漂移上限");Range(e,a.Timeout,.001,3600,"动作超时");Range(e,a.Value,a.Kind==3?0:-3600,3600,"动作目标");
+     foreach(string code in new[]{a.Start,a.Condition,a.Done,a.Cancel})if((code??"").Length>16384||(code??"").IndexOf('\0')>=0)e.Add("动作代码过长或含空字符。");
+     if(!String.IsNullOrEmpty(a.FromPoint)||!String.IsNullOrEmpty(a.ToPoint)){try{PhaseMath.ResolveAngle(this,a);}catch(Exception x){e.Add(x.Message);}}
+    }
    }
    if(e.Count>0)return e;
    for(int i=0;i<Points.Count;i++) {
@@ -164,7 +215,7 @@ namespace RcsMap {
   public int Index;public double Distance,Turn,Seconds;public double[] Counts;
   public static double Wrap(double d){d%=360;if(d>180)d-=360;if(d<-180)d+=360;return d;}
   public static SegmentInfo Calculate(RobotSettings s,Waypoint a,Waypoint b,int index) {
-   double dx=(b.X-a.X)/1000,dy=(b.Y-a.Y)/1000,y0=a.Yaw*Math.PI/180,da=Wrap(b.Yaw-a.Yaw)*Math.PI/180;
+   double dx=(b.X-a.X)/1000,dy=(b.Y-a.Y)/1000,y0=a.Yaw*Math.PI/180,da=0;
    double c=Math.Abs(da)<1e-8?Math.Cos(y0):(Math.Sin(y0+da)-Math.Sin(y0))/da;
    double sn=Math.Abs(da)<1e-8?Math.Sin(y0):(Math.Cos(y0)-Math.Cos(y0+da))/da;
    double x=c*dx+sn*dy,y=-sn*dx+c*dy;double[] wheel=new double[4];

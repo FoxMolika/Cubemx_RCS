@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "editor_sha256": "85c18fc254de09c650c655045aaae58e8abcc7443364fbae5c8da5dccf647017",
+  "post_helper_sha256": "7b345d87e5562d929ae041db4637fdf4953e79ce546d39ea74f292e39809c484",
+  "checks": [
+    "association shared with editor; relative map link; no empty route group",
+    "actual editor registers route 3C3H/types/include while retaining user settings and main",
+    "repeat export is byte-idempotent for sources, project and binding without new backups",
+    "in-project re-export preserves handwritten USER CODE",
+    "dual USER CODE edit conflicts preserve files and project",
+    "independent export ignores saved link and never modifies project",
+    "Save As recalculates map-relative project link",
+    "copied project/map tree keeps portable association and relative MDK paths",
+    "actual post-helper restores all deleted file/include registrations idempotently",
+    "partial route directory refuses project writes",
+    "export before first Generate keeps files pending without inventing a Keil project",
+    "another-directory same-name module refuses before association/export mutation",
+    "malformed Keil XML is rejected before writes",
+    "binding to another IOC is retained and refused",
+    "tampered route path escaping project is rejected",
+    "foreign output directory refuses before association writes",
+    "multiple chassis targets receive routes; unrelated target remains untouched",
+    "junction route parent is refused without writing outside project",
+    "official 036 SHA whitelist upgrades hook while retaining old helper bytes and IOC backup",
+    "modified legacy hook is refused without overwriting it",
+    "locked UV write reports exported-but-pending; post-helper recovers after unlocking"
+  ],
+  "area": "C:\\Users\\FoxMolia\\Desktop\\final\\foxmolika_CubeMX_0.3.7\\build\\routes_0b48261f",
+  "physical_hardware": false
+}
