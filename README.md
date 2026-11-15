@@ -10,12 +10,14 @@
 
 STM32F407 HAL 底盘模块与位点地图编辑器。独立生成 C/H，支持 CubeMX 软件包和 Keil 工程关联，不向 main.c 插入业务。
 
-- [单文件安装包](dist/foxmolika_CubeMX_Setup_0.8.0_win-x64.exe)
+- [下载安装包与 SHA-256（Releases）](../../releases/latest)
 - [安装与使用教程](docs/使用说明.html)
 - [地图、航点动作与量角器](docs/地图编辑器说明.html)
 - [底盘接口](docs/接入说明.md)
+- [坡道执行与形状编辑](docs/坡道与形状编辑.md)
 - [本次变更](变更说明_0.8.0.md)
-- [发布验证结果](dist/发布核验_0.8.0.json)
+- [发布验证结果](docs/验证记录.md)（完整 JSON 见 Release 附件）
+- [全部版本](CHANGELOG.md)
 
 航点执行顺序：平移到点 → 停稳 → 到达后动作 → 独立纠偏 → 起步前动作 → 离开验收。旋转是独立动作，旋转时 XY 命令为零，机构动作不会因纠偏重放。
 
