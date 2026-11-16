@@ -15,12 +15,48 @@ BASELINE = "aaeeca5e6805304536d8c22c648774248d97649d"
 RESET_FIX = b"    n->terrain.active = 0;\n    n->terrain.fault = RCS_TERRAIN_OK;\n"
 
 
-def run(args, timeout=120):
+def run(args, timeout=120, note=""):
     result = subprocess.run(list(map(str, args)), cwd=ROOT, capture_output=True, timeout=timeout)
     if result.returncode:
-        raise RuntimeError(result.stdout.decode("utf-8", errors="replace") +
+        label = "[" + note + "] " if note else ""
+        raise RuntimeError(label + "rc=" + str(result.returncode) +
+                           " cmd=" + " ".join(map(str, args)) + "\n" +
+                           result.stdout.decode("utf-8", errors="replace") +
                            result.stderr.decode("utf-8", errors="replace"))
     return result.stdout.decode("utf-8", errors="replace").strip()
+
+
+def harden_baseline_io(target):
+    """只替换基线里目录移动的实现：加重试与诊断，生成逻辑保持基线原状。
+
+    真实环境实测目录重命名约有 3% 的瞬时 ERROR_ACCESS_DENIED；基线二进制若不做同样
+    处理，比较测试会被这个与输出无关的瞬时失败打断。此处不改变任何生成内容。
+    """
+    path = target / "map_editor/src/Exporter.cs"
+    text = path.read_text(encoding="utf-8")
+    helper = (
+        '  static readonly int[] MoveTransient={5,32,33};\n'
+        '  internal static void MoveDirectory(string source,string dest,string step){\n'
+        '   int attempts=0;Exception last=null;\n'
+        '   while(attempts<3){attempts++;try{Directory.Move(source,dest);return;}catch(Exception error){\n'
+        '    last=error;int code=error.HResult&0xFFFF;bool recoverable=Array.IndexOf(MoveTransient,code)>=0;\n'
+        '    bool stillValid=Directory.Exists(source)&&!Directory.Exists(dest);\n'
+        '    if(!recoverable||!stillValid||attempts>=3)break;System.Threading.Thread.Sleep(60*attempts);}}\n'
+        '   throw new IOException(string.Format("导出步骤失败[{0}]：源={1}；目标={2}；尝试={3}次；HRESULT={4}。",'
+        'step,source,dest,attempts,"0x"+((uint)last.HResult).ToString("X8")),last);\n'
+        '  }\n'
+    )
+    anchor = "  public static void Export(MapDocument d,string dir) {"
+    assert anchor in text, "baseline Exporter.cs 结构已变化，无法只补 I/O 层"
+    text = text.replace(anchor, helper + anchor, 1)
+    for old, new in (
+        ("Directory.Move(dir,backup);", 'MoveDirectory(dir,backup,"备份既有目录");'),
+        ("Directory.Move(temp,dir);", 'MoveDirectory(temp,dir,"安装新目录");'),
+        ("Directory.Move(backup,dir);", 'MoveDirectory(backup,dir,"回滚原目录");'),
+    ):
+        assert old in text, "baseline 缺少预期调用：" + old
+        text = text.replace(old, new, 1)
+    path.write_text(text, encoding="utf-8")
 
 
 def baseline_editor(area):
@@ -28,9 +64,10 @@ def baseline_editor(area):
     cache = ROOT / "build/refactor-baseline"
     receipt = cache / "baseline.json"
     editor = cache / "map_editor/dist/foxmolika_MapEditor.exe"
+    stamp = {"revision": BASELINE, "io": "retry-v1"}
     if receipt.exists() and editor.exists():
         evidence = json.loads(receipt.read_text())
-        if evidence == {"revision": BASELINE, "editor_sha256": digest(editor)}:
+        if {k: evidence.get(k) for k in stamp} == stamp and evidence.get("editor_sha256") == digest(editor):
             return editor
     archive = subprocess.run(["git", "archive", "--format=zip", BASELINE], cwd=ROOT,
                              capture_output=True, check=True)
@@ -41,9 +78,11 @@ def baseline_editor(area):
         for name in z.namelist():
             assert (target / name).resolve().is_relative_to(target.resolve()), name
         z.extractall(target)
+    harden_baseline_io(target)
     run([sys.executable, target / "map_editor/tools/build.py"])
     (target / "baseline.json").write_text(json.dumps({
-        "revision": BASELINE, "editor_sha256": digest(target / "map_editor/dist/foxmolika_MapEditor.exe")
+        "revision": BASELINE, "io": "retry-v1",
+        "editor_sha256": digest(target / "map_editor/dist/foxmolika_MapEditor.exe")
     }))
     # 首次缓存使用目录重命名；已存在但不符时保留现场并使用本轮独立目录。
     if not cache.exists():
@@ -174,8 +213,8 @@ def main():
         source = area / (name + ".json")
         source.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
         old, current = area / (name + "-before"), area / (name + "-after")
-        run([baseline, "--export", source, old])
-        run([editor, "--export", source, current])
+        run([baseline, "--export", source, old], note="case=" + name + " bin=baseline out=" + str(old))
+        run([editor, "--export", source, current], note="case=" + name + " bin=current out=" + str(current))
         counts[name] = compare(old, current)
     recovery = []
     for label in ("before", "after"):
