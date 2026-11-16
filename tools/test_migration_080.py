@@ -1,4 +1,4 @@
-"""Actual 0.3.7 -> 0.8.0 executable migration, read-only old release."""
+"""Actual 0.3.7 -> current executable migration, read-only old release."""
 from pathlib import Path
 import hashlib,json,re,subprocess,sys,uuid,shutil
 ROOT=Path(__file__).resolve().parents[1]

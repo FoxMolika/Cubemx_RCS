@@ -54,7 +54,7 @@ namespace RcsMap {
   public static double Height(MapDocument d,Waypoint p){var s=Surface(d,p.SurfaceId);return s==null?Double.NaN:s.HeightAt(p.X,p.Y);}
   public static bool HasRelief(MapDocument d){if(d.Terrain==null)return false;if(d.Points.Any(p=>{var s=Surface(d,p.SurfaceId);return s==null||s.Kind!=SurfaceKind.水平平台||Math.Abs(s.Z0)>1e-6;}))return true;
    for(int i=1;i<d.Points.Count;i++){TerrainLeg leg;string error;if(TryLeg(d,d.Points[i-1],d.Points[i],out leg,out error)&&leg.Spans.Any(s=>s.Surface.Kind!=SurfaceKind.水平平台||Math.Abs(s.Z0)>1e-6||Math.Abs(s.Z1)>1e-6))return true;}return false;}
-  public static void RequireFlat(MapDocument d){if(HasRelief(d))throw new InvalidOperationException("此路线包含高台/坡道：0.8.0仅支持立体地图编辑、几何预览与检查，尚无实车坡道控制。不能导出平地C/H或运行平地动态预览。请保留立体地图，使用独立平地路线接入现有固件。");}
+  public static void RequireFlat(MapDocument d){if(HasRelief(d))throw new InvalidOperationException("当前动态运动预览仅支持平地。坡道可使用俯视、侧视和三维几何预览，并按纵向直坡约束导出专用C/H执行代码；规划模型不代表实车验证。");}
   // A draft may have disconnected routes or unfinished assignments. It still
   // needs bounded finite drawing data and valid base settings before opening.
   public static bool CanOpenDraft(MapDocument d){if(d.Terrain==null)return false;try{d.StructuralCheck();var settings=d.Clone();settings.Version=3;settings.Terrain=null;settings.HardwareSources=null;settings.TerrainDrive=null;settings.Points.Clear();settings.Obstacles.Clear();if(settings.Validate(false).Count>0)return false;

@@ -2,6 +2,7 @@
 from pathlib import Path
 import os
 import subprocess
+from version import sync_csharp_version
 
 ROOT = Path(__file__).resolve().parents[1]
 XML_REFERENCES = ("System.Xml.Linq.dll", "System.Xml.dll", "System.Core.dll")
@@ -65,7 +66,12 @@ def csharp_arguments(output, sources, *, target="exe", references=(),
         "/resource:" + str(path) + "," + name
         for name, path in (resources or {}).items()
     )
-    args.extend(sources)
+    # 所有前端及测试编译共用同一版本类，不依赖调用方手工记住额外源码。
+    version_source = sync_csharp_version()
+    source_files = list(sources)
+    if not any(Path(path).resolve() == version_source.resolve() for path in source_files):
+        source_files.append(version_source)
+    args.extend(source_files)
     return args
 
 

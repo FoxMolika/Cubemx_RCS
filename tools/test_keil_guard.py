@@ -1,4 +1,5 @@
 """Exercise real uVision prebuild fail/pass, not just the helper's exit code."""
+from version import TOOL_DIRECTORY
 from pathlib import Path
 from xml.etree import ElementTree as E
 import json,hashlib,sys
@@ -9,7 +10,7 @@ def main():
  sys.stdout.reconfigure(encoding='utf-8')
  integration=json.loads((R/'build/project_integration_validation.json').read_text(encoding='utf-8'))
  root=Path(integration['project_directory']);project=root/'MDK-ARM/tester123.uvprojx'
- receipt=E.parse(root/'foxmolika_Tools_080/route-build.xml').getroot();mapfile=(root/receipt.attrib['Map']).resolve()
+ receipt=E.parse(root/(TOOL_DIRECTORY+'/route-build.xml')).getroot();mapfile=(root/receipt.attrib['Map']).resolve()
  assert root.resolve().is_relative_to(R.resolve()) and mapfile.is_relative_to(R.resolve())
  data=mapfile.read_bytes()
  try:

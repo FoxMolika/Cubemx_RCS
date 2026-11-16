@@ -4,7 +4,7 @@ from xml.etree import ElementTree as E
 import hashlib,zipfile,json
 from settings import ROOT,PARAMS,DEFAULTS,CONFIG_TAIL,CONFIG_PREFIX,config_header
 from configurator import module_files
-from version import VERSION
+from version import VERSION, RELEASE_DATE
 
 NS='http://mcd.rou.st.com/modules.php?name=mcu'
 MODE='RoboticsJjfoxmolika'; PACK='RCS.foxmolika'; REL=PACK+'.'+VERSION
@@ -18,7 +18,7 @@ def metadata(version=VERSION):
     rel=PACK+'.'+version
     pd=E.Element('package',schemaVersion='1.6.3')
     for k,v in [('vendor','RCS'),('name','foxmolika'),('description','foxmolika F407 HAL chassis: Mecanum X and tangent Omni'),('url','https://example.invalid/foxmolika/'),('license','LICENSE.txt')]: child(pd,k).text=v
-    releases=child(pd,'releases');child(releases,'release',version=version,date='2026-11-15').text='0.8.0: unified main-window waypoint/terrain editing, shared views/history, draft save and transition-point insertion; strict export preserved.'
+    releases=child(pd,'releases');child(releases,'release',version=version,date=RELEASE_DATE).text=version+': target-level Keil option selection, bounded export transaction retry/diagnostics and reproducible versioned builds.'
     keys=child(pd,'keywords');child(keys,'keyword').text='IMPLEMENTED_WITH_STM32CUBEMX'
     conds=child(pd,'conditions');cond=child(conds,'condition',id='STM32F407');child(cond,'require',Dname='STM32F407*')
     comps=child(pd,'components');comp=child(comps,'component',Cclass='Robotics',Cgroup='foxmolika',Cversion=version,condition='STM32F407',maxInstances='1')

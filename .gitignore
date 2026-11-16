@@ -8,3 +8,5 @@ native/Core/
 native/MDK-ARM/
 *.uvguix.*
 *.build_log.htm
+
+/keil_headers/BuildVersion.cs

@@ -12,8 +12,8 @@ using System.Xml;
 using System.Xml.Linq;
 #if !RCS_MAP_EDITOR
 [assembly: AssemblyTitle("foxmolika Keil Header Fix")]
-[assembly: AssemblyVersion("0.8.0.0")]
-[assembly: AssemblyFileVersion("0.8.0.0")]
+[assembly: AssemblyVersion(BuildVersion.AssemblyVersion)]
+[assembly: AssemblyFileVersion(BuildVersion.AssemblyVersion)]
 #endif
 static class KeilHeaders {
  static readonly string[] Module={"rcs_chassis.h","rcs_control.h","rcs_hal.h"};
@@ -59,9 +59,11 @@ static class KeilHeaders {
   var binding=ProjectBinding.ForKeil(project);if(binding!=null)added+=binding.UpdateRoute(doc,project,false);
   if(added==0){say("已是最新，无需修改："+project);return 0;}
   string backup=project+".rcs-backup";ProjectBinding.NoLink(backup);if(!File.Exists(backup))File.Copy(project,backup);
-  string temp=project+".foxmolika-"+Guid.NewGuid().ToString("N")+".tmp";
   var settings=new XmlWriterSettings{Encoding=new UTF8Encoding(false),Indent=true,IndentChars="  "};
-  try{using(var w=XmlWriter.Create(temp,settings))doc.Save(w);if(!File.ReadAllBytes(project).SequenceEqual(original))throw new IOException("Keil工程刚被其他程序修改，保留当前内容，请重新加载后再试。");File.Replace(temp,project,null);}finally{if(File.Exists(temp))File.Delete(temp);}
+  using(var memory=new MemoryStream()){
+   using(var writer=XmlWriter.Create(memory,settings))doc.Save(writer);
+   ProjectBinding.AtomicWrite(project,memory.ToArray(),original);
+  }
   say("已更新 "+added+" 条文件登记/包含路径："+project+"（Keil 已打开时请选择重新加载工程）");
   return 0;}
 #if !RCS_MAP_EDITOR

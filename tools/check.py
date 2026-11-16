@@ -12,11 +12,16 @@ from build_support import ROOT, csharp_compiler
 # 顺序具有依赖关系：先冻结编辑器，再测试，最后构建并验证一体安装器。
 # 纯主机检查不用 CubeMX/Keil；安装事务虽有模拟项，也须先构建套件，归入 native。
 HOST_STEPS = (
+    ("tools/sync_versions.py",),
     ("map_editor/tools/build.py",),
     ("tools/verify.py",),
     ("tools/check_guides.py",),
+    ("tools/test_version.py",),
     ("tools/test_refactor.py",),
     ("tools/test_keil_options.py",),
+    ("tools/test_export_transaction.py",),
+    ("tools/test_installer_io.py",),
+    ("tools/test_atomic_file.py",),
     ("tools/test_terrain_drive.py",),
     ("tools/test_terrain_project.py",),
     ("tools/test_corrections.py",),
@@ -32,6 +37,7 @@ HOST_STEPS = (
 )
 NATIVE_STEPS = (
     ("suite/tools/build.py",),
+    ("tools/test_version.py", "--include-suite"),
     ("tools/test_install_permissions.py",),
     ("tools/test_project_setup.py",),
     ("suite/tools/test_transactions.py",),
@@ -43,7 +49,7 @@ NATIVE_STEPS = (
     ("tools/finish_terrain_keil.py",),
     ("suite/tools/finish_tests.py",),
 )
-RELEASE_STEPS = (("tools/release_080.py",),)
+RELEASE_STEPS = (("tools/release.py",),)
 ARCHIVE_VERSIONS = ("0.3.7", "0.4.0", "0.4.1", "0.5.0", "0.5.1", "0.5.2", "0.6.0", "0.6.1", "0.7.0")
 
 
@@ -96,16 +102,32 @@ def preflight(level):
 
 def run_checks(level, start_from=None):
     steps = steps_for(level)
+    verified_prefix = []
+    previous_evidence = None
     if start_from:
         # 继续执行由操作者明确指定；前序产物的哈希仍由后续验收脚本校验。
         matches = [i for i, step in enumerate(steps) if step[0] == start_from]
         if not matches:
             raise ValueError("该层级没有此检查步骤：" + start_from)
+        prior_path = ROOT / "build" / ("check-" + level + ".json")
+        if prior_path.exists():
+            prior = json.loads(prior_path.read_text(encoding="utf-8"))
+            prefix = [list(step) for step in steps[:matches[0]]]
+            if (prior.get("level") == level and prior.get("failed_step") == list(steps[matches[0]])
+                    and prior.get("completed") == prefix and level == "release"
+                    and start_from == "tools/release.py"):
+                # 只续接失败的最后发布步骤；发布脚本仍逐项复核当前产物及测试源哈希。
+                verified_prefix = prefix
+                previous_evidence = prior
         steps = steps[matches[0]:]
     area = ROOT / "build"
     area.mkdir(exist_ok=True)
     report_path = area / ("check-" + level + ".json")
-    report = {"level": level, "passed": False, "continued_from": start_from, "completed": []}
+    report = {"level": level, "passed": False, "continued_from": start_from,
+              "completed": verified_prefix, "verified_prior_prefix": bool(verified_prefix)}
+    if previous_evidence is not None:
+        (area / ("check-" + level + "-before-resume.json")).write_text(
+            json.dumps(previous_evidence, indent=2), encoding="utf-8")
     # 开始就写未通过，防止失败后残留的旧 PASS 报告被误用。
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     try:

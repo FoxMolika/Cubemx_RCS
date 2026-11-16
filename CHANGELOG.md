@@ -2,12 +2,12 @@
 
 RCS 底盘与位点地图 · CubeMX 套件（foxmolika）。仓库把每次发布保存为一个 tag，可逐版查看代码差异。
 
-- 版本号沿用工程内部编号：0.3.3 → 0.8.0
+- 版本号沿用工程内部编号：0.3.3 → 0.8.1
 - 每个 tag 对应一个 GitHub Release，安装器与 .pack 在 Release 附件中
 - v0.3.3 是本仓库 Git 历史的起点
 - 各版正文摘自该版 变更说明_<版本>.md，原文未改写
 
-## 未发布：源码重构与坡道复位修复（2026-11-16）
+## 0.8.1：工程关联、事务更新与版本收敛（2026-11-16）
 
 - 修复工程含文件级/分组级 `Cads` 时重复关联抛出“序列包含不止一个元素”；关联与头文件助手共用严格目标级读取，保持覆盖选项并拒绝真实重复目标配置。TEST4真实副本连续三次关联/导出通过，另增13项回归。
 
@@ -17,11 +17,15 @@ RCS 底盘与位点地图 · CubeMX 套件（foxmolika）。仓库把每次发�
 - 合并构建公共函数/资源清单，提供 host/native/release 分层检查；移除两份无引用的一次性发布改写脚本。
 - 增加基线输出比较及模板失配检查；构建示例写入缓存，避免修改仓内参考地图。
 
-详情见[审查方案与验收记录](docs/代码审查与重构方案.md)。本节记录main源码变化，尚未生成新的Release版本。
+详情见[审查方案与验收记录](docs/代码审查与重构方案.md)。本节记录v0.8.1的变化；旧0.8.0附件保持原样。
+
+- 版本收敛至tools/version.py，构建C#常量、软件包元数据、安装清单和当前教程；新增哈希校验的旧080助手迁移。
+- 导出目录、安装暂存和原子文件提交分别增加有限重试与确定性故障回归；1175替换失败先核对内容再重试，不覆盖竞争修改。
 
 ## 版本一览
 | 版本 | 主题 | 代码 | 对比上一版 |
 | --- | --- | --- | --- |
+| `0.8.1` | 工程关联与事务更新修复 | [tree](https://github.com/FoxMolika/Cubemx_RCS/tree/v0.8.1) | [v0.8.0 → v0.8.1](https://github.com/FoxMolika/Cubemx_RCS/compare/v0.8.0...v0.8.1) |
 | `0.8.0` | 坡道执行与形状编辑 | [tree](https://github.com/FoxMolika/Cubemx_RCS/tree/v0.8.0) | [v0.7.0 → v0.8.0](https://github.com/FoxMolika/Cubemx_RCS/compare/v0.7.0...v0.8.0) |
 | `0.7.0` | 可选硬件纠错模板 | [tree](https://github.com/FoxMolika/Cubemx_RCS/tree/v0.7.0) | [v0.6.1 → v0.7.0](https://github.com/FoxMolika/Cubemx_RCS/compare/v0.6.1...v0.7.0) |
 | `0.6.1` | 连续跨平台 | [tree](https://github.com/FoxMolika/Cubemx_RCS/tree/v0.6.1) | [v0.6.0 → v0.6.1](https://github.com/FoxMolika/Cubemx_RCS/compare/v0.6.0...v0.6.1) |

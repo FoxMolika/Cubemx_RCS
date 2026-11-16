@@ -11,6 +11,7 @@ from build_integration import post_helper
 from build_support import compile_csharp, common_editor_payload, generate_examples
 from version import VERSION
 from windows_integrity import medium
+from sync_versions import main as sync_versions
 
 
 def editor_guide(dist):
@@ -30,6 +31,7 @@ def editor_guide(dist):
 
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
+    sync_versions()
     dist = ROOT / "dist"
     dist.mkdir(exist_ok=True)
     guide = editor_guide(dist)

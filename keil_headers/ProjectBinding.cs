@@ -10,6 +10,87 @@ using System.Security.Cryptography;
 
 // Shared by the association wizard, map editor and CubeMX post-generation tool.
 internal sealed class ProjectBinding {
+    // 仅内部注入单次文件操作以验证失败路径；产品入口始终使用真实File.Replace/File.Move。
+    internal sealed class FileCommitOperations {
+        internal Action<string,string,string> Replace = File.Replace;
+        internal Action<string,string> Move = File.Move;
+        internal Action<string> Delete = File.Delete;
+        internal Action<int> Delay = System.Threading.Thread.Sleep;
+    }
+    static bool FileRetryable(Exception error) {
+        int code=error.HResult&0xffff;
+        // 1175=ERROR_UNABLE_TO_REMOVE_REPLACED，本机真实File.Replace失败已复现。
+        // 仍逐次核对目标和暂存快照；不能将部分提交状态当成可重试。
+        return code==5||code==32||code==33||code==1175;
+    }
+    static void CheckCommitPaths(string temporary,string destination) {
+        NoLink(temporary);NoLink(destination);
+        NoLink(Path.GetDirectoryName(temporary));NoLink(Path.GetDirectoryName(destination));
+    }
+    static void CleanupCommitFile(string temporary,FileCommitOperations operations,Exception primary) {
+        try { if(File.Exists(temporary)){NoLink(Path.GetDirectoryName(temporary));NoLink(temporary);operations.Delete(temporary);} }
+        catch(Exception cleanup) {
+            if(primary==null)throw new IOException("清理原子提交临时文件失败："+temporary,cleanup);
+            primary.Data["CleanupFailure"]=cleanup.ToString();primary.Data["TemporaryFile"]=temporary;
+        }
+    }
+    // expected为提交前目标快照；null表示原目标不存在。重试不能覆盖其他程序的新建/修改。
+    internal static void CommitFile(string temporary,string destination,byte[] expected,FileCommitOperations operations=null) {
+        operations=operations??new FileCommitOperations();
+        temporary=Path.GetFullPath(temporary);destination=Path.GetFullPath(destination);
+        if(String.Equals(temporary,destination,StringComparison.OrdinalIgnoreCase))
+            throw new IOException("原子提交临时文件不能与目标相同。");
+        Exception failure=null;int attempts=0;byte[] staged=null;
+        byte[] original=expected==null?null:(byte[])expected.Clone();
+        try {
+            CheckCommitPaths(temporary,destination);staged=File.ReadAllBytes(temporary);
+            while(true) {
+                attempts++;
+                try {
+                    CheckCommitPaths(temporary,destination);
+                    if(!File.ReadAllBytes(temporary).SequenceEqual(staged))
+                        throw new IOException("原子提交临时文件被其他程序修改，保留目标。");
+                    if(Directory.Exists(destination))throw new IOException("原子提交目标被替换为目录，保留它。");
+                    if(original==null) {
+                        if(File.Exists(destination))throw new IOException("原子提交目标已被其他程序创建，未覆盖。");
+                        operations.Move(temporary,destination);
+                    }else {
+                        if(!File.Exists(destination)||!File.ReadAllBytes(destination).SequenceEqual(original))
+                            throw new IOException("文件刚被其他程序修改或移除，保留当前内容，请重新加载后再试。");
+                        operations.Replace(temporary,destination,null);
+                    }
+                    break;
+                }catch(IOException error) {
+                    if(!FileRetryable(error)||attempts>=3)throw;
+                    operations.Delay(attempts*60);
+                }catch(UnauthorizedAccessException error) {
+                    if(!FileRetryable(error)||attempts>=3)throw;
+                    operations.Delay(attempts*60);
+                }
+            }
+        }catch(Exception error) {
+            string code="0x"+((uint)error.HResult).ToString("X8");
+            failure=new IOException(String.Format("原子提交失败：临时文件={0}；目标={1}；尝试={2}次；HRESULT={3}。",temporary,destination,attempts,code),error);
+            failure.Data["CommitAttempts"]=attempts;failure.Data["OriginalHResult"]=code;
+            failure.Data["TemporaryFile"]=temporary;failure.Data["DestinationFile"]=destination;
+        }
+        CleanupCommitFile(temporary,operations,failure);
+        if(failure!=null)System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+    internal static void AtomicWrite(string destination,byte[] bytes) {
+        NoLink(destination);NoLink(Path.GetDirectoryName(Path.GetFullPath(destination)));
+        byte[] expected=File.Exists(destination)?File.ReadAllBytes(destination):null;
+        AtomicWrite(destination,bytes,expected);
+    }
+    internal static void AtomicWrite(string destination,byte[] bytes,byte[] expected,FileCommitOperations operations=null) {
+        operations=operations??new FileCommitOperations();
+        string temporary=destination+".rcs-"+Guid.NewGuid().ToString("N")+".tmp";
+        try {
+            NoLink(destination);NoLink(Path.GetDirectoryName(Path.GetFullPath(destination)));
+            using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None))stream.Write(bytes,0,bytes.Length);
+        }catch(Exception error) { CleanupCommitFile(temporary,operations,error);throw; }
+        CommitFile(temporary,destination,expected,operations);
+    }
     internal static XDocument ReadXml(string path) {
         var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
         using (var reader = XmlReader.Create(path, settings)) return XDocument.Load(reader);
@@ -259,14 +340,14 @@ internal sealed class ProjectBinding {
         return changed;
     }
     internal int EnsureBuildGuard(XElement target,string project) {
-        string receipt=Path.Combine(Root,"foxmolika_Tools_080","route-build.xml");
+        string receipt=Path.Combine(Root,BuildVersion.ToolDirectory,"route-build.xml");
         if(!File.Exists(receipt))return 0;
         var common=target.Descendants("TargetCommonOption").FirstOrDefault();
         if(common==null)throw new IOException("Keil缺少目标构建选项，无法登记路线版本检查。");
         var before=common.Element("BeforeMake");
         if(before==null){before=new XElement("BeforeMake");common.Add(before);}
         string dir=Path.GetDirectoryName(project);
-        string tool=Relative(dir,Path.Combine(Root,"foxmolika_Tools_080","foxmolika_PostGenerate.exe"));
+        string tool=Relative(dir,Path.Combine(Root,BuildVersion.ToolDirectory,"foxmolika_PostGenerate.exe"));
         string relativeRoot=Relative(dir,Root+Path.DirectorySeparatorChar).TrimEnd('/','\\');
         string command="\""+tool.Replace('/', '\\')+"\" --check-route \""+relativeRoot+"\"";
         for(int slot=1;slot<=2;slot++) {
@@ -290,7 +371,7 @@ internal sealed class ProjectBinding {
         return BitConverter.ToString(h.ComputeHash(s)).Replace("-","").ToLowerInvariant(); }
     internal static string CheckRouteVersion(string root) {
         root=Path.GetFullPath(root);
-        string receipt=Path.Combine(root,"foxmolika_Tools_080","route-build.xml");NoLink(receipt);
+        string receipt=Path.Combine(root,BuildVersion.ToolDirectory,"route-build.xml");NoLink(receipt);
         var xml=ReadXml(receipt).Root;
         if(xml==null||xml.Name!="FoxmolikaExport"||(string)xml.Attribute("Schema")!="1" ||
            (string)xml.Attribute("Route")!=RouteRelative)throw new IOException("路线版本记录无效，请重新导出地图。");

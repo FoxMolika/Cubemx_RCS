@@ -1,4 +1,5 @@
 """真实TEST4文件选项结构回归：关联/导出/生成后助手均只能使用目标级编译选项。"""
+from version import TOOL_DIRECTORY
 from pathlib import Path
 from xml.etree import ElementTree as E
 import copy
@@ -71,7 +72,7 @@ return 1;}catch(InvalidOperationException e){Console.WriteLine(e.GetType().Name)
     assert tree.find("./Targets/Target/TargetOption/TargetArmAds/Cads/VariousControls/Define").text == "KEEP_TARGET"
     assert len(tree.findall(".//File[FileName='rcs_config.h']")) == 1
     checks.append("associate/export three times byte-idempotent; file/group settings retained; target include added once")
-    post = root / "foxmolika_Tools_080/foxmolika_PostGenerate.exe"
+    post = root / (TOOL_DIRECTORY+"/foxmolika_PostGenerate.exe")
     for _ in range(2):
         run([post])
         assert project.read_bytes() == before

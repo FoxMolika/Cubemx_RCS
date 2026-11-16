@@ -1,7 +1,9 @@
+param([Parameter(Mandatory=$true)][string]$ExecutablePath)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $taskRoot = Split-Path -Parent $PSScriptRoot
-$taskExe = Join-Path $taskRoot 'suite/dist/foxmolika_CubeMX_Setup_0.8.0_win-x64.exe'
+$taskExe = [System.IO.Path]::GetFullPath($ExecutablePath)
+if (-not $taskExe.StartsWith($taskRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) { throw 'Only audit a workspace artifact.' }
 $taskAssembly = [System.Reflection.Assembly]::Load([System.IO.File]::ReadAllBytes($taskExe))
 $taskHashes = @{}
 foreach ($taskName in $taskAssembly.GetManifestResourceNames()) {

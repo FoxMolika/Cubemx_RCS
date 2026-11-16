@@ -51,7 +51,7 @@ namespace RcsMap {
    string map=(string)data.Attribute("Map");
    data.SetAttributeValue("Map",ProjectBinding.Relative(binding.Root,map));
    data.SetAttributeValue("Route",ProjectBinding.RouteRelative);
-   string dest=Path.Combine(binding.Root,"foxmolika_Tools_080","route-build.xml");
+   string dest=Path.Combine(binding.Root,BuildVersion.ToolDirectory,"route-build.xml");
    ProjectBinding.NoLink(dest);Editor.AtomicSave(dest,data.ToString()+"\n");
   }
  }

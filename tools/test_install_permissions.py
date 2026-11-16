@@ -3,6 +3,7 @@
 Only newly owned test directories receive labels/deny rules. No user AppData,
 CubeMX installation, existing ACL, or real CubeMX profile is modified.
 """
+from version import SETUP_NAME, sync_csharp_version
 from pathlib import Path
 from xml.etree import ElementTree as E
 import hashlib,json,os,subprocess,sys,uuid
@@ -11,10 +12,10 @@ R=Path(__file__).resolve().parents[1]
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def main():
  sys.stdout.reconfigure(encoding='utf-8');area=R/'build'/('permissions_'+uuid.uuid4().hex[:8]);area.mkdir();medium(area,True)
- setup=R/'suite/dist/foxmolika_CubeMX_Setup_0.8.0_win-x64.exe';assert security(setup)[0]==8192
+ setup=R/('suite/dist/'+SETUP_NAME);assert security(setup)[0]==8192
  source=area/'PermissionProbe.cs';source.write_text('''using System;using System.IO;using System.Security.Principal;using System.Xml.Linq;namespace RcsSuite {static class PermissionProbe {static void Main(string[] a){if(a.Length>0&&a[0]=="sid"){Console.WriteLine(WindowsIdentity.GetCurrent().User.Value);return;}var e=InstallAccess.Token();if(a.Length>0)try{File.WriteAllText(a[0],"owned probe");e.SetAttributeValue("Write","pass");}catch(Exception x){e.SetAttributeValue("Write",x.GetType().Name);}Console.WriteLine(e);}}}''',encoding='utf-8')
  csc=Path(os.environ.get('WINDIR','C:/Windows'))/'Microsoft.NET/Framework64/v4.0.30319/csc.exe';probe=area/'PermissionProbe.exe'
- args=[str(csc),'/nologo','/target:exe','/main:RcsSuite.PermissionProbe','/reference:System.Xml.Linq.dll','/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.Core.dll','/out:'+str(probe),str(source),*map(str,sorted((R/'suite/src').glob('*.cs')))];p=subprocess.run(args,capture_output=True);assert p.returncode==0,p.stdout;medium(probe)
+ args=[str(csc),'/nologo','/target:exe','/main:RcsSuite.PermissionProbe','/reference:System.Xml.Linq.dll','/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.Core.dll','/out:'+str(probe),str(source),str(sync_csharp_version()),*map(str,sorted((R/'suite/src').glob('*.cs')))];p=subprocess.run(args,capture_output=True);assert p.returncode==0,p.stdout;medium(probe)
  low=area/'LowProbe.exe';low.write_bytes(probe.read_bytes());subprocess.run(['icacls',str(low),'/setintegritylevel','L'],check=True,capture_output=True)
  def invoke(exe,args,expected=0):
   p=subprocess.run([str(exe),*map(str,args)],capture_output=True,timeout=210);assert p.returncode==expected,(args,p.returncode,p.stderr.decode(errors='replace'));return p

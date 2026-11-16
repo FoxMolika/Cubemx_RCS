@@ -7,7 +7,7 @@ using System.Text;
 using System.Xml.Linq;
 namespace RcsSuite {
  static class PackService {
-  internal const string Version="0.8.0";
+  internal const string Version=BuildVersion.Version;
   internal static readonly Encoding Utf8=new UTF8Encoding(false);
   internal static string Q(string s){if(s.IndexOf('"')>=0||s.IndexOf('\n')>=0||s.IndexOf('\r')>=0)throw new Exception("路径含不支持的字符。");return "\""+s+"\"";}
   internal static string Repo(string home){string ini=Path.Combine(home,@".stm32cubemx\plugins\updater\updater.ini");if(File.Exists(ini))foreach(string raw in File.ReadAllLines(ini)){
@@ -26,16 +26,22 @@ namespace RcsSuite {
    allowed.Add(Path.Combine(dir,"pdscpackage.xml"));return Directory.GetFiles(dir,"*",SearchOption.AllDirectories).All(p=>allowed.Any(a=>String.Equals(p,a,StringComparison.OrdinalIgnoreCase)));}
   // Directory.Move cannot cross volumes (repository on D:, tools on C:). Copy, verify
   // every byte, and only then delete the source; a failed copy leaves the source intact.
-  internal static void MoveDirectory(string from,string to){
+  internal static void MoveDirectory(string from,string to){MoveDirectory(from,to,new DirectoryOperations.Operations());}
+  internal static void MoveDirectory(string from,string to,DirectoryOperations.Operations operations){
    from=Path.GetFullPath(from).TrimEnd('\\');to=Path.GetFullPath(to).TrimEnd('\\');
    if(String.Equals(from,Path.GetPathRoot(from).TrimEnd('\\'),StringComparison.OrdinalIgnoreCase)||to.StartsWith(from+"\\",StringComparison.OrdinalIgnoreCase)||from.StartsWith(to+"\\",StringComparison.OrdinalIgnoreCase))throw new IOException("不能移动磁盘根目录或互相包含的目录。");
-   if(Directory.Exists(to)||File.Exists(to))throw new IOException("目标已存在，保留它："+to);
-   PackTransaction.Inventory(from);Directory.CreateDirectory(Path.GetDirectoryName(to));
-   try{Directory.Move(from,to);return;}catch(IOException){if(!Directory.Exists(from)||Directory.Exists(to))throw;}
-   // Handles cross-volume paths, including junctions whose drive letter agrees.
+   if(DirectoryOperations.Exists(to))throw new IOException("目标已存在，保留它："+to);
+   var before=PackTransaction.Inventory(from);Directory.CreateDirectory(Path.GetDirectoryName(to));
+   Action verifySource=()=>{var now=PackTransaction.Inventory(from);if(before.Count!=now.Count||before.Any(p=>!now.ContainsKey(p.Key)||now[p.Key]!=p.Value))throw new IOException("移动期间源包内容发生变化，保留目录。");};
+   try{DirectoryOperations.Move(from,to,"移动包目录",operations,verifySource);return;}
+   catch(IOException error){
+    // 只有实际跨卷错误才走复制；访问拒绝/共享冲突不能被误当作跨盘并删除源目录。
+    if(DirectoryOperations.NativeCode(error)!=17||!Directory.Exists(from)||DirectoryOperations.Exists(to))throw;
+   }
    PackTransaction.CopyVerified(from,to);
    if(!PackTransaction.TreesEqual(from,to))throw new IOException("移动前后文件不同，两个目录均保留。");
-   Directory.Delete(from,true);}
+   DirectoryOperations.Delete(from,true,"清理跨盘移动源",operations,()=>{verifySource();if(!PackTransaction.TreesEqual(from,to))throw new IOException("跨盘副本发生变化，保留源目录。");});
+  }
   internal static void RecoverPending(string home,string work,Action<string> report){PackTransaction.Recover(home,work,report);}
   internal static void RequireClosed(){foreach(string name in new[]{"STM32CubeMX","java","javaw"})foreach(var p in Process.GetProcessesByName(name))using(p){
    try{if(name=="STM32CubeMX"||(p.MainWindowTitle??"").StartsWith("STM32CubeMX",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("请保存并关闭 CubeMX 后重试；安装器不会关闭你的程序。");}catch(System.ComponentModel.Win32Exception){}

@@ -1,3 +1,4 @@
+from version import sync_csharp_version
 """Exercise actual export/Keil/version helper code independently of the ramp generator.
 
 The harness uses synthetic SEALED generated modules, never user projects or hardware.
@@ -63,9 +64,9 @@ static class TerrainProjectHarness {
 def main():
  sys.stdout.reconfigure(encoding='utf-8');area=R/'build'/('terrain_project_'+uuid.uuid4().hex[:8]);area.mkdir();source=area/'Harness.cs';source.write_text(HARNESS,encoding='utf-8');exe=area/'terrain-project-tests.exe'
  csc=Path(os.environ.get('WINDIR','C:/Windows'))/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
- args=[csc,'/nologo','/target:exe','/define:RCS_MAP_EDITOR','/reference:System.Core.dll','/reference:System.Xml.Linq.dll','/reference:System.Xml.dll','/out:'+str(exe),source,R/'keil_headers/ProjectBinding.cs',R/'keil_headers/KeilHeaders.cs',R/'map_editor/src/UserRegions.cs',R/'map_editor/src/Exporter.cs',R/'map_editor/src/RevisionGuard.cs']
+ args=[csc,'/nologo','/target:exe','/define:RCS_MAP_EDITOR','/reference:System.Core.dll','/reference:System.Xml.Linq.dll','/reference:System.Xml.dll','/out:'+str(exe),source,R/'keil_headers/ProjectBinding.cs',R/'keil_headers/KeilHeaders.cs',R/'map_editor/src/UserRegions.cs',R/'map_editor/src/Exporter.cs',R/'map_editor/src/RevisionGuard.cs',sync_csharp_version()]
  p=subprocess.run(list(map(str,args)),capture_output=True);assert p.returncode==0,p.stdout.decode(errors='replace')+p.stderr.decode(errors='replace')
  p=subprocess.run([str(exe),str(area/'owned fixture')],capture_output=True,timeout=35);assert p.returncode==0,p.stdout.decode(errors='replace')+p.stderr.decode(errors='replace');text=p.stdout.decode('utf-8',errors='replace').strip();assert 'PASS ' in text
- report={'passed':True,'report':text,'area':str(area),'source_sha256':{str(f.relative_to(R)):hashlib.sha256(f.read_bytes()).hexdigest() for f in [R/'keil_headers/ProjectBinding.cs',R/'keil_headers/KeilHeaders.cs',R/'map_editor/src/UserRegions.cs',R/'map_editor/src/Exporter.cs',R/'map_editor/src/RevisionGuard.cs']},'synthetic_sealed_files':True,'hardware_test':False}
+ report={'passed':True,'report':text,'area':str(area),'source_sha256':{str(f.relative_to(R)):hashlib.sha256(f.read_bytes()).hexdigest() for f in [R/'keil_headers/ProjectBinding.cs',R/'keil_headers/KeilHeaders.cs',R/'map_editor/src/UserRegions.cs',R/'map_editor/src/Exporter.cs',R/'map_editor/src/RevisionGuard.cs',sync_csharp_version()]},'synthetic_sealed_files':True,'hardware_test':False}
  (R/'build/terrain_project_validation.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8');print(text)
 if __name__=='__main__':main()

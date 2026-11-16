@@ -33,44 +33,100 @@ namespace RcsMap {
    return files;
   }
   public static void CheckDestination(MapDocument d,string dir){Dictionary<string,byte[]> originals;Prepare(d,Path.GetFullPath(dir),out originals);}
-  // Only transient sharing/lock states are retried; a real permission denial ends after the bounded attempts.
-  static readonly int[] MoveTransient={5,32,33};
-  static string Hex(Exception e){return "0x"+((uint)e.HResult).ToString("X8");}
-  // Bounded retry with preconditions re-checked before every attempt, so a destination created by
-  // another process is never overwritten and a vanished source is never retried.
-  internal static void MoveDirectory(string source,string dest,string step) {
-   int attempts=0;Exception last=null;
-   while(attempts<3){
-    attempts++;
-    try{Directory.Move(source,dest);return;}
-    catch(Exception error){
-     last=error;int code=error.HResult&0xFFFF;
-     bool recoverable=Array.IndexOf(MoveTransient,code)>=0;
-     bool stillValid=Directory.Exists(source)&&!Directory.Exists(dest);
-     if(!recoverable||!stillValid||attempts>=3)break;
-     System.Threading.Thread.Sleep(60*attempts);
-    }
-   }
-   throw new IOException(string.Format(
-    "导出步骤失败[{0}]：源={1}；目标={2}；尝试={3}次；HRESULT={4}；源存在={5}；目标存在={6}；原文件与备份保持不变。",
-    step,source,dest,attempts,Hex(last),Directory.Exists(source),Directory.Exists(dest)),last);
+  // 操作对象只供内部事务复用/故障注入，产品入口始终使用真实文件系统，无环境变量旁路。
+  internal sealed class ExportOperations {
+   internal Action<string,string> Move = Directory.Move;
+   internal Action<int> Delay = System.Threading.Thread.Sleep;
+   internal Action<string,bool> Delete = Directory.Delete;
   }
-  // Own checksummed generated files only; USER CODE is merged by stable waypoint ID.
-  public static void Export(MapDocument d,string dir) {
+  static readonly int[] MoveRetryCodes={5,32,33};
+  static bool DestinationExists(string path) { return Directory.Exists(path)||File.Exists(path); }
+  static string Hex(Exception error) { return "0x"+((uint)error.HResult).ToString("X8"); }
+
+  internal static void MoveDirectory(string source,string dest,string step) {
+   MoveDirectory(source,dest,step,new ExportOperations(),null);
+  }
+  // ERROR_ACCESS_DENIED(5)不保证是临时故障；仅在前提仍成立时最多尝试3次，不修改权限。
+  // 目标存在（包括文件）、源消失、链接变化或内容变化均立即停止，不能为重试覆盖外部改动。
+  internal static void MoveDirectory(string source,string dest,string step,ExportOperations operations,Action recheck) {
+   int attempts=0;Exception last=null;
+   while(attempts<3) {
+    try {
+     ProjectBinding.NoLink(source);ProjectBinding.NoLink(dest);
+     ProjectBinding.NoLink(Path.GetDirectoryName(source));ProjectBinding.NoLink(Path.GetDirectoryName(dest));
+     if(!Directory.Exists(source))throw new DirectoryNotFoundException("移动源目录不存在。");
+     if(DestinationExists(dest))throw new IOException("移动目标已被其他程序创建，未覆盖。");
+     if(recheck!=null)recheck();
+    } catch(Exception error) { last=error;break; }
+    attempts++;
+    try { operations.Move(source,dest);return; }
+    catch(IOException error) { last=error; }
+    catch(UnauthorizedAccessException error) { last=error; }
+    if(Array.IndexOf(MoveRetryCodes,last.HResult&0xFFFF)<0||attempts>=3||
+       !Directory.Exists(source)||DestinationExists(dest))break;
+    operations.Delay(60*attempts);
+   }
+   var failure=new IOException(string.Format(
+    "导出步骤失败[{0}]：源={1}；目标={2}；尝试={3}次；HRESULT={4}；源目录存在={5}；目标存在={6}。",
+    step,source,dest,attempts,Hex(last),Directory.Exists(source),DestinationExists(dest)),last);
+   failure.Data["ExportStep"]=step;failure.Data["ExportSource"]=source;failure.Data["ExportDestination"]=dest;
+   failure.Data["ExportAttempts"]=attempts;failure.Data["OriginalHResult"]=Hex(last);
+   throw failure;
+  }
+
+  static void VerifyFiles(string directory,Dictionary<string,byte[]> expected) {
+   ProjectBinding.NoLink(directory);
+   if(!Directory.GetFileSystemEntries(directory).Select(Path.GetFileName).OrderBy(x=>x,StringComparer.Ordinal)
+       .SequenceEqual(expected.Keys.OrderBy(x=>x,StringComparer.Ordinal)))
+    throw new IOException("导出期间目录清单被其他程序修改，保留当前内容，请保存并重新导出。");
+   foreach(var file in expected) {
+    string path=Path.Combine(directory,file.Key);ProjectBinding.NoLink(path);
+    if(!File.ReadAllBytes(path).SequenceEqual(file.Value))
+     throw new IOException("导出期间源码被其他程序修改，保留当前文件，请保存并重新导出。");
+   }
+  }
+  // 仅更新拥有生成签名的文件；用户区按稳定ID合并。旧目录、安装、回滚分别作为事务步骤。
+  public static void Export(MapDocument document,string directory) {
+   Export(document,directory,new ExportOperations());
+  }
+  internal static void Export(MapDocument d,string dir,ExportOperations operations) {
+   if(operations==null)throw new ArgumentNullException("operations");
    dir=Path.GetFullPath(dir);Dictionary<string,byte[]> originals;var files=Prepare(d,dir,out originals);bool existing=originals.Count>0;
-   if(existing&&files.Count==originals.Count&&files.All(f=>originals.ContainsKey(f.Key)&&new UTF8Encoding(false).GetBytes(f.Value).SequenceEqual(originals[f.Key]))){RevisionGuard.Record(d,dir);return;}
-   string parent=Path.GetDirectoryName(dir);Directory.CreateDirectory(parent);string temp=Path.Combine(parent,".rcs-export-"+Guid.NewGuid().ToString("N"));
+   var generated=files.ToDictionary(f=>f.Key,f=>new UTF8Encoding(false).GetBytes(f.Value));
+   if(existing&&generated.Count==originals.Count&&generated.All(f=>originals.ContainsKey(f.Key)&&f.Value.SequenceEqual(originals[f.Key]))) {
+    RevisionGuard.Record(d,dir);return;
+   }
+   string parent=Path.GetDirectoryName(dir);Directory.CreateDirectory(parent);
+   string temp=Path.Combine(parent,".rcs-export-"+Guid.NewGuid().ToString("N"));
    string backup=Path.Combine(parent,".rcs-route-backup-"+Guid.NewGuid().ToString("N"));
    Directory.CreateDirectory(temp);Exception failure=null;
-   try{foreach(var f in files)File.WriteAllText(Path.Combine(temp,f.Key),f.Value,new UTF8Encoding(false));
+   try {
+    foreach(var file in generated)File.WriteAllBytes(Path.Combine(temp,file.Key),file.Value);
     ProjectBinding.NoLink(parent);ProjectBinding.NoLink(dir);
-    if(existing){if(!Directory.GetFileSystemEntries(dir).Select(Path.GetFileName).OrderBy(x=>x,StringComparer.Ordinal).SequenceEqual(originals.Keys.OrderBy(x=>x,StringComparer.Ordinal))||originals.Any(f=>!File.ReadAllBytes(Path.Combine(dir,f.Key)).SequenceEqual(f.Value)))throw new IOException("导出期间源码被其他程序修改，保留当前文件，请保存并重新导出。");MoveDirectory(dir,backup,"备份既有目录");}
-    else if(Directory.Exists(dir)){if(Directory.GetFileSystemEntries(dir).Length>0)throw new IOException("导出期间目标目录新增了文件，未覆盖。");Directory.Delete(dir);}
-    try{MoveDirectory(temp,dir,"安装新目录");}catch(Exception installError){if(existing&&Directory.Exists(backup)){try{if(!Directory.Exists(dir))MoveDirectory(backup,dir,"回滚原目录");else throw new IOException("目标目录已被其他进程创建。");}catch(Exception restoreError){throw new IOException("更新失败，原文件仍保存在："+backup+"。恢复错误："+restoreError.Message,installError);}}throw;}
-   }catch(Exception e){failure=e;}
-   // Cleanup must never mask the primary failure.
-   try{if(Directory.Exists(temp))Directory.Delete(temp,true);}
-   catch(Exception cleanup){if(failure==null)throw new IOException("清理临时导出目录失败："+temp+"；源目录与备份保持不变。",cleanup);}
+    if(existing)MoveDirectory(dir,backup,"备份既有目录",operations,()=>VerifyFiles(dir,originals));
+    else if(Directory.Exists(dir)) {
+     if(Directory.GetFileSystemEntries(dir).Length>0)throw new IOException("导出期间目标目录新增了文件，未覆盖。");
+     operations.Delete(dir,false);
+    }
+    try { MoveDirectory(temp,dir,"安装新目录",operations,()=>VerifyFiles(temp,generated)); }
+    catch(Exception installError) {
+     if(existing&&Directory.Exists(backup)) {
+      try { MoveDirectory(backup,dir,"回滚原目录",operations,()=>VerifyFiles(backup,originals)); }
+      catch(Exception restoreError) {
+       var combined=new IOException("更新失败，原文件备份仍保存在："+backup+"。恢复错误："+restoreError.Message,installError);
+       combined.Data["BackupDirectory"]=backup;combined.Data["RollbackFailure"]=restoreError.ToString();
+       throw combined;
+      }
+     }
+     throw;
+    }
+   } catch(Exception error) { failure=error; }
+   // 清理错误附加到原异常；不能把首次安装/回滚失败替换成清理失败，也不虚构目标未改变。
+   try { if(Directory.Exists(temp)) { ProjectBinding.NoLink(temp);operations.Delete(temp,true); } }
+   catch(Exception cleanup) {
+    if(failure==null)failure=new IOException("清理临时导出目录失败："+temp,cleanup);
+    else { failure.Data["CleanupFailure"]=cleanup.ToString();failure.Data["TemporaryDirectory"]=temp; }
+   }
    if(failure!=null)System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
    RevisionGuard.Record(d,dir);
   }

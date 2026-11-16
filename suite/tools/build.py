@@ -3,7 +3,6 @@ from pathlib import Path
 from xml.etree import ElementTree as E
 import hashlib
 import os
-import re
 import shutil
 import sys
 import zipfile
@@ -13,7 +12,7 @@ PROJECT = ROOT.parent
 sys.path.insert(0, str(PROJECT / "tools"))
 from build_integration import post_helper
 from build_support import XML_REFERENCES, compile_csharp, common_editor_payload, run
-from version import VERSION
+from version import VERSION, ASSEMBLY_VERSION, sync_csharp_version
 from windows_integrity import medium
 
 
@@ -26,18 +25,25 @@ def check_version():
     assert (ROOT / "docs/使用说明.html").read_bytes() == (
         PROJECT / "docs/使用说明.html"
     ).read_bytes(), "Suite and pack tutorials must stay synchronized"
+    sync_csharp_version()
     source = (ROOT / "src/PackService.cs").read_text(encoding="utf-8")
-    assert 'Version="' + VERSION + '"' in source, "PackService version drift"
+    assert "BuildVersion.Version" in source, "PackService must use generated version"
     for path in (ROOT / "src/Setup.cs", PROJECT / "keil_headers/KeilHeaders.cs"):
-        versions = re.findall(
-            r'Assembly(?:File)?Version\("([^"]+)"\)',
-            path.read_text(encoding="utf-8"),
-        )
-        assert versions and all(v == VERSION + ".0" for v in versions), path
-    identity = E.parse(ROOT / "setup.manifest").find(
-        "{urn:schemas-microsoft-com:asm.v1}assemblyIdentity"
-    )
-    assert identity is not None and identity.attrib["version"] == VERSION + ".0"
+        text = path.read_text(encoding="utf-8")
+        assert "AssemblyVersion(BuildVersion.AssemblyVersion)" in text, path
+        assert "AssemblyFileVersion(BuildVersion.AssemblyVersion)" in text, path
+
+
+def setup_manifest(build):
+    """保留权限清单模板，版本注入到build后校验；不改写仓内源文件。"""
+    template = (ROOT / "setup.manifest").read_text(encoding="utf-8")
+    assert template.count("@ASSEMBLY_VERSION@") == 1, "Setup manifest must use the version token"
+    path = build / "setup.manifest"
+    path.write_text(template.replace("@ASSEMBLY_VERSION@", ASSEMBLY_VERSION), encoding="utf-8")
+    identity = E.parse(path).find("{urn:schemas-microsoft-com:asm.v1}assemblyIdentity")
+    assert identity is not None and identity.attrib["version"] == ASSEMBLY_VERSION
+    return path
+
 
 
 def build_helpers(build):
@@ -115,7 +121,7 @@ def main():
     setup = dist / ("foxmolika_CubeMX_Setup_" + VERSION + "_win-x64.exe")
     log = compile_csharp(
         setup, sorted((ROOT / "src").glob("*.cs")), target="winexe",
-        manifest=ROOT / "setup.manifest",
+        manifest=setup_manifest(build),
         references=("System.Windows.Forms.dll", "System.Drawing.dll", "System.Xml.Linq.dll", "System.Core.dll"),
         resources={"payload/" + name: path for name, path in payload.items()},
     )

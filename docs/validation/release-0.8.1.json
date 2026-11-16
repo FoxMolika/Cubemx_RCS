@@ -1,0 +1,131 @@
+{
+  "version": "0.8.1",
+  "date": "2026-11-16",
+  "passed": true,
+  "installer_sha256": "16015e0e3f8cb0775895f2cf996d1b1fe786f913ca8314771018226411f3e1cd",
+  "editor_sha256": "e2940d0a518114d13b5a7b8b7bb09e5c21571f861b69403bb30202f7837efbaf",
+  "pack_sha256": "aadbe20d524cd1ad597cb92f0ac391a4e34e9f36a16c1726a7e47e3aa816917e",
+  "gate_completed": [
+    [
+      "tools/sync_versions.py"
+    ],
+    [
+      "map_editor/tools/build.py"
+    ],
+    [
+      "tools/verify.py"
+    ],
+    [
+      "tools/check_guides.py"
+    ],
+    [
+      "tools/test_version.py"
+    ],
+    [
+      "tools/test_refactor.py"
+    ],
+    [
+      "tools/test_keil_options.py"
+    ],
+    [
+      "tools/test_export_transaction.py"
+    ],
+    [
+      "tools/test_installer_io.py"
+    ],
+    [
+      "tools/test_atomic_file.py"
+    ],
+    [
+      "tools/test_terrain_drive.py"
+    ],
+    [
+      "tools/test_terrain_project.py"
+    ],
+    [
+      "tools/test_corrections.py"
+    ],
+    [
+      "tools/test_continuous.py"
+    ],
+    [
+      "tools/test_workspace.py"
+    ],
+    [
+      "tools/test_terrain.py"
+    ],
+    [
+      "tools/test_course_overlay.py"
+    ],
+    [
+      "map_editor/tools/verify_phases.py",
+      "--no-build"
+    ],
+    [
+      "map_editor/tools/test_crash.py"
+    ],
+    [
+      "tools/test_migration_080.py"
+    ],
+    [
+      "tools/test_revision_guard.py"
+    ],
+    [
+      "tools/test_route_project.py"
+    ],
+    [
+      "suite/tools/build.py"
+    ],
+    [
+      "tools/test_version.py",
+      "--include-suite"
+    ],
+    [
+      "tools/test_install_permissions.py"
+    ],
+    [
+      "tools/test_project_setup.py"
+    ],
+    [
+      "suite/tools/test_transactions.py"
+    ],
+    [
+      "suite/tools/verify.py"
+    ],
+    [
+      "tools/verify_project_integration.py"
+    ],
+    [
+      "tools/finish_keil_validation.py"
+    ],
+    [
+      "tools/test_keil_guard.py"
+    ],
+    [
+      "tools/verify_project_integration.py",
+      "--terrain"
+    ],
+    [
+      "tools/finish_terrain_keil.py"
+    ],
+    [
+      "suite/tools/finish_tests.py"
+    ],
+    [
+      "tools/release.py"
+    ]
+  ],
+  "gate_resume": "Host/native started from first step with frozen final binaries. Final release phase resumed after replacing unavailable Windows PowerShell resource auditor with a C# inspector and correcting historical CRLF-only comparison. All prior completed steps retained and all binary/source hashes rechecked.",
+  "version_source": "tools/version.py; generated C# constants/manifest/tutorials/pack metadata; alternate9.8.7 contract passed",
+  "export_transaction": "PASS real short-lived directory lock: release at first retry, second move succeeds\r\nPASS permanent access denied: three attempts, bounded backoff, original directory unchanged\r\nPASS foreign target directory created during backoff: stop and preserve backup\r\nPASS foreign target file created during backoff: stop and preserve backup\r\nPASS installation fails: original directory restored before error returns\r\nPASS installation and rollback both fail: original backup and both causes retained\r\nPASS cleanup failure attaches diagnostics without masking primary failure\r\nPASS source edited during backoff: no second move, external edit preserved\r\nPASS initial preconditions: missing source and occupied target fail before move\r\nPASS 31 assertions across 9 deterministic export transaction scenarios",
+  "installer_io": "PASS Payload.Extract first move locked, second succeeds with verified payload and ownership\r\nPASS Payload.Extract permanent denial stops after three attempts and cleans stage\r\nPASS foreign target directory created during delay is preserved\r\nPASS foreign target file created during delay is preserved\r\nPASS failed stage cleanup attaches error without masking first move failure\r\nPASS package backup transient denial retries same move, no copy fallback\r\nPASS permanent package move denial leaves source intact and does not copy/delete\r\nPASS cross-volume error alone uses verified copy-delete\r\nPASS cross-volume source cleanup failure retains verified backup and original\r\nPASS package changed during delay is retained and never moved again\r\nPASS real file/directory no-delete-sharing lock released during bounded retry\r\nPASS 20 assertions across 11 deterministic installer IO scenarios",
+  "atomic_file": "PASS real target sharing lock released during first backoff; atomic replace succeeds\r\nPASS two transient replace failures followed by atomic success\r\nPASS permanent access denial bounded; original target retained and staged file cleaned\r\nPASS target edited during delay stops retry and preserves external content\r\nPASS staged content changed during delay is never installed\r\nPASS new target file created during delay is retained\r\nPASS new target directory created during delay is retained\r\nPASS cleanup failure is attached while first error and original target remain\r\nPASS stale initial snapshot rejected; genuinely absent target commits without overwrite\r\nPASS 14 assertions across 9 deterministic atomic file scenarios",
+  "legacy080_migration_cases": 18,
+  "native_CubeMX": "6.18.1; fresh isolated profiles, automatic import, alternate empty repository, native generate/regenerate, uninstall",
+  "native_Keil": "ARM Compiler 6.22; flat3C3H and terrain4C4H compiled; 0 errors, 0 warnings",
+  "ordinary_user_install": "Medium, non-admin, not elevated; import, repeat, repair and uninstall passed",
+  "historical_firmware_comparison": "CRLF/LF normalized only; pack/source raw bytes exact",
+  "hardware_test": false,
+  "flashed": false,
+  "second_physical_PC": false
+}
