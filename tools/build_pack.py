@@ -93,8 +93,10 @@ def build():
         for name,b in sorted(module_files(DEFAULTS).items()):
             info=zipfile.ZipInfo(name,date_time=(2026,11,9,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED;z.writestr(info,b)
     write_sums()
-    (ROOT/'examples/default.json').write_text(json.dumps(DEFAULTS,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-    (ROOT/'examples/rcs_config.h').write_text(config_header(DEFAULTS),encoding='utf-8')
+    # 参考示例属于版本源码；构建只能写忽略目录，避免行尾或参数变化污染标签。
+    examples=ROOT/'build/examples';examples.mkdir(parents=True,exist_ok=True)
+    (examples/'default.json').write_text(json.dumps(DEFAULTS,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    (examples/'rcs_config.h').write_text(config_header(DEFAULTS),encoding='utf-8')
     print(out)
     return out
 if __name__=='__main__':build()
