@@ -91,7 +91,7 @@ def main():
         if asset is None:
             endpoint = release["upload_url"].split("{", 1)[0] + "?name=" + urllib.parse.quote(name)
             asset = api(endpoint, "POST", (dist / name).read_bytes(), binary=True)
-        assert asset["size"] == (dist / name).stat().st_size and asset["digest"] == "sha256:" + digest, name
+        assert asset["name"] == name and asset["size"] == (dist / name).stat().st_size and asset["digest"] == "sha256:" + digest, name
         uploaded.append({"name": name, "sha256": digest, "size": asset["size"]})
         print("PASS uploaded/verified " + name, flush=True)
     assert old_assets == {(a["id"], a["name"], a["size"], a["digest"])

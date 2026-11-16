@@ -198,6 +198,8 @@ def main():
     report['source_zip_sha256'] = sha(out)
     (dist / f'发布核验_{VERSION}.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     shutil.copyfile(R / ('变更说明_' + VERSION + '.md'), dist / ('变更说明_' + VERSION + '.md'))
+    shutil.copyfile(dist / ('发布核验_' + VERSION + '.json'), dist / ('foxmolika_Validation_' + VERSION + '.json'))
+    shutil.copyfile(dist / ('变更说明_' + VERSION + '.md'), dist / ('foxmolika_Changes_' + VERSION + '.md'))
     sums = []
     for name in release_asset_names():
         artifact = dist / name

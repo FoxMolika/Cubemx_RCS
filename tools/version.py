@@ -27,6 +27,6 @@ def release_asset_names():
         "foxmolika_CubeMX_Source_" + VERSION + ".zip",
         "foxmolika_CubeMX_Installer_" + VERSION + ".zip",
         "RCS.foxmolika.C_H." + VERSION + ".zip",
-        "发布核验_" + VERSION + ".json",
-        "变更说明_" + VERSION + ".md",
+        "foxmolika_Validation_" + VERSION + ".json",
+        "foxmolika_Changes_" + VERSION + ".md",
     )
