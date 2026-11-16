@@ -1,0 +1,97 @@
+"""Windows 构建共用的少量操作；目标电脑运行安装器不需要 Python。"""
+from pathlib import Path
+import os
+import subprocess
+
+ROOT = Path(__file__).resolve().parents[1]
+XML_REFERENCES = ("System.Xml.Linq.dll", "System.Xml.dll", "System.Core.dll")
+
+# 两个安装器必须携带同一套接入示例；增加示例只修改这一处。
+EXAMPLE_FILES = (
+    "示例路线.rcsmap.json", "立体地图示例.rcsmap.json",
+    "连续通行示例.rcsmap.json", "坡道执行示例.rcsmap.json",
+    "robot_route_task.c", "robot_route_task.h", "定位硬件档案示例.json",
+    "foxmolika_observation_adapter.c", "foxmolika_observation_adapter.h",
+    "terrain_brake_port.c", "terrain_brake_port.h",
+)
+GENERATED_EXAMPLES = (
+    ("--demo", "示例路线.rcsmap.json"),
+    ("--terrain-demo", "立体地图示例.rcsmap.json"),
+    ("--continuous-demo", "连续通行示例.rcsmap.json"),
+    ("--terrain-drive-demo", "坡道执行示例.rcsmap.json"),
+)
+GENERATED_EXAMPLE_DIRECTORY = ROOT / "map_editor/build/examples"
+
+
+def csharp_compiler():
+    """使用系统自带的 Framework 编译器，保持 C# 5/.NET Framework 兼容。"""
+    compiler = Path(os.environ.get("WINDIR", "C:/Windows")) / (
+        "Microsoft.NET/Framework64/v4.0.30319/csc.exe"
+    )
+    if not compiler.is_file():
+        raise FileNotFoundError("缺少 .NET Framework C# 编译器：" + str(compiler))
+    return compiler
+
+
+def run(args, *, cwd=ROOT, timeout=300):
+    """参数逐项传递，不通过 shell 拼接；失败时保留编译器原始诊断。"""
+    command = [str(arg) for arg in args]
+    result = subprocess.run(
+        command, cwd=cwd, capture_output=True, text=True,
+        errors="replace", timeout=timeout,
+    )
+    if result.returncode:
+        raise RuntimeError(
+            "命令失败（{}）：{}\n{}\n{}".format(
+                result.returncode, command[0], result.stdout, result.stderr
+            )
+        )
+    return result.stdout
+
+
+def csharp_arguments(output, sources, *, target="exe", references=(),
+                     defines=(), resources=None, manifest=None):
+    """统一编译选项。资源字典的键是运行时代码使用的名称，不能随路径改名。"""
+    args = [
+        csharp_compiler(), "/nologo", "/target:" + target,
+        "/platform:anycpu", "/optimize+", "/out:" + str(output),
+    ]
+    if defines:
+        args.append("/define:" + ";".join(defines))
+    if manifest is not None:
+        args.append("/win32manifest:" + str(manifest))
+    args.extend("/reference:" + name for name in references)
+    args.extend(
+        "/resource:" + str(path) + "," + name
+        for name, path in (resources or {}).items()
+    )
+    args.extend(sources)
+    return args
+
+
+def compile_csharp(output, sources, **options):
+    Path(output).parent.mkdir(parents=True, exist_ok=True)
+    return run(csharp_arguments(output, sources, **options))
+
+
+def common_editor_payload():
+    """返回独立编辑器和完整套件共用的资源，避免示例漏装或两处版本分叉。"""
+    payload = {
+        "examples/" + name: (
+            GENERATED_EXAMPLE_DIRECTORY if name in {item[1] for item in GENERATED_EXAMPLES}
+            else ROOT / "map_editor/examples"
+        ) / name
+        for name in EXAMPLE_FILES
+    }
+    payload.update({
+        "sdk/" + name: ROOT / "firmware" / name
+        for name in ("rcs_chassis.c", "rcs_chassis.h")
+    })
+    return payload
+
+
+def generate_examples(editor):
+    """用新编辑器生成打包示例到build；随机航点ID不能污染版本控制中的参考地图。"""
+    GENERATED_EXAMPLE_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    for flag, name in GENERATED_EXAMPLES:
+        run([editor, flag, GENERATED_EXAMPLE_DIRECTORY / name])

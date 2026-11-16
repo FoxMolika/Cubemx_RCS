@@ -38,3 +38,5 @@ rcs_action_result rcs_route_action(void *context, size_t point,
 }
 
 @OBSERVER_SOURCE@
+/* RCS TEMPLATE BEGIN BRAKE_FUNCTION */
+/* RCS TEMPLATE END BRAKE_FUNCTION */

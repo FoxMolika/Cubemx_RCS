@@ -1,21 +1,19 @@
-"""Run final release checks against one frozen editor/installer build."""
-from pathlib import Path
-import subprocess,sys
-ROOT=Path(__file__).resolve().parents[1]
+"""保留 0.8 发布入口；检查清单统一由 check.py 维护，历史证据仍严格核验。"""
+import argparse
+import sys
+from check import run_checks
+
+
 def main():
- sys.stdout.reconfigure(encoding='utf-8')
- steps=[['map_editor/tools/build.py'],['tools/verify.py'],['suite/tools/build.py'],
-  ['tools/check_guides.py'],['tools/test_terrain_drive.py'],['tools/test_terrain_project.py'],['tools/test_corrections.py'],['tools/test_continuous.py'],['tools/test_workspace.py'],['tools/test_install_permissions.py'],['tools/test_terrain.py'],['tools/test_course_overlay.py'],['map_editor/tools/verify_phases.py','--no-build'],
-  ['map_editor/tools/test_crash.py'],['tools/test_migration_080.py'],
-  ['tools/test_revision_guard.py'],['tools/test_project_setup.py'],['tools/test_route_project.py'],
-  ['suite/tools/test_transactions.py'],['suite/tools/verify.py'],
-  ['tools/verify_project_integration.py'],['tools/finish_keil_validation.py'],
-  ['tools/test_keil_guard.py'],['tools/verify_project_integration.py','--terrain'],['tools/finish_terrain_keil.py'],['suite/tools/finish_tests.py'],['tools/release_080.py']]
- if '--from' in sys.argv:
-  name=sys.argv[sys.argv.index('--from')+1];index=next(i for i,s in enumerate(steps) if s[0]==name);steps=steps[index:]
- for args in steps:
-  print('\nRUN '+ ' '.join(args),flush=True)
-  result=subprocess.run([sys.executable,*args],cwd=ROOT)
-  if result.returncode:raise SystemExit(result.returncode)
- print('PASS all final acceptance steps',flush=True)
-if __name__=='__main__':main()
+    sys.stdout.reconfigure(encoding="utf-8")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--from", dest="start_from", help="从原有脚本名称继续验收")
+    args = parser.parse_args()
+    try:
+        run_checks("release", args.start_from)
+    except (RuntimeError, FileNotFoundError, ValueError) as error:
+        parser.exit(2, str(error) + "\n")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,13 @@
+{
+  "provenance": "Released 0.7.0 editor; identical fixture is tests/fixtures/course040/map.rcsmap.json",
+  "editor_sha256": "935162657e58263b7add0436492ce00a39231c573988d620e8c9bbda8da874dc",
+  "map_sha256": "df73748e1d0216b1198261355a01f8eef542bb25afa68781f4c49d71899d98d8",
+  "generated_files": {
+    "rcs_actions.c": "f2cad909ee7f1f100c571608747eeae1dbd98e2dd2b6922c5b64f23f693ffb31",
+    "rcs_actions.h": "38f59571c57e4967efa640dcc5e93b21aa5ac383645d668d17d3247cc20cd5f6",
+    "rcs_nav.c": "c18a3380ad1051e1fb6c1907ef75af5372880ab45ed9dd5c884d3d7144b8c655",
+    "rcs_nav.h": "9e73faa0058d8b58748f9fe64b77185e2b77cd265fa37d6a48e94fa6353c3b27",
+    "rcs_route.c": "1e8b642c59fc6113efb4b71669e8e872cc2595af6f83e7ab1d29db616407083a",
+    "rcs_route.h": "c6ed50911e1c428f5b99124dc0c7cde012607e2b255bc667f130db8804ead5e8"
+  }
+}

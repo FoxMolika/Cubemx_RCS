@@ -31,6 +31,8 @@ rcs_action_result rcs_route_action(void *context, size_t point,
  * @brief 读取已导入硬件的独立定位，返回1有效、0失败
  */
 int rcs_route_observe(void *context, unsigned source, rcs_observation *sample);
+/* RCS TEMPLATE BEGIN BRAKE_DECLARE */
+/* RCS TEMPLATE END BRAKE_DECLARE */
 #ifdef __cplusplus
 }
 #endif

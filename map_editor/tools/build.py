@@ -1,47 +1,91 @@
-"""Build native .NET Framework binaries. Python is a BUILD dependency only."""
+"""构建编辑器和独立安装器；不依赖 CubeMX，也不下载运行时。"""
 from pathlib import Path
-import hashlib,os,subprocess,zipfile,sys,base64,shutil
-sys.stdout.reconfigure(encoding='utf-8')
-ROOT=Path(__file__).resolve().parents[1]
-CSC=Path(os.environ.get('WINDIR','C:/Windows'))/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
-def run(args):
-    p=subprocess.run([str(x) for x in args],cwd=ROOT,capture_output=True,text=True,errors='replace')
-    if p.returncode:raise RuntimeError(p.stdout+'\n'+p.stderr)
-    return p.stdout
+import base64
+import hashlib
+import shutil
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT.parent / "tools"))
+from build_integration import post_helper
+from build_support import compile_csharp, common_editor_payload, generate_examples
+from version import VERSION
+from windows_integrity import medium
+
+
+def editor_guide(dist):
+    guide = (ROOT / "docs/使用说明.html").read_text(encoding="utf-8")
+    image = ROOT / "docs/editor_ui.png"
+    if image.is_file():
+        preview = (
+            '<p>编辑器实际界面：上方绿色区域是工程关联入口。</p>'
+            '<img alt="foxmolika地图编辑器工程关联界面" src="data:image/png;base64,'
+            + base64.b64encode(image.read_bytes()).decode("ascii") + '">'
+        )
+        guide = guide.replace("<!--PREVIEW-->", preview)
+    target = dist / "使用说明.html"
+    target.write_text(guide, encoding="utf-8")
+    return target
+
+
 def main():
-    dist=ROOT/'dist';dist.mkdir(exist_ok=True)
-    sys.path.insert(0,str(ROOT.parent/'tools'))
-    from build_integration import post_helper
-    post=post_helper()
-    guide=(ROOT/'docs/使用说明.html').read_text(encoding='utf-8')
-    image=ROOT/'docs/editor_ui.png'
-    if image.is_file():guide=guide.replace('<!--PREVIEW-->','<p>编辑器实际界面：上方绿色区域是工程关联入口。</p><img alt="foxmolika地图编辑器工程关联界面" src="data:image/png;base64,'+base64.b64encode(image.read_bytes()).decode('ascii')+'">')
-    (dist/'使用说明.html').write_text(guide,encoding='utf-8')
-    resources={'rcs_nav.c':ROOT/'firmware/rcs_nav.c','rcs_nav.h':ROOT/'firmware/rcs_nav.h','使用说明.html':dist/'使用说明.html'}
-    resources.update({"rcs_terrain.c":ROOT/"firmware/rcs_terrain.c","rcs_terrain.h":ROOT/"firmware/rcs_terrain.h"})
-    resources.update({'templates/'+p.name:p for p in (ROOT/'templates').glob('*.tpl')})
-    exe=dist/'foxmolika_MapEditor.exe'
-    args=[CSC,'/nologo','/target:winexe','/define:RCS_MAP_EDITOR','/platform:anycpu','/optimize+','/reference:System.Xml.Linq.dll','/reference:System.Xml.dll','/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.Core.dll','/reference:System.IO.Compression.dll','/reference:System.IO.Compression.FileSystem.dll','/reference:System.Runtime.Serialization.dll','/resource:'+str(post)+',payload/foxmolika_PostGenerate.exe','/out:'+str(exe)]
-    args+=['/resource:'+str(p)+',assets/'+n for n,p in resources.items()]
-    args+=sorted((ROOT/'src').glob('*.cs'))
-    args+=[ROOT.parent/'keil_headers'/name for name in ['ProjectSetup.cs','KeilHeaders.cs','ProjectBinding.cs']]
-    print(run(args))
-    from windows_integrity import medium
+    sys.stdout.reconfigure(encoding="utf-8")
+    dist = ROOT / "dist"
+    dist.mkdir(exist_ok=True)
+    guide = editor_guide(dist)
+    resources = {"payload/foxmolika_PostGenerate.exe": post_helper()}
+    resources.update({
+        "assets/" + name: ROOT / "firmware" / name
+        for name in ("rcs_nav.c", "rcs_nav.h", "rcs_terrain.c", "rcs_terrain.h")
+    })
+    resources["assets/使用说明.html"] = guide
+    # 子目录也按相对路径嵌入，模板代码可按职责分组而不丢失资源。
+    resources.update({
+        "assets/templates/" + path.relative_to(ROOT / "templates").as_posix(): path
+        for path in sorted((ROOT / "templates").rglob("*.tpl"))
+    })
+    exe = dist / "foxmolika_MapEditor.exe"
+    sources = sorted((ROOT / "src").glob("*.cs")) + [
+        ROOT.parent / "keil_headers" / name
+        for name in ("ProjectSetup.cs", "KeilHeaders.cs", "ProjectBinding.cs")
+    ]
+    print(compile_csharp(
+        exe, sources, target="winexe", defines=("RCS_MAP_EDITOR",),
+        references=(
+            "System.Xml.Linq.dll", "System.Xml.dll", "System.Windows.Forms.dll",
+            "System.Drawing.dll", "System.Core.dll", "System.IO.Compression.dll",
+            "System.IO.Compression.FileSystem.dll", "System.Runtime.Serialization.dll",
+        ), resources=resources,
+    ))
+    # EXE 必须能从普通用户目录写 AppData；仅设置自有产物的完整性标签。
     medium(exe)
     print(exe)
-    # Build the standalone managed installer; no Python or runtime downloads.
-    run([exe,'--demo',ROOT/'examples/示例路线.rcsmap.json'])
-    run([exe,'--terrain-demo',ROOT/'examples/立体地图示例.rcsmap.json'])
-    run([exe,'--continuous-demo',ROOT/'examples/连续通行示例.rcsmap.json'])
-    run([exe,'--terrain-drive-demo',ROOT/'examples/坡道执行示例.rcsmap.json'])
-    payload={"foxmolika_MapEditor.exe":exe,"使用说明.html":dist/'使用说明.html',"LICENSE.txt":ROOT.parent/'LICENSE.txt',"examples/示例路线.rcsmap.json":ROOT/'examples/示例路线.rcsmap.json',"examples/立体地图示例.rcsmap.json":ROOT/'examples/立体地图示例.rcsmap.json',
-      "examples/连续通行示例.rcsmap.json":ROOT/'examples/连续通行示例.rcsmap.json',"examples/robot_route_task.c":ROOT/'examples/robot_route_task.c',"examples/robot_route_task.h":ROOT/'examples/robot_route_task.h',"sdk/rcs_chassis.c":ROOT.parent/'firmware/rcs_chassis.c',"sdk/rcs_chassis.h":ROOT.parent/'firmware/rcs_chassis.h'}
-    for name in ['定位硬件档案示例.json','foxmolika_observation_adapter.c','foxmolika_observation_adapter.h','坡道执行示例.rcsmap.json','terrain_brake_port.c','terrain_brake_port.h']:
-        payload['examples/'+name]=ROOT/'examples'/name
-    setup=dist/'foxmolika_MapEditor_Setup_0.8.0_win-x64.exe'
-    args=[CSC,'/nologo','/target:winexe','/platform:anycpu','/optimize+','/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.Core.dll','/reference:System.IO.Compression.dll','/reference:System.IO.Compression.FileSystem.dll','/reference:System.Xml.Linq.dll','/out:'+str(setup)]
-    args+=['/resource:'+str(p)+',payload/'+n for n,p in payload.items()];args+=[ROOT/'installer.cs'];print(run(args));print(setup)
+    generate_examples(exe)
+
+    payload = common_editor_payload()
+    payload.update({
+        "foxmolika_MapEditor.exe": exe,
+        "使用说明.html": guide,
+        "LICENSE.txt": ROOT.parent / "LICENSE.txt",
+    })
+    setup = dist / ("foxmolika_MapEditor_Setup_" + VERSION + "_win-x64.exe")
+    print(compile_csharp(
+        setup, [ROOT / "installer.cs"], target="winexe",
+        references=(
+            "System.Windows.Forms.dll", "System.Drawing.dll", "System.Core.dll",
+            "System.IO.Compression.dll", "System.IO.Compression.FileSystem.dll",
+            "System.Xml.Linq.dll",
+        ), resources={"payload/" + name: path for name, path in payload.items()},
+    ))
     medium(setup)
-    shutil.copyfile(ROOT/'examples/示例路线.rcsmap.json',dist/'示例路线.rcsmap.json')
-    (dist/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in [exe,setup,dist/'使用说明.html',dist/'示例路线.rcsmap.json']),encoding='utf-8')
-if __name__=='__main__':main()
+    print(setup)
+    example = dist / "示例路线.rcsmap.json"
+    shutil.copyfile(payload["examples/示例路线.rcsmap.json"], example)
+    (dist / "SHA256SUMS.txt").write_text("".join(
+        hashlib.sha256(path.read_bytes()).hexdigest() + "  " + path.name + "\n"
+        for path in (exe, setup, guide, example)
+    ), encoding="utf-8")
+
+
+if __name__ == "__main__":
+    main()

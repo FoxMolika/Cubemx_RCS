@@ -4,7 +4,9 @@
  * @note 位置为米，角度为弧度；保持底盘看门狗有效，回调不得阻塞。
  */
 #pragma once
+/* RCS TEMPLATE BEGIN NAV_INCLUDE */
 #include "rcs_chassis.h"
+/* RCS TEMPLATE END NAV_INCLUDE */
 #include <stddef.h>
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +56,9 @@ typedef enum {
     RCS_NAV_ACTION_DRIFT,
     RCS_NAV_OBSERVATION_CONFIG,
     RCS_NAV_OBSERVATION,
+/* RCS TEMPLATE BEGIN NAV_FAULT */
     RCS_NAV_OBSERVATION_JUMP
+/* RCS TEMPLATE END NAV_FAULT */
 } rcs_nav_fault;
 /* 阶段引擎使用米、弧度、秒；调用者负责保持配置数组有效。 */
 typedef enum {
@@ -135,10 +139,14 @@ typedef struct {
     void *observer_context;
     uint32_t observation_seen, observation_sequence[32];
     float observation_age[32];
+/* RCS TEMPLATE BEGIN NAV_CONTEXT */
     float correction_origin_x, correction_origin_y;
+/* RCS TEMPLATE END NAV_CONTEXT */
     uint8_t correction_started;
 
 } rcs_navigator;
+/* RCS TEMPLATE BEGIN NAV_DECLARE */
+/* RCS TEMPLATE END NAV_DECLARE */
 /* 不使用堆，不调用HAL，不启动电机；接口单任务串行调用，航点表须保持有效。 */
 /**
  * @brief 初始化导航参数，不启动电机

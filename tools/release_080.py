@@ -42,7 +42,7 @@ def main():
  phase_count=int(re.search(r'PASS (\d+) phase assertions',phases['unit_fault_phase_checks']).group(1))
  assert phase_count>=11448
  generated=Path(phases['area'])/'layout0/rcs_nav.c'
- assert generated.read_text(encoding='utf-8').split('/* RCS GENERATED SHA256')[0].strip()==(R/'map_editor/firmware/rcs_nav.c').read_text(encoding='utf-8').strip()
+ assert generated.read_text(encoding='utf-8').split('/* RCS GENERATED SHA256')[0].strip()==re.sub(r'(?m)^/\* RCS TEMPLATE (?:BEGIN|END) [A-Z0-9_]+ \*/\n', '', (R/'map_editor/firmware/rcs_nav.c').read_text(encoding='utf-8')).strip()
  crash=read('build/crash-validation/results.json');assert crash['passed'] and crash['checks']==54
  assert crash['editor_SHA256']==sha(editor)
  migration=read('build/migration080.json');assert migration['passed'] and migration['legacy_map_unchanged']
@@ -94,14 +94,14 @@ def main():
   z.writestr('使用提示.txt','请在普通用户目录解压后双击EXE，默认不需管理员权限。不要在被标记为Low完整性的目录直接执行；若出现Low级别提示，请换到正常用户目录解压。安装器内嵌.pack并自动导入，不需要手动导入。')
  shutil.copyfile(R/'build/ui/continuous1.png',dist/'连续跨平台侧视图.png')
  shutil.copyfile(R/'build/ui/continuous2.png',dist/'连续跨平台三维图.png')
- shutil.copyfile(R/'map_editor/examples/连续通行示例.rcsmap.json',dist/'连续通行示例.rcsmap.json')
+ shutil.copyfile(R/'map_editor/build/examples/连续通行示例.rcsmap.json',dist/'连续通行示例.rcsmap.json')
  shutil.copyfile(R/'build/ui/correction-templates.png',dist/'纠错模板界面.png')
  shutil.copyfile(R/'build/ui/hardware-profile.png',dist/'定位硬件界面.png')
  shutil.copyfile(R/'docs/定位硬件接入.md',dist/'定位硬件接入.md')
  shutil.copyfile(R/'map_editor/examples/定位硬件档案示例.json',dist/'定位硬件档案示例.json')
  shutil.copyfile(R/'build/ui/shape-editing.png',dist/'形状编辑界面.png')
  shutil.copyfile(R/'docs/坡道与形状编辑.md',dist/'坡道与形状编辑.md')
- shutil.copyfile(R/'map_editor/examples/坡道执行示例.rcsmap.json',dist/'坡道执行示例.rcsmap.json')
+ shutil.copyfile(R/'map_editor/build/examples/坡道执行示例.rcsmap.json',dist/'坡道执行示例.rcsmap.json')
  shutil.copyfile(R/'build/ui/course_angles.png',dist/'夹角显示预览.png')
  for name,source in [('航点双动作框.png','phases.png'),('立体地图预览.png','terrain2.png'),('路线高度侧视图.png','terrain1.png')]:shutil.copyfile(R/'build/ui'/source,dist/name)
  shutil.copyfile(R/'build/ui/terrain0.png',dist/'地形拖动界面.png')

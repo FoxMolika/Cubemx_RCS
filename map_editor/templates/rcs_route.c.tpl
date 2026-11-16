@@ -49,6 +49,8 @@ const char rcs_route_revision[] = "@REVISION@";
 const rcs_point_plan rcs_route_plan[RCS_ROUTE_POINT_COUNT] = {
 @PLAN_ROWS@};
 
+/* RCS TEMPLATE BEGIN TERRAIN_TABLES */
+/* RCS TEMPLATE END TERRAIN_TABLES */
 /* 导出函数 ------------------------------------------------------------------------------------------*/
 
 /**
@@ -67,6 +69,8 @@ int rcs_route_init(rcs_navigator *navigator, void *action_context)
                            rcs_route_action, action_context)) {
         return 0;
     }
+/* RCS TEMPLATE BEGIN ROUTE_BIND */
     return rcs_nav_bind_corrections(navigator, route_corrections, RCS_ROUTE_POINT_COUNT,
                                    rcs_route_observe, action_context);
+/* RCS TEMPLATE END ROUTE_BIND */
 }

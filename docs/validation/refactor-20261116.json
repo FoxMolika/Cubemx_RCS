@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-16",
+  "baseline_commit": "aaeeca5e6805304536d8c22c648774248d97649d",
+  "passed": true,
+  "scope": "source refactor and terrain reset fix; no new release or hardware run",
+  "editor_sha256": "2ea70c0ba8053337850c5bf3f3854b323620a765c443dce8a7e8c19903db4e82",
+  "validation_installer_sha256": "7f7e6afaa44f9b44128a38cc6e1f1467d3caed3e93ca94da5504895a65601140",
+  "export_cases": {
+    "flat0": 6,
+    "flat1": 6,
+    "flat2": 6,
+    "correction-fixture": 6,
+    "terrain-demo.rcsmap": 8,
+    "terrain-layout0": 8,
+    "terrain-layout1": 8,
+    "terrain-layout2": 8,
+    "terrain-multi": 8,
+    "user-tokens": 6,
+    "brake-header": 8,
+    "reverse": 8,
+    "shaped": 8,
+    "course040": 6,
+    "migration037": 6
+  },
+  "template_contract": "PASS 82 template contracts: required slots, duplicates, malformed blocks and single-pass insertion",
+  "reset_regression": [
+    "PASS reproduced baseline bug: explicit reset retains terrain fault and blocks restart",
+    "PASS terrain recovery: explicit reset clears old leg/fault, fresh feedback and manual start required"
+  ],
+  "terrain_model_geometry_ui": {
+    "terrain-drive-selftest.txt": "PASS 27 terrain generation checks",
+    "shape-geometry-selftest.txt": "PASS 74 convex terrain geometry checks",
+    "shape-ui-selftest.txt": "PASS 44 shape UI checks"
+  },
+  "terrain_simulations": [
+    "PASS 48304 terrain assertions, 6899 cycles: actual8files, continuousup/down, noaddedwaypoints/correction, brakebinding",
+    "PASS 48304 terrain assertions, 6899 cycles: actual8files, continuousup/down, noaddedwaypoints/correction, brakebinding",
+    "PASS 48304 terrain assertions, 6899 cycles: actual8files, continuousup/down, noaddedwaypoints/correction, brakebinding"
+  ],
+  "terrain_multi_leg": "PASS 38416 terrain assertions, 7681 cycles: actual8files, continuousup/down, noaddedwaypoints/correction, brakebinding",
+  "terrain_directions": {
+    "reverse": "PASS 48304 terrain assertions, 6899 cycles: actual8files, continuousup/down, noaddedwaypoints/correction, brakebinding",
+    "rotated90": "PASS 48304 terrain assertions, 6899 cycles: actual8files, continuousup/down, noaddedwaypoints/correction, brakebinding"
+  },
+  "terrain_runtime": "PASS surface arclength is integrated once; horizontal projection, reverse, offset start and rotated direction\r\nPASS entry/lateral/heading, nonfinite samples, overspeed, unavailable/lost braking and rollback bounds fail closed\r\nPASS malformed/nonmonotone geometry and invalid limits rejected before execution\r\nPASS future lower limits reduce speed before entry; flat elevated motion needs no slope brake port; endpoint stops\r\nPASS 973 terrain runtime assertions",
+  "terrain_task": "PASS 3140 terrain task assertions: real task and brake port; accepted hold renewed; unavailable/fault locks; retained cause; no auto arm",
+  "core_checks": 1555,
+  "phase_assertions": 11551,
+  "correction_assertions": 607,
+  "crash_checks": 54,
+  "optional_project_checks": 41,
+  "native_CubeMX": "6.18.1; flat6/terrain8 generation and regeneration; headers and USER CODE preserved",
+  "native_Keil": "ARM Compiler6.22; both projects zero errors/zero warnings",
+  "ordinary_user_install": "Medium, not elevated, not administrator; native import/repair/uninstall passed",
+  "check_execution": "First host steps passed; CRLF fixture comparison was fixed; remaining host/native checks passed with --from tools/test_course_overlay.py. Template contracts rerun after additional negative cases.",
+  "build_payload_paths": "Generated examples moved into ignored build directory; real generation leaves tracked examples unchanged; all shared payload hashes equal the tested installer manifest.",
+  "release_archive_check": "not run; missing historical snapshots correctly refused by preflight",
+  "hardware_test": false,
+  "second_physical_pc": false
+}

@@ -14,12 +14,10 @@ namespace RcsMap {
    return text+"f";
   }
   static string Render(string name,Dictionary<string,string> values) {
-   // Replace only tokens in the original template; inserted user text is never rescanned.
-   return Regex.Replace(Exporter.Resource("templates/"+name),@"@([A-Z0-9_]+)@",m=>{
-    string value;if(!values.TryGetValue(m.Groups[1].Value,out value))throw new Exception("缺少模板参数："+m.Value);
-    return value;
-   });
+   // 仅替换原始模板参数，用户代码中的同形文本保持原样。
+   return SourceTemplates.Substitute(Exporter.Resource("templates/"+name), values);
   }
+
   static string Name(string value) {
    return new String((value??"").Replace("*/","* /").Select(c=>Char.IsControl(c)?' ':c).ToArray());
   }
@@ -80,10 +78,15 @@ namespace RcsMap {
    values["FUNCTIONS"]=functions.ToString();values["CASES"]=cases.ToString();
    values["INCLUDES_REGION"]=UserRegions.Block("RCS_ACTION_INCLUDES",doc.ActionIncludes);
    values["GLOBALS_REGION"]=UserRegions.Block("RCS_ACTION_GLOBALS","/* 公共机构状态或action_context类型。 */");
-   var files=new Dictionary<string,string>();
-   foreach(string name in new[]{"rcs_route.c","rcs_route.h","rcs_actions.c","rcs_actions.h"})files[name]=Render(name+".tpl",values);
-   files["rcs_nav.c"]=Exporter.Resource("rcs_nav.c");files["rcs_nav.h"]=Exporter.Resource("rcs_nav.h");
-   AddTerrain(doc,files);
+   bool terrain = TerrainGeometry.HasRelief(doc);
+   if (terrain) TerrainValues(doc, values);
+   var files = new Dictionary<string, string>();
+   foreach (string name in new[] { "rcs_route.c", "rcs_route.h", "rcs_actions.c", "rcs_actions.h", "rcs_nav.c", "rcs_nav.h" })
+    files[name] = SourceTemplates.Render(name, values, terrain);
+   if (terrain) {
+    files["rcs_terrain.c"] = Exporter.Resource("rcs_terrain.c");
+    files["rcs_terrain.h"] = Exporter.Resource("rcs_terrain.h");
+   }
    foreach(string name in files.Keys.ToArray()){
     bool user=false;var wrapped=new StringBuilder();foreach(string raw in files[name].Replace("\r\n","\n").Split('\n')){string line=raw;if(line.StartsWith("/* USER CODE BEGIN"))user=true;if(!user&&!line.StartsWith("/* RCS REGION DEFAULT")){while(line.Length>110){int cut=line.LastIndexOf(',',Math.Min(100,line.Length-1));if(cut<0)break;wrapped.AppendLine(line.Substring(0,cut+1));line="        "+line.Substring(cut+1).TrimStart();}}wrapped.AppendLine(line);if(line.StartsWith("/* USER CODE END"))user=false;}files[name]=wrapped.ToString();GeneratedPolicy.Check(name,files[name]);
    }

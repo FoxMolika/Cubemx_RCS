@@ -1,5 +1,17 @@
 # foxmolika CubeMX 套件 0.8.0
 
+当前 `main` 还包含尚未发布为安装包的源码重构与坡道复位修复，见[审查方案与验收记录](docs/代码审查与重构方案.md)。Releases 中的0.8.0安装包对应发布时的代码。
+
+开发检查统一使用：
+
+```powershell
+python tools/check.py --level host    # Windows/.NET Framework/Python/GCC，含实际生成兼容性回归
+python tools/check.py --level native  # 再验证已安装的 CubeMX、F4固件和 Keil
+python tools/check.py --level release # 维护者发布核验，必须有历史版本目录和事前SHA256快照
+```
+
+完整克隆保留 `aaeeca5` 基线历史供回归比较；无需复制旧版安装目录。`--list` 可查看步骤，`--from 脚本路径` 可继续执行，报告明确记录此次执行范围。构建产物放在忽略的 `build/`、`dist/`、`pack/`，参考地图不会被重新生成的随机ID改写。原生验收的工具路径约定见[方案](docs/代码审查与重构方案.md)。
+
 新增坡道执行4C4H与凸轮廓拖动编辑；参见 docs/坡道与形状编辑.md。平地6文件保持0.7.0回归，坡道8文件自动关联。旧0.7.0目录不覆盖。
 
 **保留0.7.0引入的可选纠错模板：没有独立观测时留空，不自动纠错。** 主窗口“定位硬件”导入能力档案，航点流程中间添加支持的模板；导入不自动启用。刷新估计和驱动对齐明确分开。旧自动纠错仅作记录，详细接入见 docs/定位硬件接入.md。

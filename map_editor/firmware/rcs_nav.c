@@ -59,8 +59,10 @@ static int fail(rcs_navigator *n, rcs_nav_fault f)
         }
         n->state = RCS_NAV_FAULT;
         n->feedback_seen = 0;
+/* RCS TEMPLATE BEGIN NAV_FAIL */
         zeros(n->command_world);
         cancel_action(n);
+/* RCS TEMPLATE END NAV_FAIL */
     }
     return 0;
 }
@@ -224,9 +226,11 @@ int rcs_nav_reset(rcs_navigator *n, float x, float y, float yaw)
     n->heading_target = n->yaw_rad;
     n->target = 0;
     n->pose_set = 1;
+/* RCS TEMPLATE BEGIN NAV_RESET */
     n->observation_seen = 0;
     n->feedback_seen = 0;
     n->state = RCS_NAV_IDLE;
+/* RCS TEMPLATE END NAV_RESET */
     n->fault = RCS_NAV_OK;
     n->correction_pass = 0;
     n->leg_s = n->dwell_s = 0;
@@ -245,7 +249,9 @@ int rcs_nav_start(rcs_navigator *n)
     if (hypotf(n->points[0].x_m - n->x_m, n->points[0].y_m - n->y_m) > n->cfg.position_tolerance_m ||
         fabsf(wrap(n->points[0].yaw_rad - n->yaw_rad)) > n->cfg.yaw_tolerance_rad)
         return fail(n, RCS_NAV_POSE);
+/* RCS TEMPLATE BEGIN NAV_START */
     n->state = RCS_NAV_RUNNING;
+/* RCS TEMPLATE END NAV_START */
     n->target = 0;
     n->heading_target = n->yaw_rad;
     stage(n, RCS_STAGE_MOVE);
@@ -258,8 +264,10 @@ void rcs_nav_stop(rcs_navigator *n)
 {
     if (!n)
         return;
+/* RCS TEMPLATE BEGIN NAV_STOP */
     cancel_action(n);
     zeros(n->command_world);
+/* RCS TEMPLATE END NAV_STOP */
     n->pose_set = n->feedback_seen = 0;
     if (n->state != RCS_NAV_FAULT)
         n->state = RCS_NAV_IDLE;
@@ -590,8 +598,10 @@ int rcs_nav_update(rcs_navigator *n, const int32_t delta[4], uint8_t fresh, floa
     }
     float bx = dt * (a * vel[0] - b * vel[1]), by = dt * (b * vel[0] + a * vel[1]);
     float co = cosf(n->yaw_rad), si = sinf(n->yaw_rad);
+/* RCS TEMPLATE BEGIN NAV_INTEGRATE */
     n->x_m += co * bx - si * by;
     n->y_m += si * bx + co * by;
+/* RCS TEMPLATE END NAV_INTEGRATE */
     n->yaw_unwrapped += da;
     n->yaw_rad = wrap(n->yaw_unwrapped);
     if (!isfinite(n->x_m) || !isfinite(n->y_m) || !isfinite(n->yaw_rad) || fabsf(n->x_m) > 1000 ||
@@ -609,8 +619,10 @@ int rcs_nav_update(rcs_navigator *n, const int32_t delta[4], uint8_t fresh, floa
     if (n->stage == RCS_STAGE_MOVE) {
         if (n->stage_s > n->cfg.max_leg_s)
             return fail(n, RCS_NAV_TIMEOUT);
+/* RCS TEMPLATE BEGIN NAV_MOVE */
         if (dist > p.arrival_radius_m)
             translate(n, dx, dy, point->speed_mps, dt);
+/* RCS TEMPLATE END NAV_MOVE */
         else {
             translate(n, 0, 0, 0, dt);
             if (hypotf(n->command_world[0], n->command_world[1]) < 1e-5f)
@@ -706,3 +718,5 @@ int rcs_nav_update(rcs_navigator *n, const int32_t delta[4], uint8_t fresh, floa
     out[2] = n->command_world[2];
     return 1;
 }
+/* RCS TEMPLATE BEGIN NAV_BIND */
+/* RCS TEMPLATE END NAV_BIND */

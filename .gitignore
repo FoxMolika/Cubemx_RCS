@@ -1,4 +1,6 @@
 **/build/
+**/dist/
+/pack/
 **/__pycache__/
 repaired_project/
 native/Drivers/
