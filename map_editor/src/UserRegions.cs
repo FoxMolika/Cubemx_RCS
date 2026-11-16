@@ -23,6 +23,20 @@ namespace RcsMap {
   }
   public static string Block(string key,string body){body=LF(body??"").TrimEnd()+"\n";if(body.Contains("USER CODE BEGIN")||body.Contains("USER CODE END")||body.Contains("RCS REGION DEFAULT")||body.Contains("RCS GENERATED SHA256"))throw new Exception("动作代码不能包含生成器保留标记。");
    return "/* RCS REGION DEFAULT "+key+" "+Hash(body)+" */\n/* USER CODE BEGIN "+key+" */\n"+body+"/* USER CODE END "+key+" */\n";}
+  // 模板自带 USER CODE 区时使用：按区域正文补上 DEFAULT 哈希行，之后的 Seal/Merge 逻辑不变。
+  // 只有模板作者能决定默认体，所以默认值必须来自模板本身，而不是调用方拼字符串。
+  public static string Stamp(string text){
+   var open=Regex.Matches(text,@"(?m)^/\* USER CODE BEGIN ([A-Z0-9_]+) \*/\n");
+   if(open.Count!=Regex.Matches(text,@"(?m)^/\* USER CODE BEGIN ").Count)throw new Exception("USER CODE 起始标记格式不正确。");
+   foreach(Match m in open.Cast<Match>().OrderByDescending(x=>x.Index)){
+    string key=m.Groups[1].Value;string end="/* USER CODE END "+key+" */";
+    int close=text.IndexOf(end,m.Index+m.Length,StringComparison.Ordinal);
+    if(close<0)throw new Exception("USER CODE 标记缺失："+key);
+    string body=LF(text.Substring(m.Index+m.Length,close-m.Index-m.Length)).TrimEnd()+"\n";
+    text=text.Insert(m.Index,"/* RCS REGION DEFAULT "+key+" "+Hash(body)+" */\n");
+   }
+   return text;
+  }
   static string Skeleton(string s){foreach(var r in Regions(s).OrderByDescending(r=>r.Start))s=s.Remove(r.Start,r.Length);return s;}
   static string Unsigned(string text){string s=LF(text);int at=s.LastIndexOf(Digest,StringComparison.Ordinal);if(at<0)throw new Exception("旧文件缺少可保留式更新标识，请导出新目录。");string body=s.Substring(0,at);var m=Regex.Match(s.Substring(at),@"\A/\* RCS GENERATED SHA256 ([0-9a-f]{64}) \*/\n?\z");if(!m.Success||Hash(Skeleton(body))!=m.Groups[1].Value)throw new Exception("生成区域在 USER CODE 外被修改，保留原文件；请导出新目录。");return body;}
   public static string Seal(string text){string s=LF(text);return s+Digest+Hash(Skeleton(s))+" */\n";}

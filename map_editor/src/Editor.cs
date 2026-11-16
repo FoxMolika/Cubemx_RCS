@@ -114,7 +114,7 @@ namespace RcsMap {
    for(int i=0;i<doc.Obstacles.Count;i++){var o=doc.Obstacles[i];obstacles.Rows.Add(i,o.X,o.Y,o.Width,o.Height,TerrainGeometry.Key(o.SurfaceId));}
    profileView.Document=threeView.Document=doc;profileView.SelectedSurface=threeView.SelectedSurface=canvas.ActiveSurfaceId;terrainTools.Bind(doc,canvas.ActiveSurfaceId);var errors=doc.Validate();errorsList.Items.Clear();foreach(string error in errors)errorsList.Items.Add(error);if(doc.Points.Any(p=>p.CorrectionMode!=0))errorsList.Items.Add("旧地图的自动纠错仅保留记录，不执行；请在航点流程中添加有硬件依据的纠错模板。");if(errors.Count==0)errorsList.Items.Add("检查通过；预览仍为规划模型，未替代实车验证。");validation.Text=errors.Count==0?"✓ 路线检查通过。灰红虚线：障碍膨胀包络。预览和计数均为理想模型。":"草稿："+errors.Count+"处待修正（可继续编辑和保存） · "+String.Join(" / ",errors.Take(2).ToArray());validation.ForeColor=errors.Count==0?Color.FromArgb(22,126,104):Color.FromArgb(183,65,49);
    if(errors.Count==0&&!TerrainGeometry.HasRelief(doc))for(int i=1;i<doc.Points.Count;i++){var a=SegmentInfo.Calculate(doc.Settings,doc.Points[i-1],doc.Points[i],i-1);segments.Rows.Add("P"+(i-1)+"→P"+i,(a.Distance*1000).ToString("F0"),(a.Turn*180/Math.PI).ToString("F1"),a.Seconds.ToString("F2"),a.Counts[0].ToString("F0"),a.Counts[1].ToString("F0"),a.Counts[2].ToString("F0"),doc.Settings.Wheels==3?"—":a.Counts[3].ToString("F0"));}
-   if(TerrainGeometry.HasRelief(doc))validation.Text="坡道导出4C4H；基础模型须标定，制动未绑定不能启动。 "+validation.Text;
+   if(TerrainGeometry.HasRelief(doc))validation.Text="坡道导出17个文件；基础模型须标定，制动未绑定不能启动。 "+validation.Text;
    SelectRows();RefreshPointInspector();refresh=false;canvas.Invalidate();profileView.Invalidate();threeView.Invalidate();Text="foxmolika 位点地图编辑器 "+BuildVersion.Version+" · "+(filename==null?"未命名":Path.GetFileName(filename))+(savedJson!=null&&savedJson!=doc.Json()?" *":"");
    if(RecoverySnapshot!=null)RecoverySnapshot(doc.Json(),filename);
    status.Text=(savedJson==doc.Json()?"已保存":"未保存")+" · "+(exportedRevision==TemplateGenerator.RouteRevision(doc)?"已导出当前版本":"当前版本未导出")+" · 航点/地形共用撤销；完整检查见“检查”";
@@ -157,7 +157,7 @@ namespace RcsMap {
  public class ExportDialog:Form {
   TextBox path=new TextBox();CheckBox project=new CheckBox();public string Destination {get{return path.Text.Trim();}}public bool ToProject {get{return project.Checked;}}
   public ExportDialog(string ioc=null){Text="导出路径源码";ClientSize=new Size(740,280);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;MinimizeBox=false;StartPosition=FormStartPosition.CenterParent;Font=new Font("Microsoft YaHei UI",10);
-   project.SetBounds(20,15,700,28);project.Text="导出到关联工程，并自动加入路径3C3H及包含目录";project.Enabled=!String.IsNullOrWhiteSpace(ioc);project.Checked=project.Enabled;Controls.Add(project);
+   project.SetBounds(20,15,700,28);project.Text="导出到关联工程，并自动加入路径15个文件及包含目录";project.Enabled=!String.IsNullOrWhiteSpace(ioc);project.Checked=project.Enabled;Controls.Add(project);
    var target=new TextBox{ReadOnly=true,Left=20,Top=48,Width=700,Text=ioc??"未关联工程。可取消本窗口，点击编辑器上方“关联工程…”。"};Controls.Add(target);
    Controls.Add(new Label{Text="源码输出目录",AutoSize=true,Location=new Point(20,87)});
    path.SetBounds(20,112,570,30);string standalone=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),"foxmolika_Route_"+DateTime.Now.ToString("yyyyMMdd_HHmmss"));Controls.Add(path);

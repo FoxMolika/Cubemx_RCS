@@ -32,7 +32,7 @@ namespace RcsMap {
             binding.Preflight();
             Exporter.Export(document, binding.RouteDirectory);
             RevisionGuard.Bind(binding);
-            string format = ProjectBinding.RequiredRouteFiles(binding.RouteDirectory, false).Length == 8 ? "4C4H" : "3C3H";
+            string format = ProjectBinding.RequiredRouteFiles(binding.RouteDirectory, false).Length == 17 ? "17个文件" : "15个文件";
             try {
                 var projects = binding.Projects();
                 if (projects.Count == 0 || !ProjectBinding.HasChassis(ProjectBinding.ReadXml(projects[0])))

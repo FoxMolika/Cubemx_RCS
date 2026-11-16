@@ -38,7 +38,11 @@ def main():
     resources = {"payload/foxmolika_PostGenerate.exe": post_helper()}
     resources.update({
         "assets/" + name: ROOT / "firmware" / name
-        for name in ("rcs_nav.c", "rcs_nav.h", "rcs_terrain.c", "rcs_terrain.h")
+        for name in ("rcs_nav.c", "rcs_nav.h", "rcs_terrain.c", "rcs_terrain.h",
+                     # 应用层静态模块：无地图数据，随生成器一起分发。
+                     "rcs_feedback_port.c", "rcs_feedback_port.h",
+                     "rcs_can_port.c", "rcs_can_port.h",
+                     "rcs_app_config.h", "rcs_feedback_config.h", "rcs_observer_config.h")
     })
     resources["assets/使用说明.html"] = guide
     # 子目录也按相对路径嵌入，模板代码可按职责分组而不丢失资源。

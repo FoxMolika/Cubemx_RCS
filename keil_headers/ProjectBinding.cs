@@ -98,7 +98,10 @@ internal sealed class ProjectBinding {
     internal const string FileName = ".foxmolika-project.xml";
     internal const string RouteRelative = "Application/foxmolikaRoute";
     internal static readonly string[] RouteFiles = {
-        "rcs_route.c", "rcs_route.h", "rcs_nav.c", "rcs_nav.h", "rcs_actions.c", "rcs_actions.h"
+        "rcs_route.c", "rcs_route.h", "rcs_nav.c", "rcs_nav.h", "rcs_actions.c", "rcs_actions.h",
+        "rcs_app_task.c", "rcs_app_task.h",
+        "rcs_feedback_port.c", "rcs_feedback_port.h", "rcs_can_port.c", "rcs_can_port.h",
+        "rcs_app_config.h", "rcs_feedback_config.h", "rcs_observer_config.h"
     };
     internal static readonly string[] TerrainFiles = { "rcs_terrain.c", "rcs_terrain.h" };
     internal static string[] RouteNames(bool terrain) { return terrain ? RouteFiles.Concat(TerrainFiles).ToArray() : RouteFiles; }
@@ -112,14 +115,14 @@ internal sealed class ProjectBinding {
         int basic = RouteFiles.Count(n => File.Exists(Path.Combine(directory, n)));
         int terrain = TerrainFiles.Count(n => File.Exists(Path.Combine(directory, n)));
         if (basic == 0 && terrain == 0 && allowEmpty) return new string[0];
-        if (basic != RouteFiles.Length) throw new IOException("路径目录不完整，须重新导出完整3C3H或4C4H。");
+        if (basic != RouteFiles.Length) throw new IOException("路径目录不完整，须重新导出完整15个文件或带坡道17个文件。");
         foreach (string name in new[] { "rcs_nav.c", "rcs_nav.h" })
             if (new FileInfo(Path.Combine(directory, name)).Length > 2 * 1024 * 1024)
                 throw new IOException("导航文件超过2MB，保留原内容：" + name);
         bool declared = DeclaresTerrain(File.ReadAllText(Path.Combine(directory, "rcs_nav.h"), new UTF8Encoding(false, true))) ||
                         DeclaresTerrain(File.ReadAllText(Path.Combine(directory, "rcs_nav.c"), new UTF8Encoding(false, true)));
         if (declared && terrain != TerrainFiles.Length)
-            throw new IOException("导航声明使用坡道模块，但rcs_terrain.c/.h缺失；保留工程，请重新导出完整4C4H。");
+            throw new IOException("导航声明使用坡道模块，但rcs_terrain.c/.h缺失；保留工程，请重新导出完整17个文件。");
         if (!declared && terrain != 0)
             throw new IOException("平地导航旁存在未匹配的坡道文件，保留原内容；请通过编辑器完成安全升级或降级。");
         return RouteNames(declared);

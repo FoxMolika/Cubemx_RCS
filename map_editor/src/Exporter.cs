@@ -17,7 +17,7 @@ namespace RcsMap {
                 ProjectBinding.DeclaresTerrain(files.ContainsKey("rcs_nav.c")?files["rcs_nav.c"]:"");
    var expected=ProjectBinding.RouteNames(terrain);
    if(!files.Keys.OrderBy(n=>n,StringComparer.Ordinal).SequenceEqual(expected.OrderBy(n=>n,StringComparer.Ordinal)))
-    throw new IOException("生成器文件清单不完整，应为3C3H或4C4H；未修改输出目录。");
+    throw new IOException("生成器文件清单不完整，应为15个文件或带坡道17个文件；未修改输出目录。");
    if(File.Exists(dir))throw new IOException("输出路径是文件，未覆盖："+dir);
    if(Directory.Exists(dir)&&Directory.GetFileSystemEntries(dir).Length>0){
     var names=Directory.GetFileSystemEntries(dir).Select(Path.GetFileName).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
