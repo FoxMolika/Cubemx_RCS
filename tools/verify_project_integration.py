@@ -10,6 +10,9 @@ def main():
  sys.stdout.reconfigure(encoding='utf-8');install=json.loads((R/'suite/build/acceptance.json').read_text(encoding='utf-8'));cube=Path(install['cube_auto_discovery'][0]);home=Path(install['test_home']);dest=Path(install['installed_directory'])
  area=R/'suite/build'/('工程关联 验收 '+uuid.uuid4().hex[:8]);work=area/'tester123';(work/'MDK-ARM').mkdir(parents=True);(work/'Core/Src').mkdir(parents=True)
  for src,target in [('tester123_no_can.ioc','tester123.ioc'),('tester123.uvprojx','MDK-ARM/tester123.uvprojx'),('tester123.uvoptx','MDK-ARM/tester123.uvoptx'),('tester123_main.c','Core/Src/main.c')]:shutil.copyfile(R/'tests/fixtures'/src,work/target)
+ # CubeMX的Windows生成器使用CRLF。仅初始化测试副本，源码夹具不改写；
+ # 后续仍逐字节断言main完全未变，避免Git检出策略造成假失败。
+ main_file=work/'Core/Src/main.c';main_file.write_bytes(main_file.read_bytes().replace(b'\r\n',b'\n').replace(b'\n',b'\r\n'))
  main_before=sha(work/'Core/Src/main.c');tool=dest/'foxmolika_ProjectSetup.exe';q=subprocess.run([str(tool),str(work/'tester123.ioc'),'/UPGRADE'],capture_output=True);assert q.returncode==0
  assert main_before==sha(work/'Core/Src/main.c');post=work/(TOOL_DIRECTORY+'/foxmolika_PostGenerate.exe')
  def generate(tag):
