@@ -6,6 +6,31 @@
  */
 #include "rcs_can_port.h"
 
+#if RCS_NO_CHASSIS
+
+/* 未启用 CAN：本模块退化为空实现，工程仍可编译与链接。
+ * 返回 1 表示"没有需要启动的总线"，调用方据此继续初始化应用层。 */
+int rcs_can_port_start(CAN_HandleTypeDef *can)
+{
+    (void)can;
+    return 1;
+}
+
+void rcs_can_port_poll(CAN_HandleTypeDef *can)
+{
+    (void)can;
+}
+
+void rcs_can_port_on_rx(CAN_HandleTypeDef *can, const CAN_RxHeaderTypeDef *header,
+                        const uint8_t data[8])
+{
+    (void)can;
+    (void)header;
+    (void)data;
+}
+
+#else /* !RCS_NO_CHASSIS */
+
 /* 本底盘：0x200 发四路电流，0x201~0x204 回四轮反馈。
  * 掩码只比较低三位以外的位，因此同时接受 0x200~0x207。 */
 #define RCS_CAN_ID_BASE      0x200u
@@ -59,3 +84,5 @@ void rcs_can_port_on_rx(CAN_HandleTypeDef *can, const CAN_RxHeaderTypeDef *heade
         return;
     RCS_OnCanRx(can, header, data);
 }
+
+#endif /* RCS_NO_CHASSIS */

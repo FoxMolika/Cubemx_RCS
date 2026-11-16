@@ -180,8 +180,12 @@ static void app_fault(void)
 
 int App_task_Init(CAN_HandleTypeDef *can)
 {
+    /* 没有启用 CAN 时 HAL 不提供句柄；无底盘模式允许传 0，接口照常初始化，
+     * 只是 RCS_Arm() 恒失败，所以这里永远停在 READY。 */
+#if !RCS_NO_CHASSIS
     if (can == 0)
         return 0;
+#endif
 
     g_state = RCS_APP_NOT_READY;
     g_pose_valid = 0u;

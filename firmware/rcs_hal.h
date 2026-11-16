@@ -8,11 +8,31 @@
 #pragma once
 
 #include "stm32f4xx_hal.h"
-
-#if !defined(HAL_CAN_MODULE_ENABLED)
-#error "RCS: CAN HAL is disabled. Enable CAN1/CAN2 in CubeMX, or run RCS_ProjectSetup then Generate Code."
-#else
 #include "rcs_control.h"
+
+/* CAN 未启用时 HAL 不提供这些类型，无底盘模式仍保持同名签名，方便上层无改动编译。 */
+#if !defined(HAL_CAN_MODULE_ENABLED)
+typedef struct {
+    void *Instance;
+} CAN_HandleTypeDef;
+typedef struct {
+    uint32_t StdId;
+    uint32_t ExtId;
+    uint32_t IDE;
+    uint32_t RTR;
+    uint32_t DLC;
+    uint32_t Timestamp;
+} CAN_RxHeaderTypeDef;
+#endif
+
+/* CAN 未启用时退化为"无底盘"：接口仍然存在，但全部不驱动电机。
+ * 这样新工程即使没在 CubeMX 里启用 CAN，也能编译、能跑应用层与导航；
+ * RCS_Arm() 恒返回 0，所以任何依赖解锁的逻辑都不会真的动起来。 */
+#if defined(HAL_CAN_MODULE_ENABLED)
+#define RCS_NO_CHASSIS 0
+#else
+#define RCS_NO_CHASSIS 1
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,4 +101,5 @@ rcs_fault RCS_Fault(void);
 }
 #endif
 
-#endif /* HAL_CAN_MODULE_ENABLED */
+/* 无底盘时的行为约定：初始化成功但不可驱动，解锁一律失败。
+ * 需要真实底盘时在 CubeMX 里启用 CAN，RCS_NO_CHASSIS 自动变为 0。 */

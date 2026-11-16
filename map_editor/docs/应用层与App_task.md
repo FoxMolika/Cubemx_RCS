@@ -14,6 +14,20 @@
 | `rcs_feedback_config.h` | 新鲜度上限、必需掩码、增量上限、方向 | 同上 |
 | `rcs_observer_config.h` | 定位源编号、有效期、质量门限、坐标对齐 | 接独立定位时填 |
 
+## 没启用 CAN 的工程
+
+`RCS_NO_CHASSIS` 由 CubeMX 的 `HAL_CAN_MODULE_ENABLED` 派生，**不是**一个需要手动维护的开关：
+
+| 工程状态 | `RCS_NO_CHASSIS` | 行为 |
+|---|---|---|
+| CubeMX 已启用 CAN | 0 | 真实底盘：`RCS_Init/Process/Arm/SetVelocity` 走 CAN |
+| 未启用 CAN（新建工程默认） | 1 | 无底盘：接口齐全、可编译链接，`RCS_Arm()` 恒 0，`RCS_State()` 恒 `RCS_LOCKED` |
+
+无底盘模式下 `App_task_Init(0)` 仍然成功并进入 READY，状态机、`APP_*` 用户区、日志与按键照常工作，
+但启动一定停在 READY——因为解锁失败。这样新工程可以先跑通应用层，等 CAN 接好再启用，不用改一行代码。
+
+`rcs_can_port_start/poll` 在无底盘模式下是空实现，返回 1，表示"没有需要启动的总线"。
+
 ## main.c 只需要三行
 
 ```c

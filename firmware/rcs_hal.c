@@ -7,7 +7,7 @@
  */
 #include "rcs_hal.h"
 
-#if defined(HAL_CAN_MODULE_ENABLED)
+#if !RCS_NO_CHASSIS
 #include "rcs_config.h"
 
 #include <string.h>
@@ -238,4 +238,89 @@ rcs_fault RCS_Fault(void)
     return g_controller.fault;
 }
 
-#endif /* HAL_CAN_MODULE_ENABLED */
+#else /* RCS_NO_CHASSIS */
+
+/* 无底盘模式：接口齐全但不驱动电机。RCS_Arm 恒失败，上层不会误判为可动；
+ * CAN 回帧入口保留为空实现，未启用 CAN 的工程可以直接链接通过。 */
+
+/**
+ * @brief 无底盘模式的初始化，仅记录已完成
+ * @param can 未使用，允许为空
+ * @return 始终为 1
+ */
+int RCS_Init(CAN_HandleTypeDef *can)
+{
+    (void)can;
+    return 1;
+}
+
+/**
+ * @brief 无底盘模式忽略回帧
+ * @param can 未使用
+ * @param header 未使用
+ * @param data 未使用
+ */
+void RCS_OnCanRx(CAN_HandleTypeDef *can, const CAN_RxHeaderTypeDef *header, const uint8_t data[8])
+{
+    (void)can;
+    (void)header;
+    (void)data;
+}
+
+/**
+ * @brief 无底盘模式的周期处理，无动作
+ */
+void RCS_Process(void)
+{
+}
+
+/**
+ * @brief 无底盘模式不接受解锁
+ * @return 始终为 0
+ */
+int RCS_Arm(void)
+{
+    return 0;
+}
+
+/**
+ * @brief 无底盘模式的锁定，无动作
+ */
+void RCS_Lock(void)
+{
+}
+
+/**
+ * @brief 无底盘模式拒绝速度命令
+ * @param vx 未使用
+ * @param vy 未使用
+ * @param wz 未使用
+ * @return 始终为 0
+ */
+int RCS_SetVelocity(float vx, float vy, float wz)
+{
+    (void)vx;
+    (void)vy;
+    (void)wz;
+    return 0;
+}
+
+/**
+ * @brief 无底盘模式始终报告已锁定
+ * @return RCS_LOCKED
+ */
+rcs_state RCS_State(void)
+{
+    return RCS_LOCKED;
+}
+
+/**
+ * @brief 无底盘模式不产生故障
+ * @return RCS_OK
+ */
+rcs_fault RCS_Fault(void)
+{
+    return RCS_OK;
+}
+
+#endif /* RCS_NO_CHASSIS */
