@@ -35,11 +35,12 @@ static class KeilHeaders {
   string dir=Path.GetDirectoryName(project);
   ProjectBinding.NoLink(project);byte[] original=File.ReadAllBytes(project);var doc=ProjectBinding.ReadXml(project);int added=0;bool anyGroup=false;
   foreach(var target in doc.Descendants("Target")){
-   var include=target.Descendants("Cads").Elements("VariousControls").Elements("IncludePath").Select(e=>(string)e).FirstOrDefault()??"";
    foreach(var group in target.Descendants("Group")){
     var files=group.Element("Files");if(files==null)continue;
     var chassis=files.Elements("File").Select(f=>(string)f.Element("FilePath")).FirstOrDefault(f=>f!=null&&Norm(f).EndsWith("/rcs_chassis.c",StringComparison.OrdinalIgnoreCase));
     if(chassis==null)continue;anyGroup=true;
+    // 包含目录来自目标级选项；文件级空IncludePath不能遮蔽目标配置中的rcs_config.h。
+    var include=(string)ProjectBinding.TargetCompilerOptions(target).Element("IncludePath")??"";
     string moduleDir=Path.GetDirectoryName(Path.GetFullPath(Path.Combine(dir,Norm(chassis))));
     var wanted=new List<string>();
     foreach(string h in Module){string full=Path.Combine(moduleDir,h);if(File.Exists(full))wanted.Add(full);}

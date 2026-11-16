@@ -196,6 +196,18 @@ internal sealed class ProjectBinding {
     static string FilePath(string dir, string value) {
         return Path.GetFullPath(Path.Combine(dir, value.Trim().Trim('"').Replace('/', Path.DirectorySeparatorChar)));
     }
+    // 只沿目标选项的直接层级查找。文件/分组可以另有Cads，不能参与目标选项的唯一性判断。
+    // 每层均显式校验，避免畸形工程被静默取首项，或漏出SingleOrDefault的.NET原始异常。
+    internal static XElement TargetCompilerOptions(XElement target) {
+        XElement current = target;
+        foreach (string name in new[] { "TargetOption", "TargetArmAds", "Cads", "VariousControls" }) {
+            var blocks = current.Elements(name).ToList();
+            if (blocks.Count == 0) throw new IOException("Keil目标缺少C编译选项（" + name + "），保留原工程。");
+            if (blocks.Count > 1) throw new IOException("Keil目标含重复C编译选项块（" + name + "），未修改工程。");
+            current = blocks[0];
+        }
+        return current;
+    }
     internal int UpdateRoute(XDocument document, string project, bool preview) {
         CheckPaths(); string dir = Path.GetDirectoryName(Path.GetFullPath(project));
         string[] required = RequiredRouteFiles(RouteDirectory, true);
@@ -206,6 +218,7 @@ internal sealed class ProjectBinding {
         foreach (var target in document.Descendants("Target")) {
             var all = target.Descendants("File").ToList();
             if (!all.Any(f => String.Equals((string)f.Element("FileName"), "rcs_chassis.c", StringComparison.OrdinalIgnoreCase))) continue;
+            var options = TargetCompilerOptions(target);
             eligible = true;
             var missing = new List<string>();
             foreach (string name in RouteNames(true)) {
@@ -218,8 +231,6 @@ internal sealed class ProjectBinding {
                     if (!required.Contains(name) && !preview) { matches[0].Remove(); changed++; }
                 } else if (required.Contains(name)) missing.Add(name);
             }
-            var options = target.Descendants("Cads").Elements("VariousControls").SingleOrDefault();
-            if (options == null) throw new IOException("Keil目标缺少C编译选项，保留原工程。");
             if (missing.Count > 0) {
                 var groups = target.Element("Groups");
                 if (groups == null) throw new IOException("Keil目标缺少Groups，保留原工程。");

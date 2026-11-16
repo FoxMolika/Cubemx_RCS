@@ -1,0 +1,37 @@
+{
+  "passed": true,
+  "checks": [
+    "baseline exception reproduced on TEST4-derived nested options",
+    "associate/export three times byte-idempotent; file/group settings retained; target include added once",
+    "real post-generation EXE repeated twice; target config header found despite file options appearing first",
+    "flat6 multi-target nested settings idempotent",
+    "terrain8 multi-target nested settings idempotent",
+    "missing TargetOption rejected with project bytes retained",
+    "duplicate TargetOption rejected with project bytes retained",
+    "missing TargetOption/TargetArmAds rejected with project bytes retained",
+    "duplicate TargetOption/TargetArmAds rejected with project bytes retained",
+    "missing TargetOption/TargetArmAds/Cads rejected with project bytes retained",
+    "duplicate TargetOption/TargetArmAds/Cads rejected with project bytes retained",
+    "missing TargetOption/TargetArmAds/Cads/VariousControls rejected with project bytes retained",
+    "duplicate TargetOption/TargetArmAds/Cads/VariousControls rejected with project bytes retained"
+  ],
+  "editor_sha256": "fee974336f59d30d405e124ee971aa2bbacb3bf4350760dc069b7e2150248eaa",
+  "post_sha256": "29954df7d9b5bcfb3a61c56287f7405b7c078de629e0626f6aa877560539c654",
+  "hardware_test": false,
+  "fixture": "sanitized TEST4 FileOption; group override; target options ordered after Groups",
+  "date": "2026-11-16",
+  "real_TEST4": {
+    "passed": true,
+    "real_TEST4_copy": true,
+    "associations": 3,
+    "post_helper_repeated": true,
+    "file_options_preserved": true,
+    "target_include_once": true,
+    "original_ioc_project_helper_unchanged": true,
+    "editor_sha256": "fee974336f59d30d405e124ee971aa2bbacb3bf4350760dc069b7e2150248eaa",
+    "post_sha256": "29954df7d9b5bcfb3a61c56287f7405b7c078de629e0626f6aa877560539c654"
+  },
+  "existing_optional_project_checks": 41,
+  "existing_project_setup_checks": 13,
+  "existing_route_project_checks": 21
+}

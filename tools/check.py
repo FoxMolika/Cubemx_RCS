@@ -16,6 +16,7 @@ HOST_STEPS = (
     ("tools/verify.py",),
     ("tools/check_guides.py",),
     ("tools/test_refactor.py",),
+    ("tools/test_keil_options.py",),
     ("tools/test_terrain_drive.py",),
     ("tools/test_terrain_project.py",),
     ("tools/test_corrections.py",),
