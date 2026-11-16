@@ -1,5 +1,5 @@
 """当前构建版本的唯一来源；历史夹具与迁移白名单保留各自发布版本。"""
-VERSION = "0.8.1"
+VERSION = "0.8.2"
 VERSION_CODE = "".join(VERSION.split("."))
 ASSEMBLY_VERSION = VERSION + ".0"
 RELEASE_DATE = "2026-11-16"
@@ -29,4 +29,5 @@ def release_asset_names():
         "RCS.foxmolika.C_H." + VERSION + ".zip",
         "foxmolika_Validation_" + VERSION + ".json",
         "foxmolika_Changes_" + VERSION + ".md",
+        "foxmolika_Provenance_" + VERSION + ".json",
     )

@@ -2,10 +2,18 @@
 
 RCS 底盘与位点地图 · CubeMX 套件（foxmolika）。仓库把每次发布保存为一个 tag，可逐版查看代码差异。
 
-- 版本号沿用工程内部编号：0.3.3 → 0.8.1
+- 版本号沿用工程内部编号：0.3.3 → 0.8.2
 - 每个 tag 对应一个 GitHub Release，安装器与 .pack 在 Release 附件中
 - v0.3.3 是本仓库 Git 历史的起点
 - 各版正文摘自该版 变更说明_<版本>.md，原文未改写
+
+## 0.8.2：发布来源一致性（2026-11-16）
+
+- 干净标签构建、每步源码身份检查、Git归档源码包及逐字节核验，绑定全部验收与上传清单。
+- 上传前核对真实远端标签及实际资产名称；保留v0.8.0/v0.8.1标签和附件。
+- 增加官方081助手的哈希迁移与未知助手拒绝回归；修订代码梳理文档。
+
+详情见[0.8.2变更](变更说明_0.8.2.md)和[版本与发布](docs/版本与发布.md)。
 
 ## 0.8.1：工程关联、事务更新与版本收敛（2026-11-16）
 
@@ -25,6 +33,7 @@ RCS 底盘与位点地图 · CubeMX 套件（foxmolika）。仓库把每次发�
 ## 版本一览
 | 版本 | 主题 | 代码 | 对比上一版 |
 | --- | --- | --- | --- |
+| `0.8.2` | 发布来源一致性 | [tree](https://github.com/FoxMolika/Cubemx_RCS/tree/v0.8.2) | [v0.8.1 → v0.8.2](https://github.com/FoxMolika/Cubemx_RCS/compare/v0.8.1...v0.8.2) |
 | `0.8.1` | 工程关联与事务更新修复 | [tree](https://github.com/FoxMolika/Cubemx_RCS/tree/v0.8.1) | [v0.8.0 → v0.8.1](https://github.com/FoxMolika/Cubemx_RCS/compare/v0.8.0...v0.8.1) |
 | `0.8.0` | 坡道执行与形状编辑 | [tree](https://github.com/FoxMolika/Cubemx_RCS/tree/v0.8.0) | [v0.7.0 → v0.8.0](https://github.com/FoxMolika/Cubemx_RCS/compare/v0.7.0...v0.8.0) |
 | `0.7.0` | 可选硬件纠错模板 | [tree](https://github.com/FoxMolika/Cubemx_RCS/tree/v0.7.0) | [v0.6.1 → v0.7.0](https://github.com/FoxMolika/Cubemx_RCS/compare/v0.6.1...v0.7.0) |

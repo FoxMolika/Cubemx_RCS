@@ -24,6 +24,7 @@ static class ProjectSetup {
  const string Legacy052Hash="e651a7806beb2f8d44ce098dbf1befe0bfcb7bcedac23874b0ca35999e51eaf7";
  // 仅允许已发布0.8.0及本仓库已验收补丁的确切助手，旧目录不覆盖。
  static readonly string[] Legacy080Hashes={"a4ff97d599ff032e83ef19d14d50917d4844aee566ac9974596c548e766e1195","29954df7d9b5bcfb3a61c56287f7405b7c078de629e0626f6aa877560539c654"};
+ const string Legacy081Hash="d79e631bcad450570792e191b02883c691dda6854f01f19b1423c6dbaf413e31";
  static bool LegacyHook(string root,string hook){
   string normalized=hook.Replace('\\','/');
   string expected=normalized.Equals("foxmolika_Tools_036/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy036Hash:
@@ -35,7 +36,8 @@ static class ProjectSetup {
    normalized.Equals("foxmolika_Tools_052/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy052Hash:
    normalized.Equals("foxmolika_Tools_060/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy060Hash:
    normalized.Equals("foxmolika_Tools_061/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy061Hash:
-   normalized.Equals("foxmolika_Tools_070/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy070Hash:null;
+   normalized.Equals("foxmolika_Tools_070/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy070Hash:
+   normalized.Equals("foxmolika_Tools_081/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy081Hash:null;
   bool from080=normalized.Equals("foxmolika_Tools_080/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase);
   if(expected==null&&!from080)return false;
   string file=ProjectBinding.Inside(root,hook);ProjectBinding.NoLink(Path.GetDirectoryName(file));ProjectBinding.NoLink(file);
@@ -68,7 +70,7 @@ static class ProjectSetup {
   var binding=ProjectBinding.Plan(path,ioc);binding.Preflight();
   string updated=ioc;if(upgrade)foreach(string v in versions){updated=updated.Replace("RCS.foxmolika."+v,"RCS.foxmolika."+BuildVersion.Version).Replace("RCS.foxmolika_VS_RoboticsJjfoxmolika_"+v,"RCS.foxmolika_VS_RoboticsJjfoxmolika_"+BuildVersion.Version);}
   string hook=BuildVersion.ToolDirectory+"/foxmolika_PostGenerate.exe";var oldHook=Regex.Match(updated,@"(?m)^ProjectManager\.UAScriptAfterPath=(.*)$");string previous=oldHook.Success?oldHook.Groups[1].Value.Trim():"";
-  if(previous.Length>0&&!previous.Replace('\\','/').Equals(hook,StringComparison.OrdinalIgnoreCase)&&!(upgrade&&LegacyHook(binding.Root,previous)))throw new Exception("工程已有生成后操作，未覆盖："+previous+"。仅支持自动升级校验通过的官方0.3.6/0.3.7/0.4.0/0.4.1工具；其他自定义操作请先合并。");
+  if(previous.Length>0&&!previous.Replace('\\','/').Equals(hook,StringComparison.OrdinalIgnoreCase)&&!(upgrade&&LegacyHook(binding.Root,previous)))throw new Exception("工程已有生成后操作，未覆盖："+previous+"。仅支持自动升级哈希校验通过的已知官方工具；其他自定义操作请先合并。");
   if(oldHook.Success)updated=updated.Remove(oldHook.Index,oldHook.Length).Insert(oldHook.Index,"ProjectManager.UAScriptAfterPath="+hook+(oldHook.Value.EndsWith("\r")?"\r":""));else updated+= (updated.EndsWith("\n")?"":"\r\n")+"ProjectManager.UAScriptAfterPath="+hook+"\r\n";
   byte[] payload;using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("payload/foxmolika_PostGenerate.exe")){if(stream==null)throw new Exception("缺少内嵌生成后工具。");using(var memory=new MemoryStream()){stream.CopyTo(memory);payload=memory.ToArray();}}
   string tool=Path.Combine(Path.GetDirectoryName(path),hook.Replace('/',Path.DirectorySeparatorChar));if(File.Exists(tool)&&!File.ReadAllBytes(tool).SequenceEqual(payload))throw new Exception("工程已有不同内容的生成后工具，未覆盖："+tool);

@@ -3,6 +3,7 @@ from version import VERSION, release_asset_names
 from pathlib import Path
 from xml.etree import ElementTree as E
 import hashlib, json, re, shutil, subprocess, sys, zipfile
+from provenance import assert_current, create_source_archive, verify_source_archive
 R = Path(__file__).resolve().parents[1]
 
 def sha(p):
@@ -13,6 +14,20 @@ def read(name):
 
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
+    evidence = read('build/check-release.json')
+    provenance = evidence['source_provenance']
+    assert provenance['tag_required'] is True, '正式打包必须绑定版本标签'
+    assert_current(provenance, R)
+    from check import steps_for
+    assert evidence['completed'] == [list(s) for s in steps_for('release')[:-1]], '必须先完成本标签全部host/native检查'
+    provenance_tests = read('build/provenance_validation.json')
+    assert provenance_tests['status'] == 'PASS' and provenance_tests['checks'] >= 24
+    for name, digest in provenance_tests['source_sha256'].items():
+        assert sha(R / 'tools' / name) == digest, name
+    preflight_tests = read('build/release_preflight_validation.json')
+    assert preflight_tests['passed'] and len(preflight_tests['checks']) >= 10
+    for name, digest in preflight_tests['source_sha256'].items():
+        assert sha(R / name) == digest, name
     from check_guides import main as guides
     guides()
     refactor = read('build/refactor_validation.json')
@@ -182,31 +197,30 @@ def main():
     for name, source in [('使用说明.html', 'docs/使用说明.html'), ('地图编辑器说明.html', 'map_editor/dist/使用说明.html'), ('底盘接入说明.md', 'docs/接入说明.md')]:
         shutil.copyfile(R / source, dist / name)
     report = {'version': VERSION, 'passed': True, 'firmware_legacy_comparison':'CRLF/LF normalized only; pack/source raw bytes exact', 'refactor_validation': refactor, 'export_transaction': export_transaction, 'keil_options': keil_options, 'installer_io': installer_io, 'atomic_file':atomic_file, 'version_evidence': version_evidence, 'preserved_080_assets': prior_release, 'installer_sha256': sha(setup), 'editor_sha256': sha(editor), 'pack_sha256': sha(pack), 'terrain_execution': terrain_drive, 'terrain_native': terrain_native, 'optional_project_files': optional_project, 'original_070_files_unchanged': len(previous070), 'correction_validation': correction, 'original_061_files_unchanged': len(previous061), 'continuous_surface_checks': continuous['checks'], 'original_060_files_unchanged': len(previous060), 'features': ['working terrain4C4H export with calibrated arclength/horizontal conversion and predictive speed limits', 'convex outline vertex/edge/rotation editor and polygon-aware validation', 'atomic owned6to8project upgrade and downgrade with all-file revision guards', 'optional hardware-backed correction templates; empty means no correction', 'validated independent observation freshness, quality and bounded displacement', 'v5 hardware profiles with explicit driver binding; legacy mode retained but not executed', 'continuous connected-surface traversal without forced task waypoints', 'unified main-window waypoint and terrain workspace', 'exposed platform/ramp/connection/layer controls', 'shared document, global undo/redo and recovery snapshots', 'insert transition waypoint after selected point', 'draft save/open independent of full route validation', 'derived height and editable surface assignment', 'verified Medium non-admin installation', 'dual arrival/departure action panes', 'straight-ramp firmware export; unsupported ramp turns/stops rejected', 'Keil stale-map prebuild guard'], 'tests': {'core_assertions': 1555, 'generated_layouts': 3, 'generated_assertions_per_layout': int(re.search('(\\d+) assertions', phases['actual_export_simulations'][0]).group(1)), 'phase_assertions': phase_count, 'editor_model_checks': editor_checks, 'crash_checks': 54, 'route_integration_scenarios': len(route['checks']), 'project_setup_scenarios': 13, 'revision_scenarios': len(revision['checks']), 'installer_transaction_scenarios': 8}, 'actual_CubeMX': '6.18.1; fresh isolated profiles, automatic import, alternate empty repository, native generate/regenerate, uninstall', 'actual_Keil': 'ARM Compiler 6.22; flat3C3H and terrain4C4H compiled; 0 errors, 0 warnings', 'actual_stale_map_blocks_Keil_build': True, 'route_user_code_and_main_preserved': True, 'original_037_files_unchanged': len(snapshot), 'original_040_files_unchanged': len(previous), 'original_041_files_unchanged': len(previous041), 'original_050_files_unchanged': len(previous050), 'original_051_files_unchanged': len(previous051), 'terrain_checks': terrain['checks'], 'actual_drag_checks': terrain['actual_drag_checks'], 'embedded_resources_verified': len(resources), 'ordinary_user_install': permissions, 'published_installer_integrity_rid': security(dist / setup.name)[0], 'original_052_files_unchanged': len(previous052), 'workspace_checks': workspace['checks'], 'hardware_test': False, 'flashed': False, 'second_physical_PC_test': False, 'ui_review': 'two-endpoint continuous route profile and 3D inspected; actual unified main window at 1440px and 1120px; top/profile/3D and shared point/property editors inspected; event-level main-window workflow tests passed', 'delegated_review': 'workspace-scoped version and deterministic I/O test tasks; root integrated and verified current binaries and native toolchain', 'limitations': ['slope execution is known-map straight-fallline model; no real pitch/slip measurement or ground validation', 'convex polygon outlines and affine straight slopes only; no concave/holey/curved-height surfaces or slope turns', '3D drawing shows upper surfaces; clearance includes configured underside thickness and envelope margin', 'drive-encoder odometry alone cannot enable correction; declared independent adapters require real hardware integration and calibration', 'existing hardware driver support unchanged', 'custom-action preview is a placeholder', 'hard termination/power loss cannot guarantee immediate crash ZIP']}
-    validation = R / f'suite/validation/release-{VERSION}.json'
-    validation.parent.mkdir(exist_ok=True)
+    report['source_provenance'] = provenance
+    report['provenance_tests'] = provenance_tests
+    report['release_preflight_tests'] = preflight_tests
+    validation = R / f'build/validation/release-{VERSION}.json'
+    validation.parent.mkdir(parents=True, exist_ok=True)
     validation.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     out = dist / f'foxmolika_CubeMX_Source_{VERSION}.zip'
-    excluded = {'build', 'dist', 'pack', '__pycache__', '.git', 'native', 'repaired_project'}
-    with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
-        for f in sorted(R.rglob('*')):
-            if not f.is_file():
-                continue
-            rel = f.relative_to(R)
-            if any((p in excluded for p in rel.parts)) or f.suffix.lower() in ['.exe', '.dll', '.log', '.htm', '.axf', '.o', '.crf', '.hex', '.pyc']:
-                continue
-            z.write(f, rel.as_posix())
+    create_source_archive(out, provenance, R)
+    verify_source_archive(out, provenance, R)
     report['source_zip_sha256'] = sha(out)
     (dist / f'发布核验_{VERSION}.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     shutil.copyfile(R / ('变更说明_' + VERSION + '.md'), dist / ('变更说明_' + VERSION + '.md'))
     shutil.copyfile(dist / ('发布核验_' + VERSION + '.json'), dist / ('foxmolika_Validation_' + VERSION + '.json'))
     shutil.copyfile(dist / ('变更说明_' + VERSION + '.md'), dist / ('foxmolika_Changes_' + VERSION + '.md'))
+    (dist / ('foxmolika_Provenance_' + VERSION + '.json')).write_text(
+        json.dumps(provenance, ensure_ascii=False, indent=2), encoding='utf-8')
     sums = []
     for name in release_asset_names():
         artifact = dist / name
         assert artifact.is_file(), name
         sums.append(sha(artifact) + '  ' + name + '\n')
     (dist / 'SHA256SUMS.txt').write_text(''.join(sums), encoding='utf-8')
-    print('PASS published verified single-file installer, source ZIP and synchronized tutorials')
+    assert_current(provenance, R)
+    print('PASS packaged verified single-file installer, exact-tag source ZIP and synchronized tutorials')
     print('Installer SHA256', sha(setup))
     print('Installer bytes', setup.stat().st_size)
 if __name__ == '__main__':

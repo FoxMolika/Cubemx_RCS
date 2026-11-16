@@ -8,10 +8,13 @@ import subprocess
 import sys
 
 from build_support import ROOT, csharp_compiler
+from provenance import capture, assert_current
 
 # 顺序具有依赖关系：先冻结编辑器，再测试，最后构建并验证一体安装器。
 # 纯主机检查不用 CubeMX/Keil；安装事务虽有模拟项，也须先构建套件，归入 native。
 HOST_STEPS = (
+    ("tools/test_provenance.py",),
+    ("tools/test_release_preflight.py",),
     ("tools/sync_versions.py",),
     ("map_editor/tools/build.py",),
     ("tools/verify.py",),
@@ -102,6 +105,8 @@ def preflight(level):
 
 def run_checks(level, start_from=None):
     steps = steps_for(level)
+    # 正式发布从首步绑定干净标签；开发host/native仍允许未提交的工作区。
+    source = capture(ROOT) if level == "release" else None
     verified_prefix = []
     previous_evidence = None
     if start_from:
@@ -116,6 +121,7 @@ def run_checks(level, start_from=None):
             if (prior.get("level") == level and prior.get("failed_step") == list(steps[matches[0]])
                     and prior.get("completed") == prefix and level == "release"
                     and start_from == "tools/release.py"):
+                assert prior.get("source_provenance") == source, "源码已变化，必须重新完整验收"
                 # 只续接失败的最后发布步骤；发布脚本仍逐项复核当前产物及测试源哈希。
                 verified_prefix = prefix
                 previous_evidence = prior
@@ -125,6 +131,8 @@ def run_checks(level, start_from=None):
     report_path = area / ("check-" + level + ".json")
     report = {"level": level, "passed": False, "continued_from": start_from,
               "completed": verified_prefix, "verified_prior_prefix": bool(verified_prefix)}
+    if source is not None:
+        report["source_provenance"] = source
     if previous_evidence is not None:
         (area / ("check-" + level + "-before-resume.json")).write_text(
             json.dumps(previous_evidence, indent=2), encoding="utf-8")
@@ -138,6 +146,8 @@ def run_checks(level, start_from=None):
         report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         raise
     for step in steps:
+        if source is not None:
+            assert_current(source, ROOT)
         print("\nRUN " + " ".join(step), flush=True)
         result = subprocess.run([sys.executable, *step], cwd=ROOT)
         if result.returncode:
@@ -146,6 +156,9 @@ def run_checks(level, start_from=None):
             report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
             raise SystemExit(result.returncode)
         report["completed"].append(list(step))
+        if source is not None:
+            assert_current(source, ROOT)
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     report["passed"] = True
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print("PASS " + level + " checks", flush=True)
