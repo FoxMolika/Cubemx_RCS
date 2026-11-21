@@ -32,6 +32,8 @@ static class ProjectSetup {
  const string Legacy083BetaHash="f994f682bd2bc512c75adb37c1011af71b65464074ef8d8613700d455ee9ab1c";
  // 从 v0.8.4 已公布 SHA-256 的编辑器安装包中提取。
  const string Legacy084Hash="2b588a5d7365781ab9f55ef7b712ae84c464aabadf035229d17f8bc8f71ce125";
+ // 0.8.4.alpha 的套件分别内嵌于编辑器和工程关联助手中的生成后工具，摘要相同。
+ const string Legacy084AlphaHash="c4a1b3dc5b1fc75a3992caec0e2aeb411b1c67bbd950fb895c2edb443c29a028";
  static bool LegacyHook(string root,string hook){
   string normalized=hook.Replace('\\','/');
   string expected=normalized.Equals("foxmolika_Tools_036/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy036Hash:
@@ -48,6 +50,7 @@ static class ProjectSetup {
    normalized.Equals("foxmolika_Tools_082/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy082Hash:
    normalized.Equals("foxmolika_Tools_083/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy083Hash:
    normalized.Equals("foxmolika_Tools_084/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy084Hash:
+   normalized.Equals("foxmolika_Tools_084_alpha/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy084AlphaHash:
    normalized.Equals("foxmolika_Tools_083_beta/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy083BetaHash:null;
   bool from080=normalized.Equals("foxmolika_Tools_080/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase);
   if(expected==null&&!from080)return false;

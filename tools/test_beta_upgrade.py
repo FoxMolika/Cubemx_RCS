@@ -26,6 +26,7 @@ OFFICIAL082_SETUP = "188704b664bb250e7af12823a6f5cfa7b4cac09aa67fa159371e5526790
 POST082 = "423301952b60be5dffead82f3f33dcbbb415ab41ca44940c0cda0d6bc1f04d0f"
 POST083 = "550bbb4148c0de6310d754046deebb1d535c5d523f5b7bceac7a81e5bfb8ea97"
 POST084 = "2b588a5d7365781ab9f55ef7b712ae84c464aabadf035229d17f8bc8f71ce125"
+POST084_ALPHA = "c4a1b3dc5b1fc75a3992caec0e2aeb411b1c67bbd950fb895c2edb443c29a028"
 EXTRACT = r'''
 using System;using System.IO;using System.Reflection;
 static class Extract {
@@ -98,7 +99,7 @@ def main():
             "beta EXE资源已过时，请重新构建："+str(source)
     checks.append("actual beta executable resources match current app/machine/feedback source")
 
-    # 夹具由实际082/083 EXE产生并已核验来源；不要求别的final目录或旧安装器存在。
+    # 冻结旧版本的实际输出和助手；测试时无需其他安装目录或旧安装器。
     manifest_path=FIXTURES/"manifest.json"
     fixture_manifest=json.loads(manifest_path.read_text(encoding="utf-8"))
     assert fixture_manifest["fixture_format"]==1
@@ -111,7 +112,9 @@ def main():
     helpers=area/"legacy-helpers";helpers.mkdir()
     post082=helpers/"post082.exe";old_post=helpers/"post083.exe"
     post084=helpers/"post084.exe"
-    for label,path,digest in [("082",post082,POST082),("083",old_post,POST083),("084",post084,POST084)]:
+    post084_alpha=helpers/"post084_alpha.exe"
+    for label,path,digest in [("082",post082,POST082),("083",old_post,POST083),("084",post084,POST084),
+                              ("084_alpha",post084_alpha,POST084_ALPHA)]:
         path.write_bytes(base64.b64decode((FIXTURES/("post_"+label+".base64.txt")).read_bytes()))
         assert sha(path)==digest==fixture_manifest["provenance"][label]["post_sha256"]
     checks.append("portable real-output fixtures and exact legacy helper hashes match captured provenance")
@@ -159,7 +162,7 @@ def main():
         assert snapshot(out)==before and m.read_bytes()==source
         checks.append("partial current directory "+",".join(deleted)+" refused without mutation")
 
-    def project(label,old_version=None,helper=None,foreign_hook=None):
+    def project(label,old_version=None,helper=None,foreign_hook=None,helper_suffix=""):
         root=area/label
         (root/"MDK-ARM").mkdir(parents=True);(root/"Core/Inc").mkdir(parents=True)
         (root/"Core/Src").mkdir();(root/"Modules").mkdir();(root/"Maps").mkdir()
@@ -171,7 +174,7 @@ def main():
         text=(ROOT/"tests/fixtures/tester123_no_can.ioc").read_text(encoding="utf-8-sig")
         if old_version:text=text.replace("0.3.3",old_version)
         if helper is not None:
-            hook="foxmolika_Tools_"+old_version.replace(".","")+"/foxmolika_PostGenerate.exe"
+            hook="foxmolika_Tools_"+old_version.replace(".","")+helper_suffix+"/foxmolika_PostGenerate.exe"
             hp=root/hook;hp.parent.mkdir();hp.write_bytes(helper)
             text=text.replace("ProjectManager.UAScriptAfterPath=","ProjectManager.UAScriptAfterPath="+hook)
         elif foreign_hook:
@@ -182,20 +185,22 @@ def main():
         shutil.copyfile(ROOT/"tests/fixtures/keil_compiler_options.uvprojx",uv)
         return root,ioc,uv
 
-    for version,helper in [("0.8.2",post082),("0.8.3",old_post),("0.8.4",post084)]:
-        root,ioc,uv=project("upgrade-helper-"+version,version,helper.read_bytes())
-        before=helper.read_bytes();oldpath=root/("foxmolika_Tools_"+version.replace(".","")+"/foxmolika_PostGenerate.exe")
+    for version,suffix,helper in [("0.8.2","",post082),("0.8.3","",old_post),("0.8.4","",post084),
+                                  ("0.8.4","_alpha",post084_alpha)]:
+        before=helper.read_bytes()
+        root,ioc,uv=project("upgrade-helper-"+version+suffix,version,before,helper_suffix=suffix)
+        oldpath=root/("foxmolika_Tools_"+version.replace(".","")+suffix+"/foxmolika_PostGenerate.exe")
         run([editor,"--associate-project",ioc])
         assert oldpath.read_bytes()==before and (root/TOOL_DIRECTORY/"foxmolika_PostGenerate.exe").is_file()
-        assert TOOL_DIRECTORY in ioc.read_text(encoding="utf-8")
+        assert "ProjectManager.UAScriptAfterPath="+TOOL_DIRECTORY+"/foxmolika_PostGenerate.exe" in ioc.read_text(encoding="utf-8")
         stable=ioc.read_bytes();run([editor,"--associate-project",ioc]);assert ioc.read_bytes()==stable
-        checks.append("official "+version+" helper migrates to beta path by exact SHA; prior helper retained; association twice stable")
-    for version in ("0.8.2","0.8.3","0.8.4"):
-        root,ioc,uv=project("unknown-helper-"+version,version,b"unrecognized modified helper")
+        checks.append(version+suffix+" helper migrates by exact SHA; prior helper retained; association twice stable")
+    for version,suffix in [("0.8.2",""),("0.8.3",""),("0.8.4",""),("0.8.4","_alpha")]:
+        root,ioc,uv=project("unknown-helper-"+version+suffix,version,b"unrecognized modified helper",helper_suffix=suffix)
         before=snapshot(root)
         assert run([editor,"--associate-project",ioc],ok=False).returncode!=0
         assert snapshot(root)==before
-        checks.append("unknown "+version+" helper rejected before any project mutation")
+        checks.append("unknown "+version+suffix+" helper rejected before any project mutation")
     root,ioc,uv=project("foreign-script",foreign_hook="team_generate.cmd")
     before=snapshot(root)
     assert run([editor,"--associate-project",ioc],ok=False).returncode!=0

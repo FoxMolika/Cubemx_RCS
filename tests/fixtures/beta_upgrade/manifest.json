@@ -21,6 +21,12 @@
       "installer_sha256": "1229aa48c7882b0bb02810c8a86991a204418301e47dde234f7990ee97b48e66",
       "post_sha256": "2b588a5d7365781ab9f55ef7b712ae84c464aabadf035229d17f8bc8f71ce125",
       "verification": "Verified the official GitHub Release asset digest; extracted payload/foxmolika_MapEditor.exe and its payload/foxmolika_PostGenerate.exe without running either."
+    },
+    "084_alpha": {
+      "installer": "foxmolika_CubeMX_Setup_0.8.4.alpha_win-x64.exe",
+      "installer_sha256": "e96500b07098b20090db067cb5ebc17bf6c8770569ed5a4aff0f3da54baa9c0d",
+      "post_sha256": "c4a1b3dc5b1fc75a3992caec0e2aeb411b1c67bbd950fb895c2edb443c29a028",
+      "verification": "Local alpha installer: extracted the helper independently from both embedded editor and ProjectSetup resources without running the installer. Both match an existing alpha project helper."
     }
   },
   "cases": {
@@ -98,6 +104,7 @@
     "app15/generated/rcs_observer_config.h": "68ee207939270ef6cf4f25a3aa76252a2445ca3da6f44a5c28727b1e2539b89c",
     "app15/generated/rcs_route.c": "60779f620162a42e93da5d7268165e6ad7dc491905227ce4dd2225a3da4d4b33",
     "app15/generated/rcs_route.h": "c6ed50911e1c428f5b99124dc0c7cde012607e2b255bc667f130db8804ead5e8",
-    "post_084.base64.txt": "16045cdd928d55d9a544ed731247480b5eaa860aaef4dfaee30c5c3a334a79aa"
+    "post_084.base64.txt": "16045cdd928d55d9a544ed731247480b5eaa860aaef4dfaee30c5c3a334a79aa",
+    "post_084_alpha.base64.txt": "2f15531fe0100c0c314b3b7dd4df28f203897cec4709556323217a75a945f0fa"
   }
 }
