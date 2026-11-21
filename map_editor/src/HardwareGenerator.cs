@@ -28,7 +28,7 @@ namespace RcsMap {
    var externs=new SortedSet<string>();var rows=new StringBuilder();var operationRows=new StringBuilder();int operationCount=0;
    var custom=new StringBuilder();var obsDecl=new StringBuilder();var obsFns=new StringBuilder();
    string[] slots={"INIT","SERVICE","STOP","COMMAND","DONE","CAN","UART","TIMER","OBSERVATION"};
-   var cases=slots.ToDictionary(s=>s,s=>new StringBuilder());int cylinder=0,gyro=0,pwm=0;
+   var cases=slots.ToDictionary(s=>s,s=>new StringBuilder());int cylinder=0,gyro=0,pwm=0,spin8=0;
    for(int i=0;i<devices.Count;i++){
     var d=devices[i];var t=d.Template;
     foreach(var op in t.Operations){operationRows.Append("    { "+i+"u, "+Q(op.Id)+", "+F(op.Min)+", "+F(op.Max)+" },\n");operationCount++;}
@@ -39,6 +39,9 @@ namespace RcsMap {
      if(kind==1){objectIndex=cylinder++;u[1]=U(d,"ActiveHigh");u[2]=U(d,"ResetPull");u[3]=U(d,"TravelMs");}
     }else if(t.DriverKind=="team_jy901"){
      kind=2;objectIndex=gyro++;string uart=d.Get("Uart");var match=Regex.Match(uart,@"\Ahuart([1-6])\z");if(!match.Success)throw new Exception(d.Name+"需绑定F407的huart1～huart6。");
+     port="&"+uart;externs.Add("extern UART_HandleTypeDef "+uart+";");u[0]=UInt32.Parse(match.Groups[1].Value)-1u;u[1]=U(d,"TimeoutMs");u[2]=U(d,"Baud");u[3]=U(d,"Required");f4[0]=N(d,"YawOffsetDeg")*Math.PI/180;f4[1]=N(d,"Direction");if(f4[1]!=1&&f4[1]!=-1)throw new Exception(d.Name+"方向必须为±1。");
+    }else if(t.DriverKind=="spin8_gyro"){
+     kind=6;objectIndex=spin8++;string uart=d.Get("Uart");var match=Regex.Match(uart,@"\Ahuart([1-6])\z");if(!match.Success)throw new Exception(d.Name+"需绑定F407的huart1～huart6。");
      port="&"+uart;externs.Add("extern UART_HandleTypeDef "+uart+";");u[0]=UInt32.Parse(match.Groups[1].Value)-1u;u[1]=U(d,"TimeoutMs");u[2]=U(d,"Baud");u[3]=U(d,"Required");f4[0]=N(d,"YawOffsetDeg")*Math.PI/180;f4[1]=N(d,"Direction");if(f4[1]!=1&&f4[1]!=-1)throw new Exception(d.Name+"方向必须为±1。");
     }else if(t.DriverKind=="pwm_servo"){
      kind=4;pwm++;string timer=d.Get("Timer");if(!Regex.IsMatch(timer,@"\Ahtim([1-9]|1[0-4])\z"))throw new Exception(d.Name+"需绑定F407的htim1～htim14。");
@@ -80,10 +83,10 @@ namespace RcsMap {
    values["OPERATION_ROWS"]=operationRows.ToString();
    foreach(string name in new[]{"rcs_hw.cpp","rcs_hw.h","rcs_hw_callbacks.c"})Add(result,name,Regex.Replace(Resource(name+".tpl"),@"@([A-Z_]+)@",m=>values[m.Groups[1].Value]));
    string config="/** @file rcs_hw_config.h\n * @brief 从硬件实例生成；修改参数请回到GUI，禁止把无反馈当真实到位。\n */\n#pragma once\n";
-   config+="#define RCS_HW_DEVICE_COUNT "+devices.Count+"u\n#define RCS_HW_STORAGE "+Math.Max(devices.Count,1)+"u\n#define RCS_HW_TEAM_CYLINDERS "+cylinder+"\n#define RCS_HW_TEAM_GYROS "+gyro+"\n#define RCS_HW_PWM_DEVICES "+pwm+"\n";
+   config+="#define RCS_HW_DEVICE_COUNT "+devices.Count+"u\n#define RCS_HW_STORAGE "+Math.Max(devices.Count,1)+"u\n#define RCS_HW_TEAM_CYLINDERS "+cylinder+"\n#define RCS_HW_TEAM_GYROS "+gyro+"\n#define RCS_HW_SPIN8_GYROS "+spin8+"\n#define RCS_HW_PWM_DEVICES "+pwm+"\n";
    config+="#define RCS_HW_OP_COUNT "+operationCount+"u\n#define RCS_HW_OP_STORAGE "+Math.Max(operationCount,1)+"u\n";
    foreach(string bus in new[]{"CAN","UART","TIMER"})config+="#ifndef RCS_HW_DEFINE_"+bus+"_CALLBACK\n#define RCS_HW_DEFINE_"+bus+"_CALLBACK 1\n#endif\n";
-   if(gyro>0)config+="#if !defined(HAL_UART_MODULE_ENABLED)\n#error \"RCS hardware: enable the selected UART and RX interrupt in CubeMX\"\n#endif\n";
+   if(gyro>0||spin8>0)config+="#if !defined(HAL_UART_MODULE_ENABLED)\n#error \"RCS hardware: enable the selected UART and RX interrupt in CubeMX\"\n#endif\n";
    if(pwm>0)config+="#if !defined(HAL_TIM_MODULE_ENABLED)\n#error \"RCS hardware: enable the selected PWM timer in CubeMX\"\n#endif\n";
    Add(result,"rcs_hw_config.h",config);
    return result;

@@ -14,10 +14,13 @@ static cylinder_no_sensor hw_cylinders[RCS_HW_TEAM_CYLINDERS];
 #include "rcs_gyro.h"
 static rcs_jy901 hw_gyros[RCS_HW_TEAM_GYROS];
 #endif
+#if RCS_HW_SPIN8_GYROS
+#include "xs_gyro.h"
+#endif
 @EXTERNS@
 @CUSTOM_CODE@
 
-enum { HW_CYLINDER=1, HW_GYRO=2, HW_GPIO=3, HW_PWM=4, HW_CUSTOM=5 };
+enum { HW_CYLINDER=1, HW_GYRO=2, HW_GPIO=3, HW_PWM=4, HW_CUSTOM=5, HW_SPIN8=6 };
 struct hw_spec {
     const char *id;
     unsigned kind, period_ms, object_index;
@@ -69,6 +72,23 @@ rcs_err_t rcs_uart_driver_install(const rcs_uart_conf_t *conf, rcs_uart_t number
     port.handle=conf->huartx; port.rx=conf->rxCallback; port.number=number; port.receiving=false;
     /* 不在vector注册过程中开接收，待所有对象注册完成才统一启动。 */
     return RCS_OK;
+}
+#endif
+#if RCS_HW_SPIN8_GYROS
+static size_t hw_spin8_uart_rx(uint8_t number, const uint8_t *data, size_t len)
+{
+    (void)number;
+    xs_gyro_feed(data, (uint32_t)len);
+    return len;
+}
+/* 与队内陀螺仪共用同一张端口表：同一个串口被两台设备抢时直接拒绝。 */
+static int hw_spin8_attach(UART_HandleTypeDef *handle)
+{
+    if (!handle || hw_uart_count>=RCS_HW_STORAGE) return 0;
+    for (size_t i=0;i<hw_uart_count;++i) if (hw_uarts[i].handle==handle) return 0;
+    hw_uart_port &port=hw_uarts[hw_uart_count++];
+    port.handle=handle; port.rx=hw_spin8_uart_rx; port.number=0u; port.receiving=false;
+    return 1;
 }
 #endif
 #endif
@@ -147,7 +167,7 @@ extern "C" int rcs_hw_ready(void)
 {
     if(!hw_initialized || hw_error) return 0;
     for(size_t i=0;i<hw_count;++i) {
-        if(hw_specs[i].kind==HW_GYRO && hw_specs[i].u[3]) {
+        if((hw_specs[i].kind==HW_GYRO || hw_specs[i].kind==HW_SPIN8) && hw_specs[i].u[3]) {
             rcs_observation sample;
             if(!rcs_hw_read_observation(hw_specs[i].id,&sample)) return 0;
         }
@@ -199,6 +219,14 @@ extern "C" int rcs_hw_init(void)
 #endif
 #if RCS_HW_PWM_DEVICES
             if(s.kind==HW_PWM && !pwm_valid(s)) { latch(RCS_HW_CONFIG); return 0; }
+#endif
+#if RCS_HW_SPIN8_GYROS
+            if(s.kind==HW_SPIN8) {
+                UART_HandleTypeDef *uart=static_cast<UART_HandleTypeDef*>(s.port);
+                if(uart->Init.BaudRate!=s.u[2] || !hw_spin8_attach(uart)) { latch(RCS_HW_CONFIG); return 0; }
+                xs_gyro_init();
+                xs_gyro_set_heading_zero(0.0f);
+            }
 #endif
             if(s.kind==HW_CUSTOM) {
                 int ok=0; switch(i) { @CUSTOM_INIT_CASES@ default: break; }
@@ -316,6 +344,15 @@ extern "C" void rcs_hw_service(uint32_t now_ms)
 #if RCS_HW_PWM_DEVICES
             if(s.kind==HW_PWM && state.active && (uint32_t)(now_ms-state.command_tick)>=s.u[3]) state.done=true;
 #endif
+#if RCS_HW_SPIN8_GYROS
+            if(s.kind==HW_SPIN8) {
+                xs_gyro_update();
+                if(hw_enabled && s.u[3]) {
+                    uint32_t age=xs_gyro_age_ms();
+                    if(age==0xFFFFFFFFu || age>s.u[1]) latch(RCS_HW_TIMEOUT);
+                }
+            }
+#endif
             if(s.kind==HW_CUSTOM) { switch(i) { @CUSTOM_SERVICE_CASES@ default: break; } }
         }
 #if RCS_HW_TEAM_CYLINDERS
@@ -398,6 +435,19 @@ extern "C" int rcs_hw_read_observation(const char *id,rcs_observation *sample)
             sample->yaw_rad=atan2f(sinf(yaw),cosf(yaw));
             sample->age_s=(float)age*0.001f; sample->quality=1.0f;
             sample->sequence=seq; sample->axes=4u;
+            return 1;
+        }
+#endif
+#if RCS_HW_SPIN8_GYROS
+        const hw_spec &sg=hw_specs[i];
+        if(sg.kind==HW_SPIN8) {
+            if(!xs_gyro_online()) return 0;
+            uint32_t age=xs_gyro_age_ms();
+            if(age>sg.u[1]) return 0;
+            float yaw=xs_gyro_yaw_rad()*sg.f[1]+sg.f[0];
+            sample->yaw_rad=atan2f(sinf(yaw),cosf(yaw));
+            sample->age_s=(float)age*0.001f; sample->quality=1.0f;
+            sample->sequence=xs_gyro_sequence(); sample->axes=4u;
             return 1;
         }
 #endif

@@ -488,5 +488,113 @@
       "OnTimer": "",
       "ReadObservation": ""
     }
+  },
+  {
+    "Id": "team_spin8_gyro",
+    "Version": "1.0.0",
+    "Name": "队内维特陀螺仪（XS_spin8 连续航向）",
+    "Category": "sensor",
+    "Platform": "F407_HAL",
+    "DriverKind": "spin8_gyro",
+    "MaxInstances": 1,
+    "PeriodMs": 5,
+    "MinHeapBytes": 0,
+    "Verified": "none",
+    "Note": "自 XS_spin8 示例工程裁剪的解析内核；主机注入帧已验证，未实车验证。需在 CubeMX 启用对应 USART、波特率与全局中断。",
+    "Includes": "",
+    "Declarations": "",
+    "ObservationAxes": 4,
+    "ObservationKind": "imu",
+    "Parameters": [
+      {
+        "Key": "Uart",
+        "Name": "CubeMX串口句柄",
+        "Type": "uart",
+        "Default": "huart6",
+        "Min": -1000000000.0,
+        "Max": 1000000000.0,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "Baud",
+        "Name": "串口波特率",
+        "Type": "int",
+        "Default": "115200",
+        "Min": 1200,
+        "Max": 921600,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "TimeoutMs",
+        "Name": "样本超时ms",
+        "Type": "int",
+        "Default": "200",
+        "Min": 1,
+        "Max": 60000,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "YawOffsetDeg",
+        "Name": "地图朝向偏移deg",
+        "Type": "float",
+        "Default": "0",
+        "Min": -3600,
+        "Max": 3600,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "Direction",
+        "Name": "朝向方向±1",
+        "Type": "int",
+        "Default": "1",
+        "Min": -1,
+        "Max": 1,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "Required",
+        "Name": "失联时停止应用",
+        "Type": "bool",
+        "Default": "1",
+        "Min": -1000000000.0,
+        "Max": 1000000000.0,
+        "Choices": [],
+        "Description": ""
+      }
+    ],
+    "Resources": [
+      {
+        "Kind": "uart",
+        "Value": "${Uart}",
+        "Shared": false
+      }
+    ],
+    "Operations": [],
+    "Files": [
+      {
+        "Path": "xs_gyro.h",
+        "Resource": "team/xs_gyro.h"
+      },
+      {
+        "Path": "xs_gyro.c",
+        "Resource": "team/xs_gyro.c"
+      }
+    ],
+    "Hooks": {
+      "Init": "",
+      "Service": "",
+      "Stop": "",
+      "Command": "",
+      "Done": "",
+      "OnCanRx": "",
+      "OnUartRx": "",
+      "OnTimer": "",
+      "ReadObservation": ""
+    }
   }
 ]
