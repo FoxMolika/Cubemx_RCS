@@ -1,0 +1,339 @@
+--- a/map_editor/firmware/rcs_feedback_port.c
++++ b/map_editor/firmware/rcs_feedback_port.c
+@@ -11,21 +11,39 @@
+ typedef struct {
+     uint16_t angle;
+     int32_t pending;
+     uint32_t tick;
++    uint32_t cyc;
+     uint8_t seen;
+ } feedback_wheel;
++/* 只有真实MCU才带DWT；主机测试桩没有，自动退化为0（只影响微秒诊断，不影响判据）。 */
++#if defined(DWT) && defined(CoreDebug) && defined(DWT_CTRL_CYCCNTENA_Msk)
++#define RCS_FEEDBACK_DWT 1
++#else
++#define RCS_FEEDBACK_DWT 0
++#endif
+ static const uint32_t k_motor_ids[4] = RCS_FEEDBACK_MOTOR_IDS;
+ static volatile feedback_wheel g_wheels[4];
+ static volatile uint32_t g_sequence;
+-static volatile uint8_t g_fresh, g_initialized;
++static volatile uint32_t g_rx_count;
++static volatile uint32_t g_gap_us_last, g_gap_us_max;
++static volatile uint8_t g_fresh, g_initialized, g_dwt_ok;
+ static volatile rcs_feedback_fault g_fault = RCS_FEEDBACK_BAD_CONFIG;
+ static uint32_t enter(void)
+ {
+     uint32_t saved = __get_PRIMASK();
+     __disable_irq();
+     return saved;
+ }
++#if RCS_FEEDBACK_DWT
++/* 周期计数换微秒；时钟不是整数MHz时结果只会偏小，不会把间隔放大。 */
++static uint32_t cycles_to_us(uint32_t cycles)
++{
++    uint32_t mhz = (uint32_t)(SystemCoreClock / 1000000u);
++    if (mhz == 0u) mhz = 1u;
++    return cycles / mhz;
++}
++#endif
+ static void latch(rcs_feedback_fault fault)
+ {
+     if (g_fault == RCS_FEEDBACK_OK && fault != RCS_FEEDBACK_OK)
+         g_fault = fault;
+@@ -43,11 +61,14 @@
+     for (i = 0; i < 4; ++i) {
+         g_wheels[i].angle = 0;
+         g_wheels[i].pending = 0;
+         g_wheels[i].tick = 0;
++        g_wheels[i].cyc = 0;
+         g_wheels[i].seen = 0;
+     }
+     g_fresh = 0;
++    g_gap_us_last = 0u;
++    g_gap_us_max = 0u;
+     g_fault = g_initialized ? RCS_FEEDBACK_OK : RCS_FEEDBACK_BAD_CONFIG;
+ }
+ void rcs_feedback_port_reset(void)
+ {
+@@ -81,8 +102,17 @@
+             if (k_motor_ids[i] == k_motor_ids[j]) valid = 0;
+     }
+     g_initialized = valid ? 1u : 0u;
+     g_sequence = 0;
++#if RCS_FEEDBACK_DWT
++    /* 微秒诊断：判据仍用毫秒，只额外记录真实空窗长度。 */
++    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
++    DWT->CYCCNT = 0u;
++    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
++    g_dwt_ok = (DWT->CTRL & DWT_CTRL_CYCCNTENA_Msk) != 0u ? 1u : 0u;
++#else
++    g_dwt_ok = 0u;
++#endif
+     reset_locked();
+     __set_PRIMASK(saved);
+     return valid;
+ }
+@@ -91,9 +121,9 @@
+ {
+ #if !RCS_NO_CHASSIS
+     unsigned wheel;
+     uint16_t angle;
+-    uint32_t now, saved, gap;
++    uint32_t now, saved, gap, cycles = 0u;
+     int32_t delta;
+     int64_t pending;
+     float possible;
+     if (!g_initialized || !can || !header || !data) return;
+@@ -104,21 +134,35 @@
+         if (header->StdId == 0x200u + k_motor_ids[wheel]) break;
+     if (wheel == RCS_FEEDBACK_WHEELS) return;
+     angle = (uint16_t)(((uint16_t)data[0] << 8) | data[1]);
+     now = HAL_GetTick();
+-    saved = enter();
++#if RCS_FEEDBACK_DWT
++    if (g_dwt_ok) cycles = DWT->CYCCNT;
++#endif
++    saved = enter();
++    ++g_rx_count;
+     if (g_fault != RCS_FEEDBACK_OK) { __set_PRIMASK(saved); return; }
+     if (angle >= 8192u) {
+         latch(RCS_FEEDBACK_BAD_ANGLE);
+     } else if (!g_wheels[wheel].seen) {
+         /* 首帧只有新基准，不能虚构之前位移。 */
+         g_wheels[wheel].angle = angle;
+         g_wheels[wheel].tick = now;
++        g_wheels[wheel].cyc = cycles;
+         g_wheels[wheel].seen = 1;
+         g_fresh |= (uint8_t)(1u << wheel);
+         ++g_sequence;
+     } else {
+         gap = (uint32_t)(now - g_wheels[wheel].tick);
++#if RCS_FEEDBACK_DWT
++        /* 判据仍按毫秒；这里只记录真实空窗，锁存前也能看到最后一次间隔。 */
++        if (g_dwt_ok && g_wheels[wheel].cyc != 0u) {
++            uint32_t gap_us = cycles_to_us(cycles - g_wheels[wheel].cyc);
++            g_gap_us_last = gap_us;
++            if (gap_us > g_gap_us_max) g_gap_us_max = gap_us;
++        }
++#endif
++        g_wheels[wheel].cyc = cycles;
+         delta = (int32_t)angle - g_wheels[wheel].angle;
+         if (delta > 4096) delta -= 8192;
+         else if (delta < -4096) delta += 8192;
+         possible = (float)RCS_FEEDBACK_MAX_RPM * 8192.0f * ((float)gap + 1.0f) / 60000.0f + 2.0f;
+@@ -173,4 +217,56 @@
+     }
+     __set_PRIMASK(saved);
+     return ready;
+ }
++uint32_t rcs_feedback_port_sequence(void)
++{
++    uint32_t saved, value;
++    saved = enter();
++    value = g_sequence;
++    __set_PRIMASK(saved);
++    return value;
++}
++uint32_t rcs_feedback_port_rx_count(void)
++{
++    uint32_t saved, value;
++    saved = enter();
++    value = g_rx_count;
++    __set_PRIMASK(saved);
++    return value;
++}
++int32_t rcs_feedback_port_pending(unsigned wheel)
++{
++    int32_t value;
++    uint32_t saved;
++    if (wheel >= RCS_FEEDBACK_WHEELS || wheel >= 4u) return 0;
++    saved = enter();
++    value = g_wheels[wheel].pending;
++    __set_PRIMASK(saved);
++    return value;
++}
++uint32_t rcs_feedback_port_age_ms(unsigned wheel)
++{
++    uint32_t saved, age;
++    if (wheel >= RCS_FEEDBACK_WHEELS || wheel >= 4u) return 0xFFFFFFFFu;
++    saved = enter();
++    age = g_wheels[wheel].seen ? (uint32_t)(HAL_GetTick() - g_wheels[wheel].tick) : 0xFFFFFFFFu;
++    __set_PRIMASK(saved);
++    return age;
++}
++uint32_t rcs_feedback_port_gap_us_last(void)
++{
++    uint32_t saved, value;
++    saved = enter();
++    value = g_gap_us_last;
++    __set_PRIMASK(saved);
++    return value;
++}
++uint32_t rcs_feedback_port_gap_us_max(void)
++{
++    uint32_t saved, value;
++    saved = enter();
++    value = g_gap_us_max;
++    __set_PRIMASK(saved);
++    return value;
++}
++uint32_t rcs_feedback_port_dwt_ready(void) { return g_dwt_ok; }
+--- a/map_editor/firmware/rcs_feedback_port.h
++++ b/map_editor/firmware/rcs_feedback_port.h
+@@ -34,7 +34,21 @@
+ int rcs_feedback_port_read(rcs_feedback_sample *sample);
+ rcs_feedback_fault rcs_feedback_port_fault(void);
+ /* 收帧层发现异常时锁存首因，只有显式reset/init清除。 */
+ void rcs_feedback_port_invalidate(rcs_feedback_fault fault);
++/* 只读调试取值：不改变任何状态，供 g_dbg 快照使用。 */
++uint32_t rcs_feedback_port_sequence(void);
++/* 进入收帧函数的次数，含锁存后被丢弃的帧；用于区分“没收到”和“收到但丢掉”。 */
++uint32_t rcs_feedback_port_rx_count(void);
++/* 该轮尚未被应用消费的原始增量；轮次越界返回0。 */
++int32_t rcs_feedback_port_pending(unsigned wheel);
++/* 距该轮上次被消费的毫秒数；从未收到返回0xFFFFFFFF。 */
++uint32_t rcs_feedback_port_age_ms(unsigned wheel);
++/* 最近一次同轮帧间隔（微秒）；DWT未启用时恒为0，判据本身仍按毫秒。 */
++uint32_t rcs_feedback_port_gap_us_last(void);
++/* 本次reset以来最大的同轮帧间隔（微秒），用于定位空窗长度。 */
++uint32_t rcs_feedback_port_gap_us_max(void);
++/* 1 = DWT周期计数已启用，微秒读数可信。 */
++uint32_t rcs_feedback_port_dwt_ready(void);
+ #ifdef __cplusplus
+ }
+ #endif
+--- a/map_editor/firmware/rcs_can_port.c
++++ b/map_editor/firmware/rcs_can_port.c
+@@ -106,6 +106,22 @@
+ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *can)
+ {
+     rcs_can_port_poll(can);
+ }
++#else
++/* 强定义让位给统一分发器；万一它没被链接进来，这里以弱定义兜住中断，
++ * 否则HAL的__weak空函数会让收帧退化成主循环轮询，出现5ms以上空窗。
++ */
++#if defined(__WEAK)
++#define RCS_CAN_RX_WEAK __WEAK
++#elif defined(__GNUC__)
++#define RCS_CAN_RX_WEAK __attribute__((weak))
++#else
++#define RCS_CAN_RX_WEAK
++#endif
++RCS_CAN_RX_WEAK void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *can)
++{
++    rcs_can_port_poll(can);
++}
++#undef RCS_CAN_RX_WEAK
+ #endif
+ #endif
+--- a/map_editor/templates/rcs_app_task.h.tpl
++++ b/map_editor/templates/rcs_app_task.h.tpl
+@@ -16,8 +16,34 @@
+     RCS_APP_RUNNING, RCS_APP_FINISHED, RCS_APP_FAULT, RCS_APP_STOPPED } rcs_app_state;
+ typedef enum { RCS_APP_ERROR_NONE=0, RCS_APP_ERROR_CONFIGURATION,
+     RCS_APP_ERROR_INITIALIZATION, RCS_APP_ERROR_FEEDBACK, RCS_APP_ERROR_CHASSIS,
+     RCS_APP_ERROR_NAVIGATION, RCS_APP_ERROR_MACHINE } rcs_app_fault;
++/* 只读调试快照：主循环每个周期刷新一次，Watch 里展开 g_dbg 即可看全。
++ * 字段为 volatile，读取不依赖优化等级；写入不改变任何控制状态。 */
++typedef struct {
++    volatile uint8_t  app_state;
++    volatile uint8_t  app_fault;
++    volatile uint8_t  feedback_fault;
++    volatile uint8_t  chassis_fault;
++    volatile uint8_t  nav_fault;
++    volatile uint8_t  machine_fault;
++    volatile uint8_t  holding;
++    volatile uint8_t  ready;
++    volatile float    pose_x;
++    volatile float    pose_y;
++    volatile float    pose_yaw;
++    volatile uint32_t fault_tick;
++    volatile uint32_t feedback_sequence;
++    volatile uint32_t rx_count;
++    volatile uint32_t loop_ms;
++    volatile uint32_t loop_max_ms;
++    volatile uint32_t gap_us_last;
++    volatile uint32_t gap_us_max;
++    volatile uint8_t  dwt_ready;
++    volatile int32_t  wheel_pending[4];
++    volatile uint32_t wheel_age_ms[4];
++} foxmolika_debug_t;
++extern volatile foxmolika_debug_t g_dbg;
+ int App_task_Init(CAN_HandleTypeDef *can);
+ void App_task_SetStartPose(float x_m, float y_m, float yaw_rad);
+ int App_task_Start(void);
+ void App_task(void);
+--- a/map_editor/templates/rcs_app_task.c.tpl
++++ b/map_editor/templates/rcs_app_task.c.tpl
+@@ -24,9 +24,12 @@
+ static rcs_nav_fault g_nav_fault;
+ static int g_machine_fault;
+ static int g_feedback_fault;
+ static uint32_t g_fault_tick;
++static uint32_t g_last_task_tick, g_loop_ms, g_loop_max_ms;
++volatile foxmolika_debug_t g_dbg;
+ static void app_fault(rcs_app_fault reason);
++static void app_debug_update(void);
+ 
+ /* USER CODE BEGIN APP_CONTEXT */
+ /* 有机构动作时返回你的 action_context（机构状态指针）；没有就保持返回 0。
+  * 本函数的返回值会直接传给 rcs_route_init()。 */
+@@ -285,18 +288,55 @@
+     g_auto_consumed = 1u; app_set_state(RCS_APP_RUNNING);
+     return 1;
+ }
+ 
++/**
++ * @brief 刷新只读调试快照；不改变控制状态，也不调用任何阻塞接口
++ * @note 每个主循环执行一次，因此 wheel_age_ms 可直接反映反馈分发节奏。
++ */
++static void app_debug_update(void)
++{
++    unsigned i;
++    g_dbg.app_state = (uint8_t)g_state;
++    g_dbg.app_fault = (uint8_t)g_first_fault;
++    g_dbg.feedback_fault = (uint8_t)g_feedback_fault;
++    g_dbg.chassis_fault = (uint8_t)g_chassis_fault;
++    g_dbg.nav_fault = (uint8_t)g_nav_fault;
++    g_dbg.machine_fault = (uint8_t)g_machine_fault;
++    g_dbg.holding = g_holding ? 1u : 0u;
++    g_dbg.ready = g_state == RCS_APP_READY ? 1u : 0u;
++    g_dbg.pose_x = g_pose_x;
++    g_dbg.pose_y = g_pose_y;
++    g_dbg.pose_yaw = g_pose_yaw;
++    g_dbg.fault_tick = g_fault_tick;
++    g_dbg.feedback_sequence = rcs_feedback_port_sequence();
++    g_dbg.rx_count = rcs_feedback_port_rx_count();
++    g_dbg.loop_ms = g_loop_ms;
++    g_dbg.loop_max_ms = g_loop_max_ms;
++    g_dbg.gap_us_last = rcs_feedback_port_gap_us_last();
++    g_dbg.gap_us_max = rcs_feedback_port_gap_us_max();
++    g_dbg.dwt_ready = (uint8_t)rcs_feedback_port_dwt_ready();
++    for (i = 0; i < 4u; ++i) {
++        g_dbg.wheel_pending[i] = rcs_feedback_port_pending(i);
++        g_dbg.wheel_age_ms[i] = rcs_feedback_port_age_ms(i);
++    }
++}
++
+ void App_task(void)
+ {
+     uint32_t now, elapsed;
+     if (!g_initialized) return;
++    /* 主循环间隔优先记录在取帧之前：loop_max_ms 大于 RCS_PERIOD_MS 即有阻塞。 */
++    now = HAL_GetTick();
++    g_loop_ms = g_last_task_tick ? (uint32_t)(now - g_last_task_tick) : 0u;
++    if (g_loop_ms > g_loop_max_ms) g_loop_max_ms = g_loop_ms;
++    g_last_task_tick = now;
+     rcs_can_port_poll(g_can);
+-    now = HAL_GetTick();
+     if ((uint32_t)(now - g_chassis_tick) >= RCS_PERIOD_MS) {
+         g_chassis_tick = now; RCS_Process();
+         if (RCS_State() == RCS_FAULT) app_fault(RCS_APP_ERROR_CHASSIS);
+     }
++    app_debug_update();
+     elapsed = (uint32_t)(now - g_app_tick);
+     if (elapsed < RCS_APP_PERIOD_MS) return;
+     g_app_tick = now;
+     if (g_holding) app_service_hold();
