@@ -28,6 +28,7 @@ HOST_STEPS = (
     ("tools/test_beta_compatibility.py",),
     ("tools/test_machine.py",),
     ("tools/test_beta_feedback.py",),
+    ("tools/test_feedback_gap_us.py",),
     ("tools/test_beta_app.py",),
     ("tools/test_beta_upgrade.py",),
     ("tools/test_refactor.py",),

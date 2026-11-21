@@ -1,35 +1,88 @@
 /**
  * @file rcs_feedback_config.h
- * @brief 轮子计数增量、新鲜度与方向配置
- *
- * 只描述"怎么判断反馈可信"。编码器接入点在 rcs_feedback_port_hw_read()。
- * 开关同样用 #ifndef 包裹，可在 Keil Define 中覆盖。
+ * @brief 从底盘配置派生C620角度采集，不另加定位硬件
+ * @note 本端口不乘方向，方向只在导航encoder_direction换算一次。
  */
 #pragma once
-
-/* 1 = 读取端返回的是已按逻辑轮方向归一后的计数，本模块再乘一次方向表。
- * 0 = 读取端返回原始有符号计数，方向交给 rcs_config.h 的轮方向处理。
- * 两者同时取反会得到反向里程计，默认 0，避免与生成配置重复。 */
-#ifndef RCS_FEEDBACK_APPLY_DIRECTION
-#define RCS_FEEDBACK_APPLY_DIRECTION      0u
+#include <stdint.h>
+#if defined(__has_include)
+#if __has_include("rcs_config.h")
+#include "rcs_config.h"
+#elif __has_include("rcs_app_config.h")
+#include "rcs_app_config.h"
 #endif
-
-/* 仅在 RCS_FEEDBACK_APPLY_DIRECTION 为 1 时使用。 */
-#ifndef RCS_FEEDBACK_DIRECTION
-#define RCS_FEEDBACK_DIRECTION            { 1, 1, 1, 1 }
+#else
+#include "rcs_config.h"
 #endif
-
-/* 样本时间戳到当前时刻超过该值即判为过期，单位 ms。 */
-#ifndef RCS_FEEDBACK_TIMEOUT_MS
-#define RCS_FEEDBACK_TIMEOUT_MS           50u
+#ifndef RCS_FEEDBACK_WHEELS
+#if defined(RCS_LAYOUT)
+#define RCS_FEEDBACK_WHEELS ((RCS_LAYOUT) == 1 ? 3u : 4u)
+#elif defined(RCS_APP_WHEELS)
+#define RCS_FEEDBACK_WHEELS RCS_APP_WHEELS
+#else
+#define RCS_FEEDBACK_WHEELS 4u
 #endif
-
-/* 单周期允许的最大计数增量；超限视为丢步或接线错误，整帧拒绝。 */
+#endif
+#ifndef RCS_FEEDBACK_CAN_BUS
+#if defined(RCS_CAN_BUS)
+#define RCS_FEEDBACK_CAN_BUS RCS_CAN_BUS
+#elif defined(RCS_APP_CAN_BUS)
+#define RCS_FEEDBACK_CAN_BUS RCS_APP_CAN_BUS
+#else
+#define RCS_FEEDBACK_CAN_BUS 1u
+#endif
+#endif
+#ifndef RCS_FEEDBACK_MOTOR_IDS
+#if defined(RCS_MOTOR_ID_0)
+#define RCS_FEEDBACK_MOTOR_IDS { RCS_MOTOR_ID_0, RCS_MOTOR_ID_1, RCS_MOTOR_ID_2, RCS_MOTOR_ID_3 }
+#elif defined(RCS_APP_MOTOR_IDS)
+#define RCS_FEEDBACK_MOTOR_IDS RCS_APP_MOTOR_IDS
+#else
+#define RCS_FEEDBACK_MOTOR_IDS { 1u, 2u, 3u, 4u }
+#endif
+#endif
+/* 新名称与底盘RCS_FEEDBACK_TIMEOUT_MS分开，避免跨模块宏冲突。 */
+#ifndef RCS_FEEDBACK_SAMPLE_TIMEOUT_MS
+#if defined(RCS_FEEDBACK_TIMEOUT_MS)
+#define RCS_FEEDBACK_SAMPLE_TIMEOUT_MS RCS_FEEDBACK_TIMEOUT_MS
+#else
+#define RCS_FEEDBACK_SAMPLE_TIMEOUT_MS 100u
+#endif
+#endif
+#ifndef RCS_FEEDBACK_MAX_RPM
+#if defined(RCS_MAX_MOTOR_RPM)
+#define RCS_FEEDBACK_MAX_RPM RCS_MAX_MOTOR_RPM
+#else
+#define RCS_FEEDBACK_MAX_RPM 3000.0f
+#endif
+#endif
+/* 默认取最大转速下四分之一圈的间隔，运行时再计入1ms量化误差。 */
+#ifndef RCS_FEEDBACK_MAX_GAP_MS
+#define RCS_FEEDBACK_MAX_GAP_MS ((uint32_t)(15000.0f / (float)RCS_FEEDBACK_MAX_RPM))
+#endif
+/* 微秒判定窗口：最大转速下3/8圈，给半圈歧义留1/8圈余量。
+ * 13680rpm时毫秒分档只剩1ms，1.035ms的真实帧距会被整数毫秒量化成2ms而误报。 */
+#ifndef RCS_FEEDBACK_GAP_COUNTS
+#define RCS_FEEDBACK_GAP_COUNTS 3072.0f
+#endif
+#ifndef RCS_FEEDBACK_MAX_GAP_US
+#define RCS_FEEDBACK_MAX_GAP_US ((uint32_t)((RCS_FEEDBACK_GAP_COUNTS) * 60000000.0f / \
+    ((float)RCS_FEEDBACK_MAX_RPM * 8192.0f)))
+#endif
 #ifndef RCS_FEEDBACK_MAX_DELTA
-#define RCS_FEEDBACK_MAX_DELTA            20000
+#define RCS_FEEDBACK_MAX_DELTA ((int32_t)((float)RCS_FEEDBACK_MAX_RPM * 8192.0f * \
+    (float)RCS_FEEDBACK_SAMPLE_TIMEOUT_MS / 60000.0f + 8192.0f))
 #endif
-
-/* 要求的有效轮掩码，0x0F 表示四轮都必须是真实新采样。 */
-#ifndef RCS_FEEDBACK_REQUIRED_MASK
-#define RCS_FEEDBACK_REQUIRED_MASK        0x0Fu
+/* 已有全局HAL回调时设0，在原分发点调用poll或逐帧on_rx。重复定义须明确报错。 */
+#ifndef RCS_CAN_PORT_DEFINE_HAL_CALLBACK
+#define RCS_CAN_PORT_DEFINE_HAL_CALLBACK 1
+#endif
+#ifndef RCS_CAN_PORT_FILTER_SPLIT
+#define RCS_CAN_PORT_FILTER_SPLIT 14u
+#endif
+#ifndef RCS_CAN_PORT_FILTER_BANK_CAN1
+#define RCS_CAN_PORT_FILTER_BANK_CAN1 0u
+#endif
+#ifndef RCS_CAN_PORT_FILTER_BANK_CAN2
+#define RCS_CAN_PORT_FILTER_BANK_CAN2 RCS_CAN_PORT_FILTER_SPLIT
 #endif

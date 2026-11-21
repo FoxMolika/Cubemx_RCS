@@ -15,12 +15,18 @@ RCS 底盘与位点地图 · CubeMX 套件（foxmolika）。仓库把每次发�
 - 新增 [调试变量与错误码](docs/调试变量与错误码.md)：Watch 变量分布、六张故障码对照表与排查路径。
 - 生成器新增只读调试快照 `g_dbg`（声明在 `rcs_app_task.h`，每次 `App_task()` 刷新）：
   一次展开即可看应用状态、五类首次故障、位姿与各轮收帧年龄，不受优化等级影响。
-  无硬件地图仅 `rcs_app_task.c/.h`、`rcs_feedback_port.c/.h` 与 `rcs_can_port.c` 五个文件按设计变化，
-  其余仍与 0.8.3.beta 逐字节相同；兼容性用例改为逐文件比对并单独核对新增接口，
-  不再整目录一票否决。
-- `g_dbg` 追加 `rx_count`、`loop_ms`、`loop_max_ms`、`gap_us_last/max`、`dwt_ready`：
-  可区分“帧没到”“帧到了被锁存丢弃”“主循环停顿”三种情况。
-- 帧间隔改用 DWT 周期计数测微秒（判据仍按毫秒，收紧为 0）；`gap_us_max` 直接给出空窗长度。
+  无硬件地图仅 `rcs_app_task.c/.h`、`rcs_feedback_port.c/.h`、`rcs_can_port.c` 与
+  `rcs_feedback_config.h` 六个文件按设计变化，其余仍与 0.8.3.beta 逐字节相同；
+  兼容性用例改为逐文件比对并单独核对新增接口，不再整目录一票否决。
+- `g_dbg` 追加 `rx_count`、`loop_ms`、`loop_max_ms`、`gap_us_last/max`、`dwt_ready`、`port_fault`：
+  可区分“帧没到”“帧到了被锁存丢弃”“主循环停顿”，`port_fault` 是实时端口故障，
+  `feedback_fault` 仍是应用层首次快照（启动等待期间可能一直为 0）。
+- **修复 13680rpm 下的帧间隔误报**：`15000/13680` 取整后上限只有 1 ms，而 C620 帧距是
+  1035 µs，整数毫秒在 tick 边界会量成 2 ms 并锁存 `AMBIGUOUS_GAP`，车停在 READY。
+  帧间隔判定改用 DWT 微秒窗口（最大转速 3/8 圈，13680rpm 时 1644 µs，留 1/8 圈给半圈歧义）；
+  无 DWT 的平台自动退回原毫秒判据，行为不变。新增 `tools/test_feedback_gap_us.py`：
+  1035 µs 必须通过、2200 µs 必须锁存。
+- 帧间隔改用 DWT 周期计数测微秒，`gap_us_max` 直接给出空窗长度。
 - `rcs_can_port.c` 增加弱定义 HAL 接收回调兜底：统一分发器缺失时中断仍能排空 FIFO，
   不再静默退化成主循环轮询。
 

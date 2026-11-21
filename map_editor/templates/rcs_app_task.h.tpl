@@ -26,6 +26,7 @@ typedef struct {
     volatile uint8_t  chassis_fault;
     volatile uint8_t  nav_fault;
     volatile uint8_t  machine_fault;
+    volatile uint8_t  port_fault;
     volatile uint8_t  holding;
     volatile uint8_t  ready;
     volatile float    pose_x;

@@ -1,7 +1,8 @@
 """实际beta EXE与冻结0.8.3.beta输出逐字节比较：无硬件v3/v7/坡道地图。
 
-0.8.4.beta 起，应用调度、反馈端口与CAN端口按设计新增只读调试接口（g_dbg 快照、微秒空窗
-与弱定义回调兜底），因此这五个文件豁免并逐项核对；其余文件仍必须与 0.8.3.beta 逐字节相同。
+0.8.4.beta 起，应用调度、反馈端口、CAN 端口与反馈配置按设计新增只读调试接口
+（g_dbg 快照、微秒空窗与弱定义回调兜底），因此这六个文件豁免并逐项核对；
+其余文件仍必须与 0.8.3.beta 逐字节相同。
 """
 from pathlib import Path
 import hashlib
@@ -12,9 +13,9 @@ import uuid
 
 ROOT=Path(__file__).resolve().parents[1]
 FIXTURE=ROOT/"tests/fixtures/alpha_no_hardware"
-# 仅这五个文件允许变化：新增只读调试接口与回调兜底。任何其他差异仍视为回归。
+# 仅这六个文件允许变化：新增只读调试接口与微秒窗口。任何其他差异仍视为回归。
 ALLOWED_CHANGES={"rcs_app_task.c","rcs_app_task.h","rcs_feedback_port.c","rcs_feedback_port.h",
-                 "rcs_can_port.c"}
+                 "rcs_can_port.c","rcs_feedback_config.h"}
 
 
 def sha(p):
@@ -68,6 +69,9 @@ def main():
         for symbol in ("rcs_feedback_port_sequence","rcs_feedback_port_pending","rcs_feedback_port_age_ms"):
             assert symbol in port,kind+"缺少只读取值实现："+symbol
             assert symbol in port_header,kind+"缺少只读取值声明："+symbol
+        config=actual["rcs_feedback_config.h"].decode("utf-8")
+        assert "RCS_FEEDBACK_MAX_GAP_US" in config,kind+"缺少微秒窗口"
+        assert "RCS_FEEDBACK_GAP_COUNTS" in config,kind+"缺少微秒窗口圈数"
         cases.append({"case":kind,"files":len(actual),
                       "changed":sorted(name for name in ALLOWED_CHANGES)})
     report={"passed":True,"editor_sha256":sha(editor),"baseline_editor_sha256":baseline["editor_sha256"],"cases":cases}

@@ -90,11 +90,14 @@ int rcs_feedback_port_init(void)
         (RCS_FEEDBACK_CAN_BUS == 1u || RCS_FEEDBACK_CAN_BUS == 2u) &&
         RCS_FEEDBACK_SAMPLE_TIMEOUT_MS >= 1u && RCS_FEEDBACK_SAMPLE_TIMEOUT_MS <= 60000u &&
         isfinite(rpm) && rpm > 0 && rpm <= 100000.0f;
-    /* 先验证除数，再计算派生值；毫秒时间戳的1ms量化误差也须小于半转。 */
+    /* 先验证除数，再计算派生值；毫秒与微秒两套窗口都要落在采样超时以内。 */
     if (valid)
         valid = RCS_FEEDBACK_MAX_GAP_MS > 0u &&
             RCS_FEEDBACK_MAX_GAP_MS <= RCS_FEEDBACK_SAMPLE_TIMEOUT_MS &&
             rpm * ((float)RCS_FEEDBACK_MAX_GAP_MS + 1.0f) < 30000.0f &&
+            RCS_FEEDBACK_MAX_GAP_US > 0u &&
+            RCS_FEEDBACK_MAX_GAP_US <= RCS_FEEDBACK_SAMPLE_TIMEOUT_MS * 1000u &&
+            rpm * (float)RCS_FEEDBACK_MAX_GAP_US < 30000000.0f &&
             RCS_FEEDBACK_MAX_DELTA > 0;
     for (i = 0; i < RCS_FEEDBACK_WHEELS && i < 4u; ++i) {
         if (k_motor_ids[i] < 1u || k_motor_ids[i] > 4u) valid = 0;
@@ -152,22 +155,29 @@ void rcs_feedback_port_on_rx(CAN_HandleTypeDef *can, const CAN_RxHeaderTypeDef *
         g_fresh |= (uint8_t)(1u << wheel);
         ++g_sequence;
     } else {
+        uint32_t gap_us, limit_us;
+        float gap_ms_eff;
         gap = (uint32_t)(now - g_wheels[wheel].tick);
+        /* 毫秒整数分档会把1.035ms量化成2ms；有DWT时按微秒判定，否则保持原毫秒行为。 */
+        gap_us = gap * 1000u;
+        limit_us = (uint32_t)RCS_FEEDBACK_MAX_GAP_MS * 1000u;
+        gap_ms_eff = (float)gap + 1.0f;
 #if RCS_FEEDBACK_DWT
-        /* 判据仍按毫秒；这里只记录真实空窗，锁存前也能看到最后一次间隔。 */
         if (g_dwt_ok && g_wheels[wheel].cyc != 0u) {
-            uint32_t gap_us = cycles_to_us(cycles - g_wheels[wheel].cyc);
-            g_gap_us_last = gap_us;
-            if (gap_us > g_gap_us_max) g_gap_us_max = gap_us;
+            gap_us = cycles_to_us(cycles - g_wheels[wheel].cyc);
+            limit_us = (uint32_t)RCS_FEEDBACK_MAX_GAP_US;
+            gap_ms_eff = (float)gap_us * 0.001f;
         }
 #endif
+        g_gap_us_last = gap_us;
+        if (gap_us > g_gap_us_max) g_gap_us_max = gap_us;
         g_wheels[wheel].cyc = cycles;
         delta = (int32_t)angle - g_wheels[wheel].angle;
         if (delta > 4096) delta -= 8192;
         else if (delta < -4096) delta += 8192;
-        possible = (float)RCS_FEEDBACK_MAX_RPM * 8192.0f * ((float)gap + 1.0f) / 60000.0f + 2.0f;
+        possible = (float)RCS_FEEDBACK_MAX_RPM * 8192.0f * gap_ms_eff / 60000.0f + 2.0f;
         pending = (int64_t)g_wheels[wheel].pending + delta;
-        if (gap > (uint32_t)RCS_FEEDBACK_MAX_GAP_MS || delta == 4096 || delta == -4096)
+        if (gap_us > limit_us || delta == 4096 || delta == -4096)
             latch(RCS_FEEDBACK_AMBIGUOUS_GAP);
         else if ((float)delta > possible || (float)delta < -possible ||
                  pending > RCS_FEEDBACK_MAX_DELTA || pending < -(int64_t)RCS_FEEDBACK_MAX_DELTA ||

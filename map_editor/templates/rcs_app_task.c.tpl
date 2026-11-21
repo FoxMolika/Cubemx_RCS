@@ -302,6 +302,8 @@ static void app_debug_update(void)
     g_dbg.chassis_fault = (uint8_t)g_chassis_fault;
     g_dbg.nav_fault = (uint8_t)g_nav_fault;
     g_dbg.machine_fault = (uint8_t)g_machine_fault;
+    /* 实时端口故障：应用层快照只在特定时机抓取，等待启动时可能长期为0。 */
+    g_dbg.port_fault = (uint8_t)rcs_feedback_port_fault();
     g_dbg.holding = g_holding ? 1u : 0u;
     g_dbg.ready = g_state == RCS_APP_READY ? 1u : 0u;
     g_dbg.pose_x = g_pose_x;
