@@ -122,7 +122,17 @@ def main():
     core = (R / 'build/host_validation.txt').read_text(encoding='utf-8')
     assert 'PASS 1555 checks' in core
     snapshot = read('build/original_037_SHA256.json')
-    old = R.parent / 'foxmolika_CubeMX_0.3.7'
+    # 固件基线取上一发布 tag，而非仓库外的旧快照目录：换机可用，且固件合法演进后
+    # 只需改 _prev_tag 一处，不会因目录缺失导致 FileNotFoundError。
+    import io as _io, tarfile as _tarfile
+    _prev_tag = 'v0.8.7'
+    old = R / 'build/prev_release'
+    if old.exists():
+        shutil.rmtree(old)
+    old.mkdir(parents=True)
+    _archive = subprocess.run(['git', 'archive', '--format=tar', _prev_tag, 'firmware'],
+                              cwd=R, capture_output=True, check=True).stdout
+    _tarfile.open(fileobj=_io.BytesIO(_archive)).extractall(old)
     for name, digest in snapshot.items():
         assert sha(old / name) == digest, ('original changed', name)
     previous = read('build/original_040_SHA256.json')
