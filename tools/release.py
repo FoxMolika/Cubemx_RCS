@@ -130,7 +130,7 @@ def main():
     if old.exists():
         shutil.rmtree(old)
     old.mkdir(parents=True)
-    _archive = subprocess.run(['git', 'archive', '--format=tar', _prev_tag, 'firmware'],
+    _archive = subprocess.run(['git', 'archive', '--format=tar', _prev_tag],
                               cwd=R, capture_output=True, check=True).stdout
     _tarfile.open(fileobj=_io.BytesIO(_archive)).extractall(old)
     for name, digest in snapshot.items():
