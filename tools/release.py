@@ -126,13 +126,14 @@ def main():
     # 只需改 _prev_tag 一处，不会因目录缺失导致 FileNotFoundError。
     import io as _io, tarfile as _tarfile
     _prev_tag = 'v0.8.7'
-    old = R / 'build/prev_release'
-    if old.exists():
-        shutil.rmtree(old)
-    old.mkdir(parents=True)
+    old = R.parent / 'foxmolika_CubeMX_0.3.7'
+    prev = R / 'build/prev_release'
+    if prev.exists():
+        shutil.rmtree(prev)
+    prev.mkdir(parents=True)
     _archive = subprocess.run(['git', 'archive', '--format=tar', _prev_tag],
                               cwd=R, capture_output=True, check=True).stdout
-    _tarfile.open(fileobj=_io.BytesIO(_archive)).extractall(old)
+    _tarfile.open(fileobj=_io.BytesIO(_archive)).extractall(prev)
     for name, digest in snapshot.items():
         assert sha(old / name) == digest, ('original changed', name)
     previous = read('build/original_040_SHA256.json')
@@ -181,7 +182,7 @@ def main():
             if source.suffix in ['.c', '.h']:
                 assert z.read('Middlewares/Third_Party/RCS_foxmolika/' + source.name) == source.read_bytes()
                 # Git的Windows检出会转换行尾；旧源码比较只规范CRLF，不忽略其他字节。
-                assert source.read_bytes().replace(b'\r\n',b'\n') == (old / 'firmware' / source.name).read_bytes().replace(b'\r\n',b'\n')
+                assert source.read_bytes().replace(b'\r\n',b'\n') == (prev / 'firmware' / source.name).read_bytes().replace(b'\r\n',b'\n')
     dist = R / 'dist'
     shutil.copyfile(setup, dist / setup.name)
     medium(dist / setup.name)
