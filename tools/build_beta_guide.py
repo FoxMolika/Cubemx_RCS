@@ -3,6 +3,7 @@ from pathlib import Path
 import base64
 import html
 import re
+from version import VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -12,7 +13,7 @@ def inline(text):
 
 
 def main():
-    source = ROOT / "docs/0.8.4使用说明.md"
+    source = ROOT / "docs" / (VERSION + "使用说明.md")
     blocks, paragraph, code = [], [], None
     def flush():
         if paragraph:
@@ -55,7 +56,7 @@ def main():
     assert code is None, "未闭合代码块"
     page = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>foxmolika 0.8.4 使用说明</title>
+<title>foxmolika ''' + VERSION + ''' 使用说明</title>
 <style>body{margin:auto;max-width:980px;padding:32px;font:16px/1.8 "Microsoft YaHei",sans-serif;color:#24334a;background:#f5f7fa}h1,h2{line-height:1.4;color:#143a63}h2{margin-top:42px;border-top:1px solid #ccd8e5;padding-top:22px}pre{overflow:auto;padding:22px;background:#14263c;color:#eff7ff;border-radius:8px;font:14px/1.7 Consolas,monospace}p,li{max-width:88ch}ul{margin:6px 0}code{font-family:Consolas,monospace}img{width:100%;height:auto;border:1px solid #c5d2e3}figure{margin:24px 0}figcaption{font-size:14px;color:#51657a}@media print{body{background:white;padding:0;font-size:11pt}pre{white-space:pre-wrap;color:black;background:#eef1f4}h2{break-after:avoid}img{max-height:180mm;object-fit:contain}}</style>
 <body><main>''' + "\n".join(blocks) + "</main></body></html>\n"
     target = source.with_suffix(".html")

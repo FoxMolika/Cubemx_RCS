@@ -14,6 +14,13 @@
       "editor_sha256": "8a9e067c71b9379cb2ba438ca0996ca5957eef9308ee59fd8f8499e0992d2667",
       "post_sha256": "550bbb4148c0de6310d754046deebb1d535c5d523f5b7bceac7a81e5bfb8ea97",
       "verification": "actual local review snapshot console EXE; exact helper SHA checked; not an official release claim"
+    },
+    "084": {
+      "commit": "2d9d8152ac0e0d22761028761324306791cfaf33",
+      "installer": "foxmolika_MapEditor_Setup_0.8.4_win-x64.exe",
+      "installer_sha256": "1229aa48c7882b0bb02810c8a86991a204418301e47dde234f7990ee97b48e66",
+      "post_sha256": "2b588a5d7365781ab9f55ef7b712ae84c464aabadf035229d17f8bc8f71ce125",
+      "verification": "Verified the official GitHub Release asset digest; extracted payload/foxmolika_MapEditor.exe and its payload/foxmolika_PostGenerate.exe without running either."
     }
   },
   "cases": {
@@ -90,6 +97,7 @@
     "app15/generated/rcs_nav.h": "9e73faa0058d8b58748f9fe64b77185e2b77cd265fa37d6a48e94fa6353c3b27",
     "app15/generated/rcs_observer_config.h": "68ee207939270ef6cf4f25a3aa76252a2445ca3da6f44a5c28727b1e2539b89c",
     "app15/generated/rcs_route.c": "60779f620162a42e93da5d7268165e6ad7dc491905227ce4dd2225a3da4d4b33",
-    "app15/generated/rcs_route.h": "c6ed50911e1c428f5b99124dc0c7cde012607e2b255bc667f130db8804ead5e8"
+    "app15/generated/rcs_route.h": "c6ed50911e1c428f5b99124dc0c7cde012607e2b255bc667f130db8804ead5e8",
+    "post_084.base64.txt": "16045cdd928d55d9a544ed731247480b5eaa860aaef4dfaee30c5c3a334a79aa"
   }
 }

@@ -108,7 +108,7 @@ def main():
         "foxmolika_MapEditor.exe": editor,
         "RCS.foxmolika." + VERSION + ".pack": pack,
         "foxmolika_KeilHeaders.exe": keil,
-        "使用说明.html": PROJECT / "docs/0.8.4使用说明.html",
+        "使用说明.html": PROJECT / "docs" / (VERSION + "使用说明.html"),
         "地图编辑器说明.html": PROJECT / "map_editor/dist/使用说明.html",
         "底盘接入说明.md": PROJECT / "docs/接入说明.md",
         "LICENSE.txt": PROJECT / "LICENSE.txt",
@@ -127,7 +127,7 @@ def main():
     )
     (build / "compile.log").write_text(log or "Build succeeded without warnings.\n", encoding="utf-8")
     medium(setup)
-    shutil.copyfile(PROJECT / "docs/0.8.4使用说明.html", dist / "使用说明.html")
+    shutil.copyfile(PROJECT / "docs" / (VERSION + "使用说明.html"), dist / "使用说明.html")
     (dist / "SHA256SUMS.txt").write_text(sha(setup.read_bytes()) + "  " + setup.name + "\n", encoding="utf-8")
     print(setup)
     print("bytes:", setup.stat().st_size)

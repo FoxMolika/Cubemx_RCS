@@ -13,6 +13,20 @@ namespace RcsMap {
   static int checks;
   static void Check(bool pass,string label){if(!pass)throw new Exception("hardware test: "+label);++checks;}
   static void Reject(Action action,string label){try{action();}catch{++checks;return;}throw new Exception("hardware should reject: "+label);}
+  static void TemplateByteBoundary(DeviceTemplate source,string directory) {
+   var template=HardwareCatalog.Snapshot(source);
+   template.Note="";
+   int remaining=HardwareCatalog.MaxJsonBytes-Encoding.UTF8.GetByteCount(HardwareCatalog.Json(template));
+   template.Note=new string('界',remaining/3)+new string('x',remaining%3);
+   string file=HardwareCatalog.Save(template,directory);
+   Check(new FileInfo(file).Length==HardwareCatalog.MaxJsonBytes,"template exactly 3 MiB");
+   Check(HardwareCatalog.LoadTemplates(directory).Any(t=>t.Note==template.Note),"multibyte template reloads at limit");
+   template.Note+="x";
+   Reject(()=>HardwareCatalog.Save(template,directory),"one byte above template limit");
+   Reject(()=>HardwareCatalog.Json(template),"oversize portable export");
+   Check(HardwareCatalog.LoadTemplates(directory).Single(t=>t.Id==template.Id).Note.Length==template.Note.Length-1,
+    "oversize save preserves previous template");
+  }
   public static MapDocument Fixture(string kind="gpio_output"){
    var doc=MapDocument.Demo();doc.Version=8;var device=HardwareCatalog.Create(HardwareCatalog.Builtins().First(t=>t.DriverKind==kind));device.Configured=true;doc.Devices=new List<DeviceInstance>{device};return doc;
   }
@@ -39,6 +53,7 @@ namespace RcsMap {
    var personal=HardwareCatalog.Snapshot(device.Template);personal.Id="user_test_"+Guid.NewGuid().ToString("N");personal.Name="个人GPIO";var directory=Path.Combine(folder,"templates");string saved=HardwareCatalog.Save(personal,directory);Check(File.Exists(saved),"personal template persisted");Check(HardwareCatalog.LoadTemplates(directory).Any(t=>t.Id==personal.Id),"personal template loads without rebuilding EXE");Check(HardwareCatalog.Save(personal,directory)==saved,"same bytes repeat save is idempotent");var changed=HardwareCatalog.Snapshot(personal);changed.Note="new body";Reject(()=>HardwareCatalog.Save(changed,directory),"same version cannot silently replace");changed.Version="1.0.1";Check(File.Exists(HardwareCatalog.Save(changed,directory)),"explicit new version allowed");Reject(()=>HardwareCatalog.Save(catalog[0],directory),"builtin ID cannot be overwritten");
    var packaged=Path.Combine(folder,"export.rcshw.json");File.WriteAllText(packaged,HardwareCatalog.Json(personal),new UTF8Encoding(false));string imported=HardwareCatalog.Import(packaged,Path.Combine(folder,"imported"));Check(HardwareCatalog.Hash(HardwareCatalog.Parse(File.ReadAllText(imported)))==HardwareCatalog.Hash(personal),"portable template import/export exact");
    var badTemplate=HardwareCatalog.Snapshot(personal);badTemplate.Files.Add(new DeviceFile{Path="../escape.c",Content="int x;"});Reject(()=>HardwareRules.TemplateCheck(badTemplate),"source path traversal");badTemplate=HardwareCatalog.Snapshot(personal);badTemplate.Files.Add(new DeviceFile{Path="duplicate.c",Content="int x;"});badTemplate.Files.Add(new DeviceFile{Path="DUPLICATE.c",Content="int y;"});Reject(()=>HardwareRules.TemplateCheck(badTemplate),"case-insensitive source collision");
+   TemplateByteBoundary(personal,Path.Combine(folder,"template-byte-boundary"));
    var wizardBase=HardwareTemplateDialog.CreateBase("custom");Check(wizardBase.Hooks.Command.Contains("return 0")&&wizardBase.Hooks.Done.Contains("return 0"),"unknown custom driver never pretends complete");using(var wizard=new HardwareTemplateDialog(personal,directory))Check(HardwareCatalog.Hash(wizard.CaptureTemplate())==HardwareCatalog.Hash(personal),"GUI template form roundtrip");
    var isolated=doc.Clone();string untouched=doc.Json();using(var manager=new HardwareManagerDialog(isolated,directory)){manager.Add(catalog.First(t=>t.DriverKind=="pwm_servo"));manager.DialogResult=DialogResult.Cancel;}Check(doc.Json()==untouched,"manager cancel does not edit original");
    var observe=Fixture("team_jy901");using(var manager=new HardwareManagerDialog(observe,directory)){var source=manager.Observation(observe.Devices[0]);Check(source.Kind=="imu"&&source.Axes==4&&!source.Ready,"IMU becomes unaligned relative observation only");Check(source.ReadFunction=="rcs_hw_observation_"+observe.Devices[0].Id,"generated observer name matches instance");Check(manager.Observation(observe.Devices[0]).Id==source.Id,"observation creation idempotent");}Check(observe.Clone().Json()==observe.Json(),"observation-device v8 roundtrip");

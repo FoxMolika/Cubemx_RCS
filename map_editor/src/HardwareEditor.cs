@@ -46,7 +46,7 @@ namespace RcsMap {
   void EditPersonalTemplate(){if(SelectedTemplate==null)return;if(HardwareCatalog.Builtins().Any(t=>t.Id==SelectedTemplate.Id))throw new Exception("内置模板只读，请先复制为个人模板。");using(var dialog=new HardwareTemplateDialog(SelectedTemplate,userDirectory))if(dialog.ShowDialog(this)==DialogResult.OK)ReloadTemplates(dialog.Result.Id);}
   void CopyTemplate(){if(SelectedTemplate==null)return;var copy=HardwareCatalog.Snapshot(SelectedTemplate);copy.Id="user_"+Guid.NewGuid().ToString("N");copy.Name+="（个人副本）";copy.Version="1.0.0";copy.Verified="none";using(var dialog=new HardwareTemplateDialog(copy,userDirectory))if(dialog.ShowDialog(this)==DialogResult.OK)ReloadTemplates(dialog.Result.Id);}
   void ImportTemplate(){using(var file=new OpenFileDialog{Filter="硬件模板包|*.rcshw.json|JSON|*.json"})if(file.ShowDialog(this)==DialogResult.OK){string target=HardwareCatalog.Import(file.FileName,userDirectory);ReloadTemplates();status.Text="已导入个人模板："+target;}}
-  void ExportTemplate(){if(SelectedTemplate==null)return;using(var file=new SaveFileDialog{Filter="硬件模板包|*.rcshw.json",FileName=SelectedTemplate.Id+"-"+SelectedTemplate.Version+".rcshw.json"})if(file.ShowDialog(this)==DialogResult.OK)File.WriteAllText(file.FileName,HardwareCatalog.Json(HardwareCatalog.Snapshot(SelectedTemplate)),new UTF8Encoding(false));}
+  void ExportTemplate(){if(SelectedTemplate==null)return;using(var file=new SaveFileDialog{Filter="硬件模板包|*.rcshw.json",FileName=SelectedTemplate.Id+"-"+SelectedTemplate.Version+".rcshw.json"})if(file.ShowDialog(this)==DialogResult.OK)ProjectBinding.AtomicWrite(file.FileName,new UTF8Encoding(false).GetBytes(HardwareCatalog.Json(HardwareCatalog.Snapshot(SelectedTemplate))));}
  }
 
  // 参数使用声明的类型显示，不把GPIO/定时器句柄当自由C代码。

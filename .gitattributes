@@ -1,0 +1,5 @@
+# These historical fixtures are verified byte-for-byte against their original SHA-256.
+tests/fixtures/beta_upgrade/** text eol=lf
+tests/fixtures/alpha_no_hardware/** text eol=lf
+# The Windows XML writer used CRLF within the receipt and a final LF.
+tests/fixtures/alpha_no_hardware/*/generated.foxmolika-export.xml -text whitespace=cr-at-eol

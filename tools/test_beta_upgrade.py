@@ -25,6 +25,7 @@ TERRAIN = ("rcs_terrain.c", "rcs_terrain.h")
 OFFICIAL082_SETUP = "188704b664bb250e7af12823a6f5cfa7b4cac09aa67fa159371e5526790b709a"
 POST082 = "423301952b60be5dffead82f3f33dcbbb415ab41ca44940c0cda0d6bc1f04d0f"
 POST083 = "550bbb4148c0de6310d754046deebb1d535c5d523f5b7bceac7a81e5bfb8ea97"
+POST084 = "2b588a5d7365781ab9f55ef7b712ae84c464aabadf035229d17f8bc8f71ce125"
 EXTRACT = r'''
 using System;using System.IO;using System.Reflection;
 static class Extract {
@@ -109,7 +110,8 @@ def main():
         assert path.is_relative_to(FIXTURES.resolve()) and sha(path)==digest,name
     helpers=area/"legacy-helpers";helpers.mkdir()
     post082=helpers/"post082.exe";old_post=helpers/"post083.exe"
-    for label,path,digest in [("082",post082,POST082),("083",old_post,POST083)]:
+    post084=helpers/"post084.exe"
+    for label,path,digest in [("082",post082,POST082),("083",old_post,POST083),("084",post084,POST084)]:
         path.write_bytes(base64.b64decode((FIXTURES/("post_"+label+".base64.txt")).read_bytes()))
         assert sha(path)==digest==fixture_manifest["provenance"][label]["post_sha256"]
     checks.append("portable real-output fixtures and exact legacy helper hashes match captured provenance")
@@ -180,7 +182,7 @@ def main():
         shutil.copyfile(ROOT/"tests/fixtures/keil_compiler_options.uvprojx",uv)
         return root,ioc,uv
 
-    for version,helper in [("0.8.2",post082),("0.8.3",old_post)]:
+    for version,helper in [("0.8.2",post082),("0.8.3",old_post),("0.8.4",post084)]:
         root,ioc,uv=project("upgrade-helper-"+version,version,helper.read_bytes())
         before=helper.read_bytes();oldpath=root/("foxmolika_Tools_"+version.replace(".","")+"/foxmolika_PostGenerate.exe")
         run([editor,"--associate-project",ioc])
@@ -188,7 +190,7 @@ def main():
         assert TOOL_DIRECTORY in ioc.read_text(encoding="utf-8")
         stable=ioc.read_bytes();run([editor,"--associate-project",ioc]);assert ioc.read_bytes()==stable
         checks.append("official "+version+" helper migrates to beta path by exact SHA; prior helper retained; association twice stable")
-    for version in ("0.8.2","0.8.3"):
+    for version in ("0.8.2","0.8.3","0.8.4"):
         root,ioc,uv=project("unknown-helper-"+version,version,b"unrecognized modified helper")
         before=snapshot(root)
         assert run([editor,"--associate-project",ioc],ok=False).returncode!=0
