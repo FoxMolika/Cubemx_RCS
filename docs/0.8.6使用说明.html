@@ -5,8 +5,8 @@
 <body><main><h1>foxmolika 0.8.6：硬件模板、状态机与路线使用说明</h1>
 <p>本版基于 0.8.5。个人模板按 UTF-8 文件大小限制为 3 MiB。多人或多个窗口导出到同一目录时，请等正在进行的硬件导出结束后再重试。</p>
 <h2>0.8.6 更新</h2>
-<ul><li>**修复：带任意硬件实例的地图无法保存/导出**。0.8.5 的草稿校验副本把地图版本改成 v3，却没有清空设备列表，<code>HardwareRules.Structure()</code> 因此抛“硬件实例必须使用v8地图”，最终统一报成“地图含不可安全编辑的数据”。保存和导出都会被拦住；0.8.6 已修复，旧地图不用重建。</li></ul>
-<ul><li>**新增内置模板：队内维特陀螺仪（XS_spin8 连续航向）**。解析内核取自 <code>XS_spin8</code> 示例工程，保留 11 字节帧、累加和、跨 ±180 连续航向与掉线重连保护；单实例，绑定 <code>huart1</code>～<code>huart6</code>，支持 <code>TimeoutMs</code>、<code>YawOffsetDeg</code>、<code>Direction</code>、<code>Required</code>。声明为必需时，没有新鲜角度帧会阻止启动，运行中失联会锁存故障。</li></ul>
+<ul><li>修复：带任意硬件实例的地图无法保存/导出。0.8.5 的草稿校验副本把地图版本改成 v3，却没有清空设备列表，<code>HardwareRules.Structure()</code> 因此抛“硬件实例必须使用v8地图”，最终统一报成“地图含不可安全编辑的数据”。保存和导出都会被拦住；0.8.6 已修复，旧地图不用重建。</li></ul>
+<ul><li>新增内置模板：队内维特陀螺仪（XS_spin8 连续航向）。解析内核取自 <code>XS_spin8</code> 示例工程，保留 11 字节帧、累加和、跨 ±180 连续航向与掉线重连保护；单实例，绑定 <code>huart1</code>～<code>huart6</code>，支持 <code>TimeoutMs</code>、<code>YawOffsetDeg</code>、<code>Direction</code>、<code>Required</code>。声明为必需时，没有新鲜角度帧会阻止启动，运行中失联会锁存故障。</li></ul>
 <ul><li>工具目录升级为 <code>foxmolika_Tools_086</code>。</li></ul>
 <h2>1. 安装、打开与关联工程</h2>
 <p>推荐使用本版CubeMX一体安装器：自动导入数字版本0.8.6底盘包，安装应用显示0.8.6。若已安装0.8.6组件，也可使用独立编辑器安装器。程序和助手按版本使用独立目录，个人模板不放在安装目录中。</p>
