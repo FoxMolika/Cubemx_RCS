@@ -166,7 +166,7 @@ def main():
     assert resources['payload/foxmolika_MapEditor.exe'] == sha(editor)
     assert resources[f'payload/RCS.foxmolika.{VERSION}.pack'] == sha(pack)
     with zipfile.ZipFile(pack) as z:
-        assert z.read('Documentation/使用说明.html') == (R / 'docs/使用说明.html').read_bytes()
+        assert z.read('Documentation/使用说明.html') == (R / 'docs/用户手册.html').read_bytes()
         for source in (R / 'firmware').glob('*'):
             if source.suffix in ['.c', '.h']:
                 assert z.read('Middlewares/Third_Party/RCS_foxmolika/' + source.name) == source.read_bytes()
