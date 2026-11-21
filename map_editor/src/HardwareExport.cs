@@ -19,6 +19,7 @@ namespace RcsMap {
   sealed class Change {internal string Path;internal byte[] Before,After;}
   sealed class Plan {
    internal string Root,Route,Hardware,Application,Revision;
+   internal ProjectBinding Binding;
    internal readonly List<Change> Changes=new List<Change>();
    internal readonly Dictionary<string,byte[]> Observed=new Dictionary<string,byte[]>(StringComparer.OrdinalIgnoreCase);
    internal string Retired;
@@ -35,6 +36,17 @@ namespace RcsMap {
    ProjectBinding.NoLink(path);
   }
   static bool Equal(byte[] a,byte[] b){return a==null?b==null:b!=null&&a.SequenceEqual(b);}
+  static string Digest(byte[] bytes) {return bytes==null?"absent":HardwareBinding.Hash(bytes);}
+  static FileStream LockTransaction(string application) {
+   string path=Path.Combine(application,".foxmolika-hardware.lock");
+   NoLinkedParents(path);
+   try {
+    // CreateNew also preserves any pre-existing user file. Windows drops the lock on process exit.
+    return new FileStream(path,FileMode.CreateNew,FileAccess.ReadWrite,FileShare.None,1,FileOptions.DeleteOnClose);
+   } catch(IOException error) {
+    throw new IOException("无法取得硬件导出锁，请等待当前导出结束后重试："+path,error);
+   }
+  }
   static string HardwareDirectory(string route) {return Path.Combine(Path.GetDirectoryName(Path.GetFullPath(route)),"foxmolikaHardware");}
   internal static bool Applies(MapDocument document,string route) {
    return HardwareRules.HasDevices(document)||File.Exists(Path.Combine(HardwareDirectory(route),HardwareBinding.ManifestName))||
@@ -66,7 +78,7 @@ namespace RcsMap {
    path=Path.GetFullPath(path);if(!plan.Observed.ContainsKey(path))plan.Observed[path]=Read(path);
   }
   static void Add(Plan plan,string path,byte[] next) {
-   HardwareBinding.Inside(plan.Root,ProjectBinding.Relative(plan.Root,Path.GetFullPath(path)));
+   TransactionPath(plan.Root,plan.Route,plan.Binding,ProjectBinding.Relative(plan.Root,path));
    Observe(plan,path);if(Equal(plan.Observed[Path.GetFullPath(path)],next))return;
    plan.Changes.Add(new Change{Path=Path.GetFullPath(path),Before=plan.Observed[Path.GetFullPath(path)],After=next});
   }
@@ -79,7 +91,7 @@ namespace RcsMap {
    }
   }
   static Plan Build(MapDocument document,string route,ProjectBinding binding) {
-   route=Path.GetFullPath(route);var plan=new Plan{Route=route,Hardware=HardwareDirectory(route),
+   route=Path.GetFullPath(route);var plan=new Plan{Route=route,Binding=binding,Hardware=HardwareDirectory(route),
     Application=Path.GetDirectoryName(route),Revision=TemplateGenerator.RouteRevision(document)};
    plan.Root=binding==null?plan.Application:binding.Root;
    if(binding!=null){CheckIoc(document,binding);Observe(plan,Path.Combine(binding.Root,binding.IocName));}
@@ -91,15 +103,17 @@ namespace RcsMap {
     string name=HardwareBinding.ValidName(entry.Key);
     if(name.Equals(HardwareBinding.ManifestName,StringComparison.OrdinalIgnoreCase)||generated.ContainsKey(name))
      throw new IOException("硬件生成文件重复或占用交付清单名称："+name);
-    byte[] bytes=Utf8.GetBytes(entry.Value);if(bytes.Length>2*1024*1024)throw new IOException("硬件文件超过2MB："+name);
+    byte[] bytes=Utf8.GetBytes(entry.Value);if(bytes.Length>HardwareBinding.MaxFileBytes)throw new IOException("硬件文件超过2MB："+name);
     generated.Add(name,bytes);
    }
-   if(generated.Count>2048||generated.Values.Sum(b=>(long)b.Length)>32*1024*1024)
+   if(generated.Count>HardwareBinding.MaxFiles||generated.Values.Sum(b=>(long)b.Length)>HardwareBinding.MaxPayloadBytes)
     throw new IOException("硬件交付超过2048文件或32MB。");
    var previous=HardwareBinding.LoadDirectory(plan.Hardware,true,false);
-   var existingPaths=HardwareBinding.Enumerate(plan.Hardware).ToArray();
-   if(existingPaths.Length>2049||existingPaths.Any(p=>new FileInfo(p).Length>2*1024*1024)||
-    existingPaths.Sum(p=>new FileInfo(p).Length)>32*1024*1024)
+   var existingPaths=HardwareBinding.Enumerate(plan.Hardware).Take(HardwareBinding.MaxFiles+2).ToArray();
+   string manifestPath=Path.Combine(plan.Hardware,HardwareBinding.ManifestName);
+   var payload=existingPaths.Where(p=>!ProjectBinding.Same(p,manifestPath)).Select(p=>new FileInfo(p)).ToArray();
+   if(payload.Length>HardwareBinding.MaxFiles||payload.Any(f=>f.Length>HardwareBinding.MaxFileBytes)||
+    payload.Sum(f=>f.Length)>HardwareBinding.MaxPayloadBytes)
     throw new IOException("已有硬件目录超过交付大小上限，保留原内容。");
    var existing=existingPaths.ToDictionary(p=>ProjectBinding.Relative(plan.Hardware,p),Read,StringComparer.OrdinalIgnoreCase);
    if(previous==null&&existing.Count>0)throw new IOException("硬件目录没有归属清单，保留现有文件，请选择新目录。");
@@ -209,13 +223,24 @@ namespace RcsMap {
   }
   internal static void Export(MapDocument document,string route,ProjectBinding binding,Operations operations) {
    string application=Path.GetDirectoryName(Path.GetFullPath(route));
-   Recover(document,route,binding);
-   var plan=Build(document,route,binding);Verify(plan);LastReport=null;
-   if(plan.Changes.Count==0)return;
-   Directory.CreateDirectory(application);
+   if(!Directory.Exists(application)) {
+    // Validate a new destination before creating its parent, then read it again under the lock.
+    Build(document,route,binding);
+    Directory.CreateDirectory(application);
+   }
+   using(LockTransaction(application)) {
+    RecoverCore(binding,Path.GetFullPath(route),
+     Path.Combine(application,HardwareBinding.PendingName),new Operations());
+    var plan=Build(document,route,binding);
+    Verify(plan);
+    LastReport=null;
+    if(plan.Changes.Count!=0)Commit(plan,operations);
+   }
+  }
+  static void Commit(Plan plan,Operations operations) {
+   string application=plan.Application;
    string id=Guid.NewGuid().ToString("N"),work=Path.Combine(application,".foxmolika-hardware-txn-"+id);
    string pending=Path.Combine(application,HardwareBinding.PendingName);
-   ProjectBinding.NoLink(pending);if(File.Exists(pending))throw new IOException("另一个硬件事务尚未结束："+pending);
    Directory.CreateDirectory(work);
    var journal=new XElement("FoxmolikaHardwareTransaction",new XAttribute("Schema","1"),new XAttribute("Id",id),
     new XAttribute("Root",plan.Root),new XAttribute("Route",ProjectBinding.Relative(plan.Root,plan.Route)),new XAttribute("State","prepared"));
@@ -238,72 +263,103 @@ namespace RcsMap {
     VerifyCommitted(plan);
     journal.SetAttributeValue("State","committed");ProjectBinding.AtomicWrite(pending,Utf8.GetBytes(journal.ToString()+"\n"));
    } catch(Exception failure) {
-    if(recorded)try {RecoverCore(plan.Root,plan.Route,pending,operations);}
+    if(recorded)try {RecoverCore(plan.Binding,plan.Route,pending,operations);}
     catch(Exception rollback) {
      var combined=new IOException("硬件导出失败且回滚未完成；原始备份和恢复日志保留："+work+"；"+pending+"。恢复错误："+rollback.Message,failure);
      combined.Data["HardwareBackup"]=work;combined.Data["RollbackFailure"]=rollback.ToString();throw combined;
     }
     throw;
    }
-   RecoverCore(plan.Root,plan.Route,pending,new Operations());
+   RecoverCore(plan.Binding,plan.Route,pending,new Operations());
    if(plan.Retired!=null)LastReport="取消的设备已移出工程登记；旧驱动及其配置完整保留在："+plan.Retired;
   }
   internal static void Recover(MapDocument document,string route,ProjectBinding binding) {
    route=Path.GetFullPath(route);string application=Path.GetDirectoryName(route),pending=Path.Combine(application,HardwareBinding.PendingName);
    if(!File.Exists(pending))return;
-   RecoverCore(binding==null?application:binding.Root,route,pending,new Operations());
+   using(LockTransaction(application))
+    RecoverCore(binding,route,pending,new Operations());
   }
-  static void RecoverCore(string authority,string route,string pending,Operations operations) {
+  static string TransactionPath(string root,string route,ProjectBinding binding,string relative) {
+   if(String.IsNullOrEmpty(relative))throw new IOException("恢复目标缺少相对路径。");
+   string path=ProjectBinding.Inside(root,relative);
+   if(!String.Equals(ProjectBinding.Relative(root,path),relative,StringComparison.OrdinalIgnoreCase))
+    throw new IOException("恢复目标必须使用规范的工程内相对路径。");
+   string application=Path.GetDirectoryName(route),hardware=HardwareDirectory(route);
+   if(path.StartsWith(hardware+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))
+    return HardwareBinding.Inside(hardware,ProjectBinding.Relative(hardware,path));
+   var retired=Regex.Match(ProjectBinding.Relative(application,path),@"\A(foxmolikaHardware\.retired-[0-9a-f]{32})/(.+)\z",
+    RegexOptions.IgnoreCase|RegexOptions.CultureInvariant);
+   if(retired.Success)return HardwareBinding.Inside(Path.Combine(application,retired.Groups[1].Value),retired.Groups[2].Value);
+   bool allowed=ProjectBinding.Same(path,RevisionGuard.Receipt(route))||
+    (ProjectBinding.Same(Path.GetDirectoryName(path),route)&&ProjectBinding.RouteNames(true).Contains(Path.GetFileName(path),StringComparer.OrdinalIgnoreCase));
+   if(binding!=null) {
+    string project=binding.ProjectName+".uvprojx";
+    allowed=allowed||ProjectBinding.Same(path,Path.Combine(root,project))||ProjectBinding.Same(path,Path.Combine(root,"MDK-ARM",project))||
+     ProjectBinding.Same(path,Path.Combine(root,BuildVersion.ToolDirectory,"route-build.xml"))||
+     ProjectBinding.Same(path,Path.Combine(root,"foxmolika_Tools_084","route-build.xml"));
+   }
+   if(!allowed)throw new IOException("恢复目标超出允许的硬件/路线/工程范围："+path);
+   NoLinkedParents(path);
+   return path;
+  }
+  static void RecoverCore(ProjectBinding binding,string route,string pending,Operations operations) {
    NoLinkedParents(pending);if(!File.Exists(pending))return;
+   string application=Path.GetDirectoryName(route),authority=binding==null?application:binding.Root;
    if(new FileInfo(pending).Length>2*1024*1024)throw new IOException("硬件恢复日志超过2MB，未修改文件。");
    var journal=ProjectBinding.ReadXml(pending).Root;string id=journal==null?null:(string)journal.Attribute("Id");
    if(journal==null||journal.Name!="FoxmolikaHardwareTransaction"||(string)journal.Attribute("Schema")!="1"||
     !Regex.IsMatch(id??"",@"\A[0-9a-f]{32}\z")||!ProjectBinding.Same((string)journal.Attribute("Root")??"",authority)||
-    !ProjectBinding.Same(HardwareBinding.Inside(authority,(string)journal.Attribute("Route")),route)||
+    !String.Equals((string)journal.Attribute("Route"),ProjectBinding.Relative(authority,route),StringComparison.OrdinalIgnoreCase)||
     journal.Attributes().Any(a=>!new[]{"Schema","Id","Root","Route","State"}.Contains(a.Name.ToString()))||
-    !new[]{"prepared","committed"}.Contains((string)journal.Attribute("State")))
+    !new[]{"prepared","committed","restored"}.Contains((string)journal.Attribute("State")))
     throw new IOException("硬件恢复日志不属于当前导出位置，未修改文件："+pending);
-   string application=Path.GetDirectoryName(route),hardware=HardwareDirectory(route);
    string work=Path.Combine(application,".foxmolika-hardware-txn-"+id);ProjectBinding.NoLink(work);
    var records=journal.Elements().ToArray();if(records.Length>8192)throw new IOException("硬件恢复日志条目过多。");
    var changes=new List<Change>();var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+   var backups=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+   bool rollback=(string)journal.Attribute("State")=="prepared";
    for(int i=0;i<records.Length;i++) {
-    var item=records[i];string relative=HardwareBinding.ValidName((string)item.Attribute("Path"));
-    string path=HardwareBinding.Inside(authority,relative),before=(string)item.Attribute("Before"),after=(string)item.Attribute("After");
+    var item=records[i];
+    string path=TransactionPath(authority,route,binding,(string)item.Attribute("Path"));
+    string before=(string)item.Attribute("Before"),after=(string)item.Attribute("After");
     if(item.Name!="Change"||item.HasElements||item.Attributes().Count()!=3||
      item.Attributes().Any(a=>!new[]{"Path","Before","After"}.Contains(a.Name.ToString()))||!names.Add(path))
      throw new IOException("硬件恢复日志含无效或重复操作。");
-    bool allowed=path.StartsWith(route+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)||
-     path.StartsWith(hardware+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)||
-     path.StartsWith(Path.Combine(application,"foxmolikaHardware.retired-")+"",StringComparison.OrdinalIgnoreCase)||
-     ProjectBinding.Same(path,RevisionGuard.Receipt(route))||
-     ProjectBinding.Same(path,Path.Combine(authority,BuildVersion.ToolDirectory,"route-build.xml"))||
-     Path.GetExtension(path).Equals(".uvprojx",StringComparison.OrdinalIgnoreCase)&&
-      (ProjectBinding.Same(Path.GetDirectoryName(path),authority)||ProjectBinding.Same(Path.GetDirectoryName(path),Path.Combine(authority,"MDK-ARM")));
-    if(!allowed)throw new IOException("恢复目标超出允许的硬件/路线/工程范围："+path);
-    Func<string,string,byte[]> load=(prefix,hash)=>{
-     if(hash=="absent")return null;
-     if(!Regex.IsMatch(hash??"",@"\A[0-9a-f]{64}\z"))throw new IOException("恢复摘要无效。");
-     string source=Path.Combine(work,prefix+"-"+i+".bin");ProjectBinding.NoLink(source);
-     if(new FileInfo(source).Length>64*1024*1024)throw new IOException("事务备份过大，保留现场："+source);
-     byte[] bytes=File.ReadAllBytes(source);if(HardwareBinding.Hash(bytes)!=hash)throw new IOException("事务备份被修改："+source);return bytes;
-    };
-    changes.Add(new Change{Path=path,Before=load("old",before),After=load("new",after)});
+    if(!Regex.IsMatch(before??"",@"\A(?:absent|[0-9a-f]{64})\z")||
+       !Regex.IsMatch(after??"",@"\A(?:absent|[0-9a-f]{64})\z"))throw new IOException("恢复摘要无效。");
+    string oldName="old-"+i+".bin";
+    if(before!="absent")backups.Add(oldName,before);
+    if(after!="absent")backups.Add("new-"+i+".bin",after);
+    Change restore=null;
+    if(rollback) {
+     byte[] actual=Read(path);string current=Digest(actual);
+     if(current!=before) {
+      if(current!=after)throw new IOException("恢复目标被外部修改，备份和当前内容均已保留："+path);
+      byte[] original=before=="absent"?null:Read(Path.Combine(work,oldName));
+      if(Digest(original)!=before)throw new IOException("缺少有效的原始备份，保留现场："+path);
+      restore=new Change{Path=path,Before=original,After=actual};
+     }
+    }
+    changes.Add(restore);
    }
-   if((string)journal.Attribute("State")=="prepared")for(int i=changes.Count-1;i>=0;i--) {
-    var change=changes[i];byte[] actual=Read(change.Path);
-    if(Equal(actual,change.Before))continue;
-    if(!Equal(actual,change.After))throw new IOException("恢复目标被外部修改，备份和当前内容均已保留："+change.Path);
-    operations.BeforeRollback(i,change.Path);Write(change.Path,change.Before,change.After);
+   // Both committed and restored journals can survive an interruption part-way through cleanup.
+   var remaining=Directory.Exists(work)?Directory.GetFiles(work):new string[0];
+   if(Directory.Exists(work)&&Directory.GetDirectories(work).Length!=0)throw new IOException("事务目录出现额外目录，保留现场："+work);
+   foreach(string file in remaining) {
+    string expected;
+    if(!backups.TryGetValue(Path.GetFileName(file),out expected)||Digest(Read(file))!=expected)
+     throw new IOException("事务备份无法核对，保留现场："+file);
    }
-   // 只清理经日志枚举的自有.bin，不递归删除未知文件或链接。
-   var expected=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-   for(int i=0;i<changes.Count;i++) {if(changes[i].Before!=null)expected.Add("old-"+i+".bin");if(changes[i].After!=null)expected.Add("new-"+i+".bin");}
-   if(Directory.Exists(work)) {
-    if(Directory.GetDirectories(work).Length>0||Directory.GetFiles(work).Any(p=>!expected.Contains(Path.GetFileName(p))))
-     throw new IOException("事务目录出现额外文件，保留现场："+work);
-    foreach(string file in Directory.GetFiles(work)){ProjectBinding.NoLink(file);File.Delete(file);}Directory.Delete(work,false);
+   if(rollback) {
+    for(int i=changes.Count-1;i>=0;i--) {
+     var change=changes[i];if(change==null)continue;
+     operations.BeforeRollback(i,change.Path);Write(change.Path,change.Before,change.After);
+    }
+    journal.SetAttributeValue("State","restored");
+    ProjectBinding.AtomicWrite(pending,Utf8.GetBytes(journal.ToString()+"\n"));
    }
+   foreach(string file in remaining){NoLinkedParents(file);File.Delete(file);}
+   if(Directory.Exists(work))Directory.Delete(work,false);
    File.Delete(pending);
   }
  }

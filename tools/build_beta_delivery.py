@@ -9,7 +9,7 @@ import sys
 import zipfile
 
 from check import HOST_STEPS
-from version import DISPLAY_VERSION, SETUP_NAME, EDITOR_SETUP_NAME
+from version import DISPLAY_VERSION, SETUP_NAME, EDITOR_SETUP_NAME, VERSION
 from windows_integrity import medium
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -42,8 +42,8 @@ def main():
     out=ROOT/"交付";out.mkdir(exist_ok=True)
     for p,name in [(editor,editor.name),(setup,setup.name),
                    (ROOT/"map_editor/dist"/EDITOR_SETUP_NAME,EDITOR_SETUP_NAME),
-                   (ROOT/"docs/0.8.4使用说明.html","使用说明.html"),
-                   (ROOT/"docs/0.8.4使用说明.md","使用说明.md")]:
+                   (ROOT/"docs"/(VERSION+"使用说明.html"),"使用说明.html"),
+                   (ROOT/"docs"/(VERSION+"使用说明.md"),"使用说明.md")]:
         shutil.copyfile(p,out/name)
         if p.suffix.lower()==".exe":medium(out/name)
     examples=out/"示例地图";examples.mkdir(exist_ok=True)
@@ -73,9 +73,9 @@ def main():
         data=read(name)
         assert data["passed"],name
         shutil.copyfile(ROOT/"build"/name,records/name)
-    (out/"验证摘要.md").write_text("""# 0.8.4本轮交付验证
+    (out/"验证摘要.md").write_text(f"""# {VERSION} 本轮交付验证
 
-- 完整host门禁通过；无硬件v3/v7/坡道地图与实际0.8.3.beta输出逐字节一致。
+- 完整主机检查通过。无硬件地图按兼容性清单逐文件核验，六个调试相关文件另查接口。
 - 实际GUI模板/实例/资源/快照/动作检查通过；8组实际生成驱动场景、11个App整链场景通过。
 - 文件交付、回滚/恢复、用户修改保护、C/C++登记与编译选项保持均有确定性测试；原生流程还会删除分组再生成验证恢复。
 - 单文件一体安装器向工作区内全新CubeMX配置自动导入并校验包，真实CubeMX生成两次。

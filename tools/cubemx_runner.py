@@ -3,8 +3,11 @@ from pathlib import Path
 import argparse,os,subprocess
 from settings import ROOT
 
+def cube_directory():
+    return Path(os.environ.get('STM32CubeMX_PATH', Path.home()/'AppData/Local/Programs/STM32CubeMX'))
+
 def run(script,timeout=55,home=None):
-    install=Path(os.environ.get('STM32CubeMX_PATH',str(Path.home()/'AppData/Local/Programs/STM32CubeMX')))
+    install=cube_directory()
     java=install/'jre/bin/java.exe';javac=install/'jre/bin/javac.exe'
     classes=ROOT/'build/java';classes.mkdir(parents=True,exist_ok=True)
     subprocess.run([str(javac),'-d',str(classes),str(ROOT/'tools/WorkspacePreferencesFactory.java')],check=True,capture_output=True)

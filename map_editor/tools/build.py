@@ -16,7 +16,7 @@ from sync_versions import main as sync_versions
 
 def editor_guide(dist):
     # beta统一入口必须包含App/main/状态机说明，不能继续嵌入旧版教程。
-    beta = ROOT.parent / "docs/0.8.4使用说明.html"
+    beta = ROOT.parent / "docs" / (VERSION + "使用说明.html")
     guide = (beta if beta.exists() else ROOT / "docs/使用说明.html").read_text(encoding="utf-8")
     image = ROOT / "docs/editor_ui.png"
     if image.is_file():

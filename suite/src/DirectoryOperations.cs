@@ -10,6 +10,7 @@ namespace RcsSuite
         {
             internal Action<string,string> MoveDirectory = Directory.Move;
             internal Action<string,string> MoveFile = File.Move;
+            internal Action<string,string,string> ReplaceFile = File.Replace;
             internal Action<string,bool> DeleteDirectory = Directory.Delete;
             internal Action<int> Delay = System.Threading.Thread.Sleep;
         }
@@ -93,6 +94,29 @@ namespace RcsSuite
                 operations.Delay(attempts * 60);
             }
             throw Failure(step, path, null, attempts, last);
+        }
+        internal static void Replace(string source, string target, string backup, string step,
+                                     Operations operations, Action recheck)
+        {
+            int attempts = 0; Exception last = null;
+            while (attempts < 3)
+            {
+                try {
+                    Guard(source); Guard(target);
+                    if (backup != null) {
+                        Guard(backup);
+                        if (Exists(backup)) throw new IOException("修复备份路径已存在：" + backup);
+                    }
+                    recheck();
+                } catch (Exception error) { last = error; break; }
+                attempts++;
+                try { operations.ReplaceFile(source, target, backup); return; }
+                catch (IOException error) { last = error; }
+                catch (UnauthorizedAccessException error) { last = error; }
+                if (!Retryable(last) || attempts >= 3) break;
+                operations.Delay(attempts * 60);
+            }
+            throw Failure(step, source, target, attempts, last);
         }
     }
 }

@@ -7,7 +7,7 @@ import subprocess
 import sys
 import uuid
 
-from version import EDITOR_SETUP_NAME
+from version import EDITOR_SETUP_NAME, VERSION
 from windows_integrity import medium
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -24,7 +24,7 @@ def standalone():
     editor=ROOT/"map_editor/dist/foxmolika_MapEditor.exe"
     digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     assert digest(editor)==digest(target/editor.name)
-    assert (target/"使用说明.html").read_bytes()==(ROOT/"docs/0.8.4使用说明.html").read_bytes()
+    assert (target/"使用说明.html").read_bytes()==(ROOT/"docs"/(VERSION+"使用说明.html")).read_bytes()
     subprocess.run([str(exe),"/S","/UNINSTALL","/D="+str(target)],check=True,timeout=60)
     assert not target.exists()
     (ROOT/"build/beta_installer_validation.json").write_text(json.dumps({"passed":True,"single_file":True,

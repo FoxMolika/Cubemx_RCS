@@ -13,6 +13,7 @@ from version import TOOL_DIRECTORY
 HARNESS = r'''
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -57,12 +58,77 @@ static class HardwareProjectHarness {
   .ToDictionary(p=>ProjectBinding.Relative(root,p),p=>HardwareBinding.Hash(File.ReadAllBytes(p)));}
  static bool Same(Dictionary<string,string>a,Dictionary<string,string>b){return a.Count==b.Count&&a.All(e=>b.ContainsKey(e.Key)&&b[e.Key]==e.Value);}
  static XDocument Project(){return XDocument.Parse("<Project><Targets><Target><TargetName>HW</TargetName><uAC6>1</uAC6><TargetOption><TargetCommonOption><BeforeMake/></TargetCommonOption><TargetArmAds><Cads><VariousControls><IncludePath>../Modules</IncludePath><Define>USER_KEEP</Define><MiscControls>-DUSER_TARGET=1</MiscControls></VariousControls></Cads></TargetArmAds></TargetOption><Groups><Group><GroupName>Chassis</GroupName><Files><File><FileName>rcs_chassis.c</FileName><FileType>1</FileType><FilePath>../Modules/rcs_chassis.c</FilePath><FileOption><FileArmAds><Cads><VariousControls><IncludePath/></VariousControls></Cads></FileArmAds></FileOption></File></Files></Group></Groups></Target></Targets></Project>");}
- static int Main(string[] args){Console.OutputEncoding=new UTF8Encoding(false);try{Run(args);return 0;}catch(Exception e){Console.WriteLine("FAIL after "+last+": "+e.GetType().Name+" "+e.Message);if(e.InnerException!=null)Console.WriteLine(e.InnerException.GetType().Name+" "+e.InnerException.Message);return 2;}}
+ static int Main(string[] args){Console.OutputEncoding=new UTF8Encoding(false);try{
+  if(args.Length==2&&args[0]=="--recover")RcsMap.HardwareExport.Recover(new RcsMap.MapDocument(),args[1],null);
+  else Run(args);
+  return 0;
+ }catch(Exception e){Console.WriteLine("FAIL after "+last+": "+e.GetType().Name+" "+e.Message);if(e.InnerException!=null)Console.WriteLine(e.InnerException.GetType().Name+" "+e.InnerException.Message);return 2;}}
+ static void TransactionBoundary(string area) {
+  string application=Path.Combine(area,"concurrent"),route=Path.Combine(application,"测试 路线");
+  var doc=new RcsMap.MapDocument();
+  RcsMap.HardwareExport.Export(doc,route,null,new RcsMap.HardwareExport.Operations());
+  doc.Changed=true;
+  string pending=Path.Combine(application,HardwareBinding.PendingName),work=null;
+  FileStream held=null;int total=0;bool rejected=false;
+  var ops=new RcsMap.HardwareExport.Operations{BeforeCommit=(i,p)=>{
+   if(i!=1)return;
+   var start=new ProcessStartInfo(typeof(HardwareProjectHarness).Assembly.Location,"--recover \""+route+"\""){
+    UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,StandardOutputEncoding=Encoding.UTF8};
+   using(var other=Process.Start(start)){
+    if(!other.WaitForExit(10000))throw new Exception("concurrent recovery timed out");
+    rejected=other.ExitCode==2&&other.StandardOutput.ReadToEnd().Contains("导出锁");
+   }
+   work=Directory.GetDirectories(application,".foxmolika-hardware-txn-*").Single();
+   var backups=Directory.GetFiles(work);total=backups.Length;
+   held=new FileStream(backups.Last(),FileMode.Open,FileAccess.Read,FileShare.Read);
+  }};
+  try{Error(()=>RcsMap.HardwareExport.Export(doc,route,null,ops));}finally{if(held!=null)held.Dispose();}
+  Check(rejected,"second process refuses recovery during live commit");
+  Check((string)XElement.Load(pending).Attribute("State")=="committed"&&Directory.GetFiles(work).Length<total,
+   "real cleanup interruption after commit");
+  var committed=Snapshot(application);
+  RcsMap.HardwareExport.Recover(doc,route,null);
+  Check(!Directory.Exists(work)&&!File.Exists(pending)&&Same(committed,Snapshot(application)),
+   "retry finishes interrupted cleanup without changing delivered files");
+ }
+ static void ManifestBoundary(string area) {
+  string directory=Path.Combine(area,"limits","foxmolikaHardware");Directory.CreateDirectory(directory);
+  string manifestPath=Path.Combine(directory,HardwareBinding.ManifestName),hash=new string('a',64);
+  var manifest=new HardwareBinding.Manifest{Revision=hash};
+  for(int i=0;i<HardwareBinding.MaxFiles;i++)manifest.Files.Add("part"+i+".c",hash);
+  for(int i=0;i<HardwareBinding.MaxDevices;i++)manifest.Devices.Add(new HardwareBinding.DeviceRecord{
+   Id=i.ToString("x32"),TemplateId="part",Version="1.0.0",Sha256=hash});
+  File.WriteAllBytes(manifestPath,HardwareBinding.Bytes(manifest));
+  var loaded=HardwareBinding.LoadDirectory(directory,false,false);
+  Check(loaded.Files.Count==2048&&loaded.Devices.Count==64,"independent file and device limits round trip");
+  var xml=XElement.Load(manifestPath);
+  xml.Add(new XElement("File",new XAttribute("Path","extra.c"),new XAttribute("Sha256",hash)));xml.Save(manifestPath);
+  Error(()=>HardwareBinding.LoadDirectory(directory,false,false));
+  xml.Elements("File").Last().Remove();
+  xml.Add(new XElement("Device",new XAttribute("Id",64.ToString("x32")),new XAttribute("TemplateId","part"),
+   new XAttribute("Version","1.0.0"),new XAttribute("Sha256",hash)));xml.Save(manifestPath);
+  Error(()=>HardwareBinding.LoadDirectory(directory,false,false));
+  manifest.Files.Clear();manifest.Devices.Clear();
+  var bytes=new byte[HardwareBinding.MaxFileBytes];hash=HardwareBinding.Hash(bytes);
+  for(int i=0;i<HardwareBinding.MaxPayloadBytes/bytes.Length;i++){
+   string name="part"+i+".h";File.WriteAllBytes(Path.Combine(directory,name),bytes);manifest.Files.Add(name,hash);
+  }
+  File.WriteAllBytes(manifestPath,HardwareBinding.Bytes(manifest));
+  string route=Path.Combine(Path.GetDirectoryName(directory),"route");
+  HardwareBinding.LoadDirectory(directory,false,true);
+  RcsMap.HardwareExport.CheckDestination(new RcsMap.MapDocument(),route);
+  Check(true,"32 MiB plus metadata is readable by prebuild and exporter");
+  bytes=new byte[1];File.WriteAllBytes(Path.Combine(directory,"extra.h"),bytes);
+  manifest.Files.Add("extra.h",HardwareBinding.Hash(bytes));File.WriteAllBytes(manifestPath,HardwareBinding.Bytes(manifest));
+  Error(()=>HardwareBinding.LoadDirectory(directory,false,true));
+  Error(()=>RcsMap.HardwareExport.CheckDestination(new RcsMap.MapDocument(),route));
+ }
  static void Run(string[] args){
+  TransactionBoundary(args[0]);ManifestBoundary(args[0]);
   string root=Path.Combine(args[0],"owned project");Directory.CreateDirectory(root);Directory.CreateDirectory(Path.Combine(root,"MDK-ARM"));Directory.CreateDirectory(Path.Combine(root,"Modules"));
   foreach(string n in new[]{"rcs_chassis.c","rcs_chassis.h","rcs_control.h","rcs_hal.h","rcs_config.h"})File.WriteAllText(Path.Combine(root,"Modules",n),"/* fixture */\n");
-  string ioc=Path.Combine(root,"test.ioc");File.WriteAllText(ioc,"ProjectManager.ProjectName=test\n");
-  string uv=Path.Combine(root,"MDK-ARM/test.uvprojx");Project().Save(uv);
+  string ioc=Path.Combine(root,"工程 A.ioc");File.WriteAllText(ioc,"ProjectManager.ProjectName=工程 A\n");
+  string uv=Path.Combine(root,"MDK-ARM/工程 A.uvprojx");Project().Save(uv);
   var binding=ProjectBinding.Plan(ioc,File.ReadAllText(ioc));File.WriteAllBytes(binding.Marker,binding.Bytes());
   string route=binding.RouteDirectory,hw=Path.Combine(root,HardwareBinding.Relative);
   var on=new RcsMap.MapDocument();RcsMap.HardwareExport.Export(on,route,binding,new RcsMap.HardwareExport.Operations());

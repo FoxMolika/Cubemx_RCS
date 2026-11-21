@@ -1,11 +1,14 @@
 """Build an explicitly provided workspace project. Never flashes a target."""
 from pathlib import Path
-import subprocess,sys,re,json,hashlib
+import os,subprocess,sys,re,json,hashlib
 ROOT=Path(__file__).resolve().parents[1]
+def uv4_executable():
+ return Path(os.environ.get("RCS_KEIL_UV4", Path.home()/"AppData/Local/Keil_v5/UV4/UV4.exe"))
+
 def build(project,log):
  project=Path(project).resolve();log=Path(log).resolve()
  assert project.is_relative_to(ROOT) and log.is_relative_to(ROOT),'test project/log must be inside this new workspace'
- uv=Path.home()/'AppData/Local/Keil_v5/UV4/UV4.exe'
+ uv=uv4_executable()
  p=subprocess.run([str(uv),'-r',str(project),'-j0','-sg','-o',str(log)],cwd=project.parent,capture_output=True,timeout=180)
  raw=log.read_bytes();text=raw.decode('utf-8',errors='replace')
  lines=[l for l in text.splitlines() if 'Using Compiler' in l or re.search(r'\d+ Error\(s\)',l) or 'error:' in l or 'Error:' in l or 'Target not created' in l or 'Program Size:' in l]

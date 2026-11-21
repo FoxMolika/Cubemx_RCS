@@ -12,6 +12,9 @@ internal static class HardwareBinding {
     internal const string Relative = "Application/foxmolikaHardware";
     internal const string ManifestName = "hardware.xml";
     internal const string PendingName = ".foxmolika-hardware-pending.xml";
+    internal const int MaxFiles = 2048, MaxDevices = 64;
+    internal const int MaxFileBytes = 2*1024*1024, MaxPayloadBytes = 32*1024*1024;
+    const int MaxManifestBytes = 1024*1024;
     internal sealed class Manifest {
         internal string Revision;
         internal readonly Dictionary<string,string> Files = new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
@@ -38,13 +41,17 @@ internal static class HardwareBinding {
         return result;
     }
     internal static byte[] Bytes(Manifest manifest) {
+        if(manifest.Files.Count>MaxFiles||manifest.Devices.Count>MaxDevices)
+            throw new IOException("硬件交付最多包含2048个文件和64个设备。");
         var root=new XElement("FoxmolikaHardware",new XAttribute("Schema","1"),new XAttribute("Revision",manifest.Revision));
         foreach(var device in manifest.Devices.OrderBy(d=>d.Id,StringComparer.Ordinal))root.Add(new XElement("Device",
             new XAttribute("Id",device.Id),new XAttribute("TemplateId",device.TemplateId),
             new XAttribute("Version",device.Version),new XAttribute("Sha256",device.Sha256)));
         foreach(var entry in manifest.Files.OrderBy(x=>x.Key,StringComparer.Ordinal))
             root.Add(new XElement("File",new XAttribute("Path",entry.Key),new XAttribute("Sha256",entry.Value)));
-        return new UTF8Encoding(false).GetBytes(root.ToString()+"\n");
+        var bytes=new UTF8Encoding(false).GetBytes(root.ToString()+"\n");
+        if(bytes.Length>MaxManifestBytes)throw new IOException("硬件交付清单超过1MB。");
+        return bytes;
     }
     internal static Manifest Load(string root,bool allowMissing) {
         string directory=ProjectBinding.Inside(root,Relative);
@@ -58,16 +65,17 @@ internal static class HardwareBinding {
     internal static Manifest LoadDirectory(string directory,bool allowMissing,bool verify) {
         ProjectBinding.NoLink(directory);string file=Path.Combine(directory,ManifestName);ProjectBinding.NoLink(file);
         if(!File.Exists(file)) { if(allowMissing)return null;throw new IOException("缺少硬件交付清单："+file); }
-        if(new FileInfo(file).Length>1024*1024)throw new IOException("硬件交付清单超过1MB。");
+        if(new FileInfo(file).Length>MaxManifestBytes)throw new IOException("硬件交付清单超过1MB。");
         var root=ProjectBinding.ReadXml(file).Root;
         if(root==null||root.Name!="FoxmolikaHardware"||(string)root.Attribute("Schema")!="1"||
             root.Attributes().Any(a=>a.Name!="Schema"&&a.Name!="Revision")||
             !Regex.IsMatch((string)root.Attribute("Revision")??"",@"\A[0-9a-f]{64}\z"))
             throw new IOException("硬件交付清单格式或版本不兼容，保留原文件。");
         var manifest=new Manifest{Revision=(string)root.Attribute("Revision")};
-        if(root.Elements().Count()>2048)throw new IOException("硬件文件超过2048项。");
+        long payloadBytes=0;
         foreach(var entry in root.Elements()) {
             if(entry.Name=="Device") {
+                if(manifest.Devices.Count>=MaxDevices)throw new IOException("硬件设备超过64项。");
                 var device=new DeviceRecord{Id=(string)entry.Attribute("Id"),TemplateId=(string)entry.Attribute("TemplateId"),
                     Version=(string)entry.Attribute("Version"),Sha256=(string)entry.Attribute("Sha256")};
                 if(entry.HasElements||entry.Attributes().Count()!=4||entry.Attributes().Any(a=>!new[]{"Id","TemplateId","Version","Sha256"}.Contains(a.Name.ToString()))||
@@ -76,6 +84,7 @@ internal static class HardwareBinding {
                     manifest.Devices.Any(d=>d.Id==device.Id))throw new IOException("硬件实例来源记录无效或重复。");
                 manifest.Devices.Add(device);continue;
             }
+            if(manifest.Files.Count>=MaxFiles)throw new IOException("硬件文件超过2048项。");
             string name=ValidName((string)entry.Attribute("Path")),hash=(string)entry.Attribute("Sha256");
             if(entry.Name!="File"||entry.HasElements||entry.Attributes().Count()!=2||
                 entry.Attributes().Any(a=>a.Name!="Path"&&a.Name!="Sha256")||
@@ -83,8 +92,13 @@ internal static class HardwareBinding {
                 !Regex.IsMatch(hash??"",@"\A[0-9a-f]{64}\z")||manifest.Files.ContainsKey(name))
                 throw new IOException("硬件清单含未知、重复或无效记录。");
             string path=Inside(directory,name);manifest.Files.Add(name,hash);
-            if(verify&&(!File.Exists(path)||new FileInfo(path).Length>2*1024*1024||Hash(File.ReadAllBytes(path))!=hash))
-                throw new IOException("硬件交付文件缺失或被修改，未自动覆盖："+path);
+            if(verify) {
+                var info=new FileInfo(path);
+                if(!info.Exists||info.Length>MaxFileBytes)throw new IOException("硬件文件缺失或超过2MB："+path);
+                payloadBytes+=info.Length;
+                if(payloadBytes>MaxPayloadBytes)throw new IOException("硬件交付文件总量超过32MB。");
+                if(Hash(File.ReadAllBytes(path))!=hash)throw new IOException("硬件交付文件被修改，未自动覆盖："+path);
+            }
         }
         if(verify) {
             var listed=new HashSet<string>(manifest.Files.Keys,StringComparer.OrdinalIgnoreCase);listed.Add(ManifestName);
@@ -97,8 +111,8 @@ internal static class HardwareBinding {
     }
     internal static IEnumerable<string> Enumerate(string directory) {
         ProjectBinding.NoLink(directory);if(!Directory.Exists(directory))yield break;
-        foreach(string file in Directory.GetFiles(directory)) {ProjectBinding.NoLink(file);yield return file;}
-        foreach(string child in Directory.GetDirectories(directory))
+        foreach(string file in Directory.EnumerateFiles(directory)) {ProjectBinding.NoLink(file);yield return file;}
+        foreach(string child in Directory.EnumerateDirectories(directory))
             foreach(string file in Enumerate(child))yield return file;
     }
     static string Resolve(string directory,string value) {

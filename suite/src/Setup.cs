@@ -23,31 +23,41 @@ namespace RcsSuite {
   internal static byte[] Bytes(string name){using(var s=Assembly.GetExecutingAssembly().GetManifestResourceStream("payload/"+name)){if(s==null)throw new Exception("安装载荷缺失："+name);using(var m=new MemoryStream()){s.CopyTo(m);return m.ToArray();}}}
   internal static string In(string dir,string name){string root=Path.GetFullPath(dir).TrimEnd('\\')+"\\",path=Path.GetFullPath(Path.Combine(dir,name.Replace('/',Path.DirectorySeparatorChar)));if(!path.StartsWith(root,StringComparison.OrdinalIgnoreCase))throw new Exception("载荷路径超出安装目录。");return path;}
   internal static IEnumerable<XElement> AppFiles {get{return Manifest.Root.Element("AppFiles").Elements("File");}}
-  internal static void Owned(string dir){string marker=Path.Combine(dir,"suite-owned.xml");if(!File.Exists(marker))throw new Exception("此目录不是本合并安装器的目录。请选择空目录。");var e=XElement.Load(marker);if(e.Name!="RCSSuite"||(string)e.Attribute("Version")!=PackService.Version)throw new Exception("安装目录版本不兼容。请选择新目录。");}
+  internal const string Marker="suite-owned.xml", SavedSetup="foxmolika_Setup.exe";
+  internal static void Owned(string dir){string marker=AppRepair.ManagedPath(dir,Marker);if(!File.Exists(marker))throw new Exception("此目录不是本合并安装器的目录。请选择空目录。");var e=XElement.Load(marker);if(e.Name!="RCSSuite"||(string)e.Attribute("Version")!=PackService.Version)throw new Exception("安装目录版本不兼容。请选择新目录。");}
+  internal static void RepairPreflight(string dir){
+   AppRepair.ManagedPath(dir,Marker);
+   if(File.Exists(dir))throw new IOException("安装目录位置已有文件，已保留："+dir);
+   if(!Directory.Exists(dir)||!Directory.EnumerateFileSystemEntries(dir).Any())return;
+   Owned(dir);
+   foreach(var f in AppFiles)AppRepair.ManagedPath(dir,(string)f.Attribute("Name"));
+   AppRepair.ManagedPath(dir,SavedSetup);
+  }
   internal static void Preflight(string dir){if(!Directory.Exists(dir)||!Directory.EnumerateFileSystemEntries(dir).Any())return;Owned(dir);foreach(var f in AppFiles){string p=In(dir,(string)f.Attribute("Name"));if(File.Exists(p)&&HashFile(p)!=(string)f.Attribute("Sha256"))throw new Exception("安装文件已被修改，保留原内容："+p+"。请选择新目录。");}
    string self=Path.Combine(dir,"foxmolika_Setup.exe"),expected=(string)XElement.Load(Path.Combine(dir,"suite-owned.xml")).Attribute("SetupSha256");if(File.Exists(self)&&!String.IsNullOrEmpty(expected)&&HashFile(self)!=expected)throw new Exception("保存的安装器已被修改，保留它。请选择新目录。");}
-  internal static void Extract(string dir){Extract(dir,new DirectoryOperations.Operations());}
-  internal static void Extract(string dir,DirectoryOperations.Operations operations){
-   Preflight(dir);bool owned=Directory.Exists(dir)&&Directory.EnumerateFileSystemEntries(dir).Any();
+  internal static string Extract(string dir){return Extract(dir,new DirectoryOperations.Operations());}
+  internal static string Extract(string dir,DirectoryOperations.Operations operations){
+   RepairPreflight(dir);bool owned=Directory.Exists(dir)&&Directory.EnumerateFileSystemEntries(dir).Any();
    string parent=Path.GetDirectoryName(dir);if(String.IsNullOrEmpty(parent))throw new Exception("不能安装到磁盘根目录。");Directory.CreateDirectory(parent);
    DirectoryOperations.NoLink(parent);DirectoryOperations.NoLink(dir);
    string stage=Path.Combine(parent,".rcs-suite-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);
-   Exception failure=null;var staged=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+   Exception failure=null;string backup=null;var staged=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
    Action verifyStage=()=>{
     foreach(var item in PackTransaction.Inventory(stage))
      if(!staged.ContainsKey(item.Key)||staged[item.Key]!=item.Value)throw new IOException("安装暂存目录被其他程序修改，保留内容："+stage);
    };
    try{
     foreach(var f in AppFiles){string name=(string)f.Attribute("Name");byte[] data=Bytes(name);if(Hash(data)!=(string)f.Attribute("Sha256"))throw new Exception("载荷校验失败："+name);string path=In(stage,name);Directory.CreateDirectory(Path.GetDirectoryName(path));File.WriteAllBytes(path,data);staged[name.Replace('/',Path.DirectorySeparatorChar)]=Hash(data);}
+    string savedSetup=In(stage,SavedSetup);
+    File.Copy(Assembly.GetExecutingAssembly().Location,savedSetup);
+    staged[SavedSetup]=HashFile(savedSetup);
+    new XElement("RCSSuite",new XAttribute("Version",PackService.Version),
+     new XAttribute("SetupSha256",staged[SavedSetup])).Save(In(stage,Marker));
+    staged[Marker]=HashFile(In(stage,Marker));
     if(owned){
-     foreach(var f in AppFiles){string name=(string)f.Attribute("Name"),dest=In(dir,name);
-      if(!File.Exists(dest)){Directory.CreateDirectory(Path.GetDirectoryName(dest));
-       DirectoryOperations.Move(In(stage,name),dest,"修复缺失安装文件",operations,()=>{Preflight(dir);verifyStage();},true);
-      }
-     }
+     Owned(dir);
+     backup=AppRepair.Apply(dir,stage,staged,operations);
     }else{
-     new XElement("RCSSuite",new XAttribute("Version",PackService.Version)).Save(Path.Combine(stage,"suite-owned.xml"));
-     staged["suite-owned.xml"]=HashFile(Path.Combine(stage,"suite-owned.xml"));
      if(Directory.Exists(dir))DirectoryOperations.Delete(dir,false,"移除空安装目录",operations,()=>{if(Directory.EnumerateFileSystemEntries(dir).Any())throw new IOException("安装目标新增文件，保留目录。");});
      DirectoryOperations.Move(stage,dir,"安装程序目录",operations,()=>{verifyStage();if(PackTransaction.Inventory(stage).Count!=staged.Count)throw new IOException("安装暂存文件缺失，未移动目录。");});
     }
@@ -56,8 +66,7 @@ namespace RcsSuite {
    try{if(Directory.Exists(stage))DirectoryOperations.Delete(stage,true,"清理安装暂存",operations,verifyStage);}
    catch(Exception cleanup){if(failure==null)failure=new IOException("清理安装暂存失败："+stage,cleanup);else{failure.Data["CleanupFailure"]=cleanup.ToString();failure.Data["StageDirectory"]=stage;}}
    if(failure!=null)System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
-   string self=Assembly.GetExecutingAssembly().Location,target=Path.Combine(dir,"foxmolika_Setup.exe");if(!File.Exists(target))File.Copy(self,target);
-   string markerPath=Path.Combine(dir,"suite-owned.xml");var marker=XElement.Load(markerPath);marker.SetAttributeValue("SetupSha256",HashFile(target));marker.Save(markerPath);
+   return backup;
   }
  }
  static class Setup {
@@ -65,11 +74,13 @@ namespace RcsSuite {
   internal static string Option(string[] a,string key,string fallback=null){string s=a.FirstOrDefault(x=>x.StartsWith(key+"=",StringComparison.OrdinalIgnoreCase));return s==null?fallback:s.Substring(key.Length+1);}
   internal static string ResolveCube(string explicitPath){if(!String.IsNullOrWhiteSpace(explicitPath)){string c=CubeLocator.Normalize(explicitPath);if(!CubeLocator.Valid(c))throw new Exception("请选择包含 STM32CubeMX.exe 和 jre/bin/java.exe 的完整 CubeMX 安装目录。");return c;}var all=CubeLocator.Find();if(all.Count==0)throw new Exception("未找到 STM32CubeMX。请先安装 CubeMX，再选择 STM32CubeMX.exe；无需手动导入 .pack。");return all[0];}
   internal static void Install(string dir,string explicitCube,string testHome,Action<string> report){dir=Path.GetFullPath(dir);string cube=ResolveCube(explicitCube);bool isolated=!String.IsNullOrEmpty(testHome);string home=Path.GetFullPath(testHome??Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-   Payload.Preflight(dir);PackService.RequireClosed();string packDir=PackService.PackDir(home);InstallAccess.Preflight(dir,home,!PackService.FilesMatch(packDir)||!PackService.Registered(home)||File.Exists(Path.Combine(dir,PackTransaction.JournalName)),report);PackService.RecoverPending(home,dir,report);bool newly=!Directory.Exists(packDir);
+   Payload.RepairPreflight(dir);PackService.RequireClosed();string packDir=PackService.PackDir(home);InstallAccess.Preflight(dir,home,!PackService.FilesMatch(packDir)||!PackService.Registered(home)||File.Exists(Path.Combine(dir,PackTransaction.JournalName)),report);PackService.RecoverPending(home,dir,report);bool newly=!Directory.Exists(packDir);
    string receipt=Path.Combine(dir,"cube-pack-receipt.xml"),pending=Path.Combine(dir,"cube-pack-pending.xml");
    foreach(string p in new[]{receipt,pending})if(File.Exists(p)){var old=XElement.Load(p);if((string)old.Attribute("Home")!=home)throw new Exception("安装目录属于其他CubeMX用户配置。请选择新的安装目录。");if((string)old.Attribute("PackDirectory")==packDir&&String.Equals((string)old.Attribute("NewlyIntroduced"),"true",StringComparison.OrdinalIgnoreCase))newly=true;}
    if(Directory.Exists(packDir)&&!PackService.FilesMatch(packDir))throw new Exception("RCS.foxmolika "+PackService.Version+" 同版本内容冲突，已保留现有包，未执行安装。");
-   report("使用 CubeMX："+cube);report("为当前用户配置："+home);report("释放并核验内嵌程序与 .pack……");Payload.Extract(dir);
+   report("使用 CubeMX："+cube);report("为当前用户配置："+home);report("释放并核验内嵌程序与 .pack……");
+   string backup=Payload.Extract(dir);
+   if(backup!=null)report("已在原目录覆盖修复；被替换的安装文件备份在："+backup);
    string success=Path.Combine(dir,"install-success.xml");if(File.Exists(success))File.Delete(success);
    new XElement("Pending",new XAttribute("Home",home),new XAttribute("Cube",cube),new XAttribute("Isolated",isolated),new XAttribute("PackDirectory",packDir),new XAttribute("NewlyIntroduced",newly)).Save(pending);
    PackService.Install(cube,home,isolated,dir,newly,report);
@@ -104,7 +115,7 @@ namespace RcsSuite {
    Controls.Add(new Label{Text="本机 STM32CubeMX 安装位置",Location=new Point(27,120),AutoSize=true});cube.SetBounds(27,149,670,31);cube.DropDownStyle=ComboBoxStyle.DropDown;foreach(string c in CubeLocator.Find())cube.Items.Add(c);cube.Text=cubePath??(cube.Items.Count>0?Convert.ToString(cube.Items[0]):"");Controls.Add(cube);
    var browse=new Button{Text="选择程序…",Location=new Point(711,147),Size=new Size(111,34)};browse.Click+=(s,e)=>{using(var f=new OpenFileDialog{Title="选择本机 STM32CubeMX.exe（不是 .pack）",Filter="STM32CubeMX|STM32CubeMX.exe"})if(f.ShowDialog(this)==DialogResult.OK)cube.Text=Path.GetDirectoryName(f.FileName);};Controls.Add(browse);
    Controls.Add(new Label{Text="本套工具的保存目录",Location=new Point(27,202),AutoSize=true});dest.SetBounds(27,231,670,30);dest.Text=dir;Controls.Add(dest);var folder=new Button{Text="浏览…",Location=new Point(711,229),Size=new Size(111,34)};folder.Click+=(s,e)=>{using(var f=new FolderBrowserDialog{SelectedPath=dest.Text})if(f.ShowDialog(this)==DialogResult.OK)dest.Text=f.SelectedPath;};Controls.Add(folder);
-   Controls.Add(new Label{Text="默认按当前用户安装，无需管理员；安装前检查目录写权限。可点击浏览更改保存目录。\r\n请先保存关闭CubeMX。导入只读取CubeMX程序目录；所有工具与.pack均已内嵌。",Location=new Point(27,282),Size=new Size(790,64)});
+   Controls.Add(new Label{Text="支持在同版本原目录覆盖修复，旧文件会备份。也可选择空目录全新安装。\r\n请先保存并关闭 CubeMX、地图编辑器及关联工具。",Location=new Point(27,282),Size=new Size(790,64)});
    install=new Button{Text="安装 / 修复",Location=new Point(27,363),Size=new Size(158,41),BackColor=Color.FromArgb(222,239,251)};install.Click+=(s,e)=>Work(false);Controls.Add(install);
    launch=new Button{Text="启动地图编辑器",Location=new Point(198,363),Size=new Size(162,41)};launch.Click+=(s,e)=>Open("foxmolika_MapEditor.exe");Controls.Add(launch);
    guide=new Button{Text="使用说明",Location=new Point(373,363),Size=new Size(130,41)};guide.Click+=(s,e)=>Open("使用说明.html");Controls.Add(guide);
