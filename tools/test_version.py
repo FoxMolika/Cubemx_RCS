@@ -80,13 +80,13 @@ def alternate_version(area):
     spec = importlib.util.spec_from_file_location("isolated_build_version", file)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    expected = {"Version": "9.8.7", "DisplayVersion": "9.8.7.beta", "AssemblyVersion": "9.8.7.1",
-                "ToolDirectory": "foxmolika_Tools_987_beta", "ToolCode": "987"}
+    expected = {"Version": "9.8.7", "DisplayVersion": "9.8.7", "AssemblyVersion": "9.8.7.1",
+                "ToolDirectory": "foxmolika_Tools_987", "ToolCode": "987"}
     generated = module.sync_csharp_version()
     assert generated.is_relative_to(isolated)
     assert constants(generated) == expected
     assert module.PACK_NAME == "RCS.foxmolika.9.8.7.pack"
-    assert module.SETUP_NAME == "foxmolika_CubeMX_Setup_9.8.7.beta_win-x64.exe"
+    assert module.SETUP_NAME == "foxmolika_CubeMX_Setup_9.8.7_win-x64.exe"
     metadata_versions(build_pack.metadata(version=module.VERSION), module.VERSION)
     assert sha(source) == source_digest
     return expected

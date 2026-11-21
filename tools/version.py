@@ -1,10 +1,10 @@
 """当前构建版本的唯一来源；历史夹具与迁移白名单保留各自发布版本。"""
 VERSION = "0.8.4"
 VERSION_CODE = "".join(VERSION.split("."))
-DISPLAY_VERSION = VERSION + ".beta"
+DISPLAY_VERSION = VERSION
 ASSEMBLY_VERSION = VERSION + ".1"
 RELEASE_DATE = "2026-11-21"
-TOOL_DIRECTORY = "foxmolika_Tools_" + VERSION_CODE + "_beta"
+TOOL_DIRECTORY = "foxmolika_Tools_" + VERSION_CODE
 PACK_NAME = "RCS.foxmolika." + VERSION + ".pack"
 SETUP_NAME = "foxmolika_CubeMX_Setup_" + DISPLAY_VERSION + "_win-x64.exe"
 EDITOR_SETUP_NAME = "foxmolika_MapEditor_Setup_" + DISPLAY_VERSION + "_win-x64.exe"

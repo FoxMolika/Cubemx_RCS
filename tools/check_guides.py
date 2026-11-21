@@ -22,8 +22,8 @@ def main():
    if link.startswith('#'):assert link[1:] in page.ids,(rel,link)
    elif not re.match(r'https?://',link):assert (file.parent/link.split('#')[0]).is_file(),(rel,link)
  assert (ROOT/paths[0]).read_bytes()==(ROOT/paths[1]).read_bytes()
- beta=ROOT/'docs/0.8.4.beta使用说明.html';beta_text=beta.read_text(encoding='utf-8')
- for phrase in ['0.8.4.beta','硬件管理','新建模板','App_Init','App_Task','应用与状态机','App_Init','App_Task','Machism_Task','19','21',
+ beta=ROOT/'docs/0.8.4使用说明.html';beta_text=beta.read_text(encoding='utf-8')
+ for phrase in ['0.8.4','硬件管理','新建模板','App_Init','App_Task','应用与状态机','App_Init','App_Task','Machism_Task','19','21',
                 'RCS_CAN_PORT_DEFINE_HAL_CALLBACK','独立观测设备','RX0','main.c','模板快照']:
   assert phrase in beta_text,('beta tutorial',phrase)
  assert 'script src=' not in beta_text and 'src="http' not in beta_text

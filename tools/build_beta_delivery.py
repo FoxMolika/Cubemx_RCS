@@ -42,8 +42,8 @@ def main():
     out=ROOT/"交付";out.mkdir(exist_ok=True)
     for p,name in [(editor,editor.name),(setup,setup.name),
                    (ROOT/"map_editor/dist"/EDITOR_SETUP_NAME,EDITOR_SETUP_NAME),
-                   (ROOT/"docs/0.8.4.beta使用说明.html","使用说明.html"),
-                   (ROOT/"docs/0.8.4.beta使用说明.md","使用说明.md")]:
+                   (ROOT/"docs/0.8.4使用说明.html","使用说明.html"),
+                   (ROOT/"docs/0.8.4使用说明.md","使用说明.md")]:
         shutil.copyfile(p,out/name)
         if p.suffix.lower()==".exe":medium(out/name)
     examples=out/"示例地图";examples.mkdir(exist_ok=True)
@@ -73,7 +73,7 @@ def main():
         data=read(name)
         assert data["passed"],name
         shutil.copyfile(ROOT/"build"/name,records/name)
-    (out/"验证摘要.md").write_text("""# 0.8.4.beta本轮交付验证
+    (out/"验证摘要.md").write_text("""# 0.8.4本轮交付验证
 
 - 完整host门禁通过；无硬件v3/v7/坡道地图与实际0.8.3.beta输出逐字节一致。
 - 实际GUI模板/实例/资源/快照/动作检查通过；8组实际生成驱动场景、11个App整链场景通过。
