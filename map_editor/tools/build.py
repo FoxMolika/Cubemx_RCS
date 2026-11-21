@@ -15,9 +15,9 @@ from sync_versions import main as sync_versions
 
 
 def editor_guide(dist):
-    # beta统一入口必须包含App/main/状态机说明，不能继续嵌入旧版教程。
-    beta = ROOT.parent / "docs" / (VERSION + "使用说明.html")
-    guide = (beta if beta.exists() else ROOT / "docs/使用说明.html").read_text(encoding="utf-8")
+    # 唯一的用户入口是用户手册；更新说明写在手册的“历代更新”里。
+    manual = ROOT.parent / "docs/用户手册.html"
+    guide = (manual if manual.exists() else ROOT / "docs/使用说明.html").read_text(encoding="utf-8")
     image = ROOT / "docs/editor_ui.png"
     if image.is_file():
         preview = (
@@ -47,6 +47,7 @@ def main():
                      "rcs_app_config.h", "rcs_feedback_config.h", "rcs_observer_config.h")
     })
     resources["assets/使用说明.html"] = guide
+    resources["assets/legacy-post-hashes.json"] = ROOT.parent / "tools/legacy_post_hashes.json"
     # 子目录也按相对路径嵌入，模板代码可按职责分组而不丢失资源。
     resources.update({
         "assets/templates/" + path.relative_to(ROOT / "templates").as_posix(): path

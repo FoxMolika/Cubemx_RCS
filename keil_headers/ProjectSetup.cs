@@ -12,51 +12,24 @@ using System.Security.Cryptography;
 [assembly:AssemblyFileVersion(BuildVersion.AssemblyVersion)]
 #endif
 static class ProjectSetup {
- const string Legacy036Hash="f4302cc3cf520485f92224c5eda1771f3becf026efbdd50a71f1bee474ba1a49";
- const string Legacy037Hash="7b345d87e5562d929ae041db4637fdf4953e79ce546d39ea74f292e39809c484";
- const string Legacy040Hash="5df96c080770823ec1ff239c103c5ca8a664b6a0d6f03a354e61a021210d9f00";
- const string Legacy041Hash="566316ea193a0a60d42005e0f3bcbe8e3b94451b3a50efc2f14361b154e61a26";
- const string Legacy050Hash="ce30c04d37d31e73889f847b13669daf5f3075cb56e42136ab52e0b9100b4fe8";
- const string Legacy051Hash="ab40139a3ed303df857c81f32cb238378a0bef1da2b17d15606fd922c1694500";
- const string Legacy070Hash="0bb3f9aca7ec5ff5ac30eef405d603ca1152b603b1e1d43b5efad9bf1f24c52a";
- const string Legacy061Hash="622ed06c1043e65d31296d90c785bfc7f54ff5b16a9853c9270bda9068a72329";
- const string Legacy060Hash="381e33abc5d9a7e9ae563c9bd77d8692967d6febbfb351f827582514ae9a843e";
- const string Legacy052Hash="e651a7806beb2f8d44ce098dbf1befe0bfcb7bcedac23874b0ca35999e51eaf7";
- // 仅允许已发布0.8.0及本仓库已验收补丁的确切助手，旧目录不覆盖。
- static readonly string[] Legacy080Hashes={"a4ff97d599ff032e83ef19d14d50917d4844aee566ac9974596c548e766e1195","29954df7d9b5bcfb3a61c56287f7405b7c078de629e0626f6aa877560539c654"};
- const string Legacy081Hash="d79e631bcad450570792e191b02883c691dda6854f01f19b1423c6dbaf413e31";
- // 0.8.2正式发布附件的实际摘要。未知脚本不替换，避免覆盖用户分发器。
- const string Legacy082Hash="423301952b60be5dffead82f3f33dcbbb415ab41ca44940c0cda0d6bc1f04d0f";
- // 本机DeepSeek 0.8.3基线1126b6d的已核对助手，仅用于升级到独立beta目录。
- const string Legacy083Hash="550bbb4148c0de6310d754046deebb1d535c5d523f5b7bceac7a81e5bfb8ea97";
- const string Legacy083BetaHash="f994f682bd2bc512c75adb37c1011af71b65464074ef8d8613700d455ee9ab1c";
- // 从 v0.8.4 已公布 SHA-256 的编辑器安装包中提取。
- const string Legacy084Hash="2b588a5d7365781ab9f55ef7b712ae84c464aabadf035229d17f8bc8f71ce125";
- // 0.8.4.alpha 的套件分别内嵌于编辑器和工程关联助手中的生成后工具，摘要相同。
- const string Legacy084AlphaHash="c4a1b3dc5b1fc75a3992caec0e2aeb411b1c67bbd950fb895c2edb443c29a028";
+ // 生成式白名单：tools/legacy_post_hashes.json 在发布构建时嵌入。
+ // 只认官方助手的 SHA-256，不再按版本号逐个硬编码。
+ static readonly System.Collections.Generic.HashSet<string> LegacyHashes=LoadLegacyHashes();
+ static System.Collections.Generic.HashSet<string> LoadLegacyHashes(){
+  var set=new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+  try{
+   using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("assets/legacy-post-hashes.json")){
+    if(stream==null)return set;
+    using(var reader=new StreamReader(stream,Encoding.UTF8))
+     foreach(Match m in Regex.Matches(reader.ReadToEnd(),@"""sha256""\s*:\s*""([0-9a-fA-F]{64})"""))set.Add(m.Groups[1].Value.ToLowerInvariant());
+   }
+  }catch{}
+  return set;
+ }
  static bool LegacyHook(string root,string hook){
-  string normalized=hook.Replace('\\','/');
-  string expected=normalized.Equals("foxmolika_Tools_036/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy036Hash:
-   normalized.Equals("foxmolika_Tools_037/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy037Hash:
-   normalized.Equals("foxmolika_Tools_040/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy040Hash:
-   normalized.Equals("foxmolika_Tools_041/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy041Hash:
-   normalized.Equals("foxmolika_Tools_050/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy050Hash:
-   normalized.Equals("foxmolika_Tools_051/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy051Hash:
-   normalized.Equals("foxmolika_Tools_052/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy052Hash:
-   normalized.Equals("foxmolika_Tools_060/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy060Hash:
-   normalized.Equals("foxmolika_Tools_061/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy061Hash:
-   normalized.Equals("foxmolika_Tools_070/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy070Hash:
-   normalized.Equals("foxmolika_Tools_081/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy081Hash:
-   normalized.Equals("foxmolika_Tools_082/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy082Hash:
-   normalized.Equals("foxmolika_Tools_083/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy083Hash:
-   normalized.Equals("foxmolika_Tools_084/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy084Hash:
-   normalized.Equals("foxmolika_Tools_084_alpha/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy084AlphaHash:
-   normalized.Equals("foxmolika_Tools_083_beta/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy083BetaHash:null;
-  bool from080=normalized.Equals("foxmolika_Tools_080/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase);
-  if(expected==null&&!from080)return false;
   string file=ProjectBinding.Inside(root,hook);ProjectBinding.NoLink(Path.GetDirectoryName(file));ProjectBinding.NoLink(file);
   if(!File.Exists(file))return false;
-  using(var h=SHA256.Create())using(var stream=File.OpenRead(file)){string digest=BitConverter.ToString(h.ComputeHash(stream)).Replace("-","").ToLowerInvariant();return digest==expected||(from080&&Legacy080Hashes.Contains(digest));}
+  using(var h=SHA256.Create())using(var stream=File.OpenRead(file)){string digest=BitConverter.ToString(h.ComputeHash(stream)).Replace("-","").ToLowerInvariant();return LegacyHashes.Contains(digest);}
  }
  static readonly Encoding Utf8=new UTF8Encoding(false,true);
  static string Section(string s){var m=Regex.Match(s.Trim(),@"^\[([^\]]+)\]$");return m.Success?m.Groups[1].Value:null;}

@@ -28,7 +28,7 @@ def main():
     exe=ROOT/('dist/RCS_Chassis_CubeMX_Setup_'+VERSION+'_win-x64.exe')
     resources={
       'RcsPackManager.exe':b/'RcsPackManager.exe','payload-manifest.xml':b/'payload-manifest.xml',
-      pack.name:pack,'使用说明.html':ROOT/'docs/使用说明.html','LICENSE.txt':ROOT/'LICENSE.txt',
+      pack.name:pack,'使用说明.html':ROOT/'docs/用户手册.html','LICENSE.txt':ROOT/'LICENSE.txt',
       'validation/WorkspacePreferencesFactory.class':b/'java/WorkspacePreferencesFactory.class',
       'validation/WorkspacePreferencesFactory$MemoryPreferences.class':b/'java/WorkspacePreferencesFactory$MemoryPreferences.class'}
     args=[csc,'/nologo','/target:winexe','/platform:anycpu','/optimize+','/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.Core.dll','/out:'+str(exe)]

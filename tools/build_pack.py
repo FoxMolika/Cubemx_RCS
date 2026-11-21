@@ -80,7 +80,8 @@ def build():
     import re as _re
     proto=_re.sub(r'\[([^\]]+)\]\([^)]+\)',r'\1',(ROOT/'README.md').read_text(encoding='utf-8'))
     data['Documentation/Prototype.md']=proto.encode('utf-8')
-    data['Documentation/使用说明.html']=(ROOT/'docs/使用说明.html').read_bytes()
+    data['Documentation/使用说明.html']=(ROOT/'docs/用户手册.html').read_bytes()
+    data['Documentation/用户手册.md']=(ROOT/'docs/用户手册.md').read_bytes()
     data['Documentation/地图编辑器说明.html']=(ROOT/'docs/地图编辑器说明.html').read_bytes()
     for name,b in data.items():
         p=tree/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b)

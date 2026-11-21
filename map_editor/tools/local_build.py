@@ -18,9 +18,9 @@ out_dir = ROOT / "build" / ("local-" + VERSION)
 out_dir.mkdir(parents=True, exist_ok=True)
 exe = out_dir / "foxmolika_MapEditor.exe"
 
-guide = ROOT / "docs" / "使用说明.html"
+guide = ROOT.parent / "docs" / "用户手册.html"
 if not guide.is_file():
-    raise SystemExit("缺少 docs/使用说明.html")
+    raise SystemExit("缺少 docs/用户手册.html")
 
 resources = {"payload/foxmolika_PostGenerate.exe": post_helper()}
 resources.update({
@@ -31,6 +31,7 @@ resources.update({
                  "rcs_app_config.h", "rcs_feedback_config.h", "rcs_observer_config.h")
 })
 resources["assets/使用说明.html"] = guide
+resources["assets/legacy-post-hashes.json"] = ROOT.parent / "tools/legacy_post_hashes.json"
 resources.update({
     "assets/templates/" + path.relative_to(ROOT / "templates").as_posix(): path
     for path in sorted((ROOT / "templates").rglob("*.tpl"))

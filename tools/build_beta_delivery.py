@@ -42,8 +42,8 @@ def main():
     out=ROOT/"交付";out.mkdir(exist_ok=True)
     for p,name in [(editor,editor.name),(setup,setup.name),
                    (ROOT/"map_editor/dist"/EDITOR_SETUP_NAME,EDITOR_SETUP_NAME),
-                   (ROOT/"docs"/(VERSION+"使用说明.html"),"使用说明.html"),
-                   (ROOT/"docs"/(VERSION+"使用说明.md"),"使用说明.md")]:
+                   (ROOT/"docs/用户手册.html","使用说明.html"),
+                   (ROOT/"docs/用户手册.md","使用说明.md")]:
         shutil.copyfile(p,out/name)
         if p.suffix.lower()==".exe":medium(out/name)
     examples=out/"示例地图";examples.mkdir(exist_ok=True)

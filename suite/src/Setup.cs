@@ -118,7 +118,7 @@ namespace RcsSuite {
    Controls.Add(new Label{Text="支持在同版本原目录覆盖修复，旧文件会备份。也可选择空目录全新安装。\r\n请先保存并关闭 CubeMX、地图编辑器及关联工具。",Location=new Point(27,282),Size=new Size(790,64)});
    install=new Button{Text="安装 / 修复",Location=new Point(27,363),Size=new Size(158,41),BackColor=Color.FromArgb(222,239,251)};install.Click+=(s,e)=>Work(false);Controls.Add(install);
    launch=new Button{Text="启动地图编辑器",Location=new Point(198,363),Size=new Size(162,41)};launch.Click+=(s,e)=>Open("foxmolika_MapEditor.exe");Controls.Add(launch);
-   guide=new Button{Text="使用说明",Location=new Point(373,363),Size=new Size(130,41)};guide.Click+=(s,e)=>Open("使用说明.html");Controls.Add(guide);
+   guide=new Button{Text="用户手册",Location=new Point(373,363),Size=new Size(130,41)};guide.Click+=(s,e)=>Open("使用说明.html");Controls.Add(guide);
    remove=new Button{Text="卸载此套工具",Location=new Point(516,363),Size=new Size(155,41)};remove.Click+=(s,e)=>Work(true);Controls.Add(remove);
    projectSetup=new Button{Text="关联工程…",Location=new Point(684,363),Size=new Size(138,41)};projectSetup.Click+=(s,e)=>Open("foxmolika_ProjectSetup.exe");Controls.Add(projectSetup);
    log.SetBounds(27,427,795,192);log.Multiline=true;log.ReadOnly=true;log.ScrollBars=ScrollBars.Vertical;log.BackColor=Color.FromArgb(244,248,252);log.Text="选择并启用 RCS.foxmolika "+PackService.Version+" 后保存关闭.ioc；安装器或地图编辑器均可“关联工程…”。\r\n地图选择“导出到关联工程”，自动加入应用与路径19/21个文件和包含目录。\r\n后续Generate Code自动补底盘4H和已导出的路径登记；CAN引脚/位时序/RX0中断由CubeMX配置；main按beta教程调用App_Init/App_Task。";Controls.Add(log);

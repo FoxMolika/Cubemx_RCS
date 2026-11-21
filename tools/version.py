@@ -1,5 +1,5 @@
 """当前构建版本的唯一来源；历史夹具与迁移白名单保留各自发布版本。"""
-VERSION = "0.8.6"
+VERSION = "0.8.7"
 VERSION_CODE = "".join(VERSION.split("."))
 DISPLAY_VERSION = VERSION
 ASSEMBLY_VERSION = VERSION + ".1"

@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "generated": "2026-11-21",
+  "entries": [
+    {
+      "path": "foxmolika_Tools_036/foxmolika_PostGenerate.exe",
+      "sha256": "f4302cc3cf520485f92224c5eda1771f3becf026efbdd50a71f1bee474ba1a49"
+    },
+    {
+      "path": "foxmolika_Tools_037/foxmolika_PostGenerate.exe",
+      "sha256": "7b345d87e5562d929ae041db4637fdf4953e79ce546d39ea74f292e39809c484"
+    },
+    {
+      "path": "foxmolika_Tools_040/foxmolika_PostGenerate.exe",
+      "sha256": "5df96c080770823ec1ff239c103c5ca8a664b6a0d6f03a354e61a021210d9f00"
+    },
+    {
+      "path": "foxmolika_Tools_041/foxmolika_PostGenerate.exe",
+      "sha256": "566316ea193a0a60d42005e0f3bcbe8e3b94451b3a50efc2f14361b154e61a26"
+    },
+    {
+      "path": "foxmolika_Tools_050/foxmolika_PostGenerate.exe",
+      "sha256": "ce30c04d37d31e73889f847b13669daf5f3075cb56e42136ab52e0b9100b4fe8"
+    },
+    {
+      "path": "foxmolika_Tools_051/foxmolika_PostGenerate.exe",
+      "sha256": "ab40139a3ed303df857c81f32cb238378a0bef1da2b17d15606fd922c1694500"
+    },
+    {
+      "path": "foxmolika_Tools_052/foxmolika_PostGenerate.exe",
+      "sha256": "e651a7806beb2f8d44ce098dbf1befe0bfcb7bcedac23874b0ca35999e51eaf7"
+    },
+    {
+      "path": "foxmolika_Tools_060/foxmolika_PostGenerate.exe",
+      "sha256": "381e33abc5d9a7e9ae563c9bd77d8692967d6febbfb351f827582514ae9a843e"
+    },
+    {
+      "path": "foxmolika_Tools_061/foxmolika_PostGenerate.exe",
+      "sha256": "622ed06c1043e65d31296d90c785bfc7f54ff5b16a9853c9270bda9068a72329"
+    },
+    {
+      "path": "foxmolika_Tools_070/foxmolika_PostGenerate.exe",
+      "sha256": "0bb3f9aca7ec5ff5ac30eef405d603ca1152b603b1e1d43b5efad9bf1f24c52a"
+    },
+    {
+      "path": "foxmolika_Tools_080/foxmolika_PostGenerate.exe",
+      "sha256": "29954df7d9b5bcfb3a61c56287f7405b7c078de629e0626f6aa877560539c654"
+    },
+    {
+      "path": "foxmolika_Tools_080/foxmolika_PostGenerate.exe",
+      "sha256": "a4ff97d599ff032e83ef19d14d50917d4844aee566ac9974596c548e766e1195"
+    },
+    {
+      "path": "foxmolika_Tools_081/foxmolika_PostGenerate.exe",
+      "sha256": "d79e631bcad450570792e191b02883c691dda6854f01f19b1423c6dbaf413e31"
+    },
+    {
+      "path": "foxmolika_Tools_082/foxmolika_PostGenerate.exe",
+      "sha256": "423301952b60be5dffead82f3f33dcbbb415ab41ca44940c0cda0d6bc1f04d0f"
+    },
+    {
+      "path": "foxmolika_Tools_083/foxmolika_PostGenerate.exe",
+      "sha256": "550bbb4148c0de6310d754046deebb1d535c5d523f5b7bceac7a81e5bfb8ea97"
+    },
+    {
+      "path": "foxmolika_Tools_083_beta/foxmolika_PostGenerate.exe",
+      "sha256": "f994f682bd2bc512c75adb37c1011af71b65464074ef8d8613700d455ee9ab1c"
+    },
+    {
+      "path": "foxmolika_Tools_084/foxmolika_PostGenerate.exe",
+      "sha256": "2b588a5d7365781ab9f55ef7b712ae84c464aabadf035229d17f8bc8f71ce125"
+    },
+    {
+      "path": "foxmolika_Tools_084_alpha/foxmolika_PostGenerate.exe",
+      "sha256": "c4a1b3dc5b1fc75a3992caec0e2aeb411b1c67bbd950fb895c2edb443c29a028"
+    },
+    {
+      "path": "foxmolika_Tools_085/foxmolika_PostGenerate.exe",
+      "sha256": "51d8b80c59d4290f882b58c85f219a6247326473c7be045440320639c1e9bc08"
+    },
+    {
+      "path": "foxmolika_Tools_086/foxmolika_PostGenerate.exe",
+      "sha256": "c8c0451b699d77495cb5ecfe482d69f3a5b1d09f4388da5feae842cd5316873f"
+    }
+  ]
+}

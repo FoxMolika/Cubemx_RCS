@@ -96,7 +96,7 @@ class Wizard:Form {
         Controls.Add(new Label{Text="请先保存并关闭 CubeMX。安装器会调用 CubeMX 导入，并核验实际注册结果。",AutoSize=true,Location=new Point(26,246)});
         install=new Button{Text="安装到 CubeMX",Location=new Point(26,283),Size=new Size(168,39),BackColor=Color.FromArgb(225,238,255)};install.Click+=(s,e)=>Work("install");Controls.Add(install);
         remove=new Button{Text="卸载此扩展",Location=new Point(207,283),Size=new Size(145,39)};remove.Click+=(s,e)=>Work("uninstall");Controls.Add(remove);
-        guide=new Button{Text="查看使用说明",Location=new Point(365,283),Size=new Size(145,39)};guide.Click+=(s,e)=>OpenGuide();Controls.Add(guide);
+        guide=new Button{Text="查看用户手册",Location=new Point(365,283),Size=new Size(145,39)};guide.Click+=(s,e)=>OpenGuide();Controls.Add(guide);
         log=new TextBox{Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Location=new Point(26,340),Size=new Size(726,180),BackColor=Color.FromArgb(245,248,252),Text="安装后：Software Packs → Select Components → RCS.foxmolika\r\n选择组件后，还要在 Chassis 页面启用 Robotics foxmolika 模式。"};Controls.Add(log);
         FormClosing+=(s,e)=>{if(!install.Enabled){e.Cancel=true;MessageBox.Show(this,"CubeMX 操作正在进行，请等待本次核验完成。");}};
     }

@@ -1,7 +1,7 @@
 from version import VERSION, VERSION_CODE, TOOL_DIRECTORY
 from cubemx_runner import cube_directory
 from pathlib import Path
-import subprocess,sys,uuid,json,hashlib
+import base64,subprocess,sys,uuid,json,hashlib
 R=Path(__file__).resolve().parents[1]
 def main():
  sys.stdout.reconfigure(encoding='utf-8');area=R/'build'/('project_setup_'+uuid.uuid4().hex[:8]);area.mkdir();exe=R/'suite/build/foxmolika_ProjectSetup.exe';checks=[]
@@ -21,6 +21,12 @@ def main():
  old=b'[ProjectFiles]\nHeaderPath=../User/Inc\n[Groups]\nUserFiles=../User/a.c\n[Others]\nHALModule=UART;SPI\nDefine=USER_MARKER\n';d,p=fixture('foreign_settings',old);invoke(p);parse(d);s=(d/'.extSettings').read_bytes();assert b'HALModule=UART;SPI;CAN' in s and b'UserFiles=../User/a.c' in s and b'Define=USER_MARKER' in s and b'HeaderPath=../User/Inc' in s;assert Path(str(d/'.extSettings')+('.rcs-before-'+VERSION_CODE)).read_bytes()==old;checks.append('foreign HAL modules, groups, definitions and includes retained')
  d,p=fixture('empty_CAN',b'[Others]\nHALModule=\n');invoke(p);parse(d);assert b'HALModule=CAN' in (d/'.extSettings').read_bytes();checks.append('empty HAL key handled; required sections created')
  d,p=fixture('foreign_hook',replace=seed.replace(b'ProjectManager.UAScriptAfterPath=',b'ProjectManager.UAScriptAfterPath=UserTools/custom.exe'));original=p.read_bytes();invoke(p,2);assert p.read_bytes()==original and not (d/'.extSettings').exists() and not (d/TOOL_DIRECTORY).exists();checks.append('foreign generation hook refused without modifying project')
+ for version in ('085','086'):
+  hook_path='foxmolika_Tools_'+version+'/foxmolika_PostGenerate.exe'
+  helper=base64.b64decode((R/'tests/fixtures'/('legacy_post_'+version+'.base64.txt')).read_text(encoding='ascii'))
+  replacement=seed.replace(b'ProjectManager.UAScriptAfterPath=',b'ProjectManager.UAScriptAfterPath='+hook_path.encode())
+  d,p=fixture('legacy_'+version,replace=replacement);(d/('foxmolika_Tools_'+version)).mkdir();(d/hook_path).write_bytes(helper);invoke(p);assert (d/(TOOL_DIRECTORY+'/foxmolika_PostGenerate.exe')).is_file();assert ('ProjectManager.UAScriptAfterPath='+TOOL_DIRECTORY).encode() in p.read_bytes();checks.append('official 0.8.'+version[-1]+' helper upgrades through generated SHA table')
+  tampered=bytearray(helper);tampered[-1]^=0xFF;d,p=fixture('legacy_'+version+'_tampered',replace=replacement);(d/('foxmolika_Tools_'+version)).mkdir();(d/hook_path).write_bytes(bytes(tampered));invoke(p,2);assert p.read_bytes()==replacement and not (d/TOOL_DIRECTORY).exists();checks.append('modified 0.8.'+version[-1]+' helper refused before mutation')
  d,p=fixture('duplicate_section',b'[Others]\nHALModule=UART\n[Others]\nHALModule=SPI\n');old=(d/'.extSettings').read_bytes();invoke(p,2);assert p.read_bytes()==seed and (d/'.extSettings').read_bytes()==old;checks.append('ambiguous INI refused without overwriting')
  d,p=fixture('foreign_payload');(d/TOOL_DIRECTORY).mkdir();foreign=d/(TOOL_DIRECTORY+'/foxmolika_PostGenerate.exe');foreign.write_bytes(b'user data');invoke(p,2);assert foreign.read_bytes()==b'user data' and p.read_bytes()==seed;checks.append('modified project helper protected')
  for label,replacement in [('wrong_mcu',seed.replace(b'STM32F407',b'STM32F103')),('wrong_IDE',seed.replace(b'MDK-ARM',b'EWARM')),('newer_pack',seed.replace(b'0.3.3',b'99.0.0'))]:

@@ -22,13 +22,14 @@ def main():
    if link.startswith('#'):assert link[1:] in page.ids,(rel,link)
    elif not re.match(r'https?://',link):assert (file.parent/link.split('#')[0]).is_file(),(rel,link)
  assert (ROOT/paths[0]).read_bytes()==(ROOT/paths[1]).read_bytes()
- beta=ROOT/'docs'/(VERSION+'使用说明.html');beta_text=beta.read_text(encoding='utf-8')
- for phrase in [VERSION,'硬件管理','新建模板','App_Init','App_Task','应用与状态机','Machism_Task','19','21',
-                'RCS_CAN_PORT_DEFINE_HAL_CALLBACK','独立观测设备','RX0','main.c','模板快照']:
-  assert phrase in beta_text,('beta tutorial',phrase)
- assert 'script src=' not in beta_text and 'src="http' not in beta_text
+ manual=ROOT/'docs/用户手册.html'
+ manual_text=manual.read_text(encoding='utf-8')
+ for phrase in ['foxmolika 用户手册','0.8.7','硬件管理','App_Init','App_Task','导出C/H',
+                '工程关联','XS_spin8','team_spin8_gyro','历代更新','生成后助手']:
+  assert phrase in manual_text,('user manual',phrase)
+ assert 'data:image/png;base64,' in manual_text and 'src="http' not in manual_text
  result={'passed':True,'tutorials':{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in paths},'all_relative_links_resolve':True}
  (ROOT/'build/guide_validation.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
  print('PASS 4 tutorials: install/open/associate, phases/protractor/crash ZIP, export/prebuild and local links')
- print('PASS beta self-contained tutorial: application/state machine, fixed main, CAN prerequisites, migration and delivery')
+ print('PASS user manual: install/associate, hardware, export, diagnostics and history')
 if __name__=='__main__':main()
