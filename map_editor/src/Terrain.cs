@@ -57,7 +57,7 @@ namespace RcsMap {
   public static void RequireFlat(MapDocument d){if(HasRelief(d))throw new InvalidOperationException("当前动态运动预览仅支持平地。坡道可使用俯视、侧视和三维几何预览，并按纵向直坡约束导出专用C/H执行代码；规划模型不代表实车验证。");}
   // A draft may have disconnected routes or unfinished assignments. It still
   // needs bounded finite drawing data and valid base settings before opening.
-  public static bool CanOpenDraft(MapDocument d){if(d.Terrain==null)return false;try{d.StructuralCheck();var settings=d.Clone();settings.Application=null;settings.Version=3;settings.Terrain=null;settings.HardwareSources=null;settings.TerrainDrive=null;settings.Points.Clear();settings.Obstacles.Clear();if(settings.Validate(false).Count>0)return false;
+  public static bool CanOpenDraft(MapDocument d){if(d.Terrain==null)return false;try{d.StructuralCheck();var settings=d.Clone();settings.Application=null;settings.Version=3;settings.Terrain=null;settings.HardwareSources=null;settings.TerrainDrive=null;settings.Points.Clear();settings.Obstacles.Clear();settings.Devices=null;if(settings.Validate(false).Count>0)return false;
     Func<double,bool> number=v=>MapDocument.Finite(v)&&Math.Abs(v)<=1000000;
     return d.Points.All(p=>new[]{p.X,p.Y,p.Yaw,p.Speed,p.Dwell}.All(number))&&d.Obstacles.All(o=>new[]{o.X,o.Y,o.Width,o.Height}.All(number)&&o.Width>0&&o.Height>0)&&d.Terrain.Surfaces.All(s=>new[]{s.X,s.Y,s.Width,s.Depth,s.Z0,s.Z1,s.Thickness,s.SpeedLimit}.All(number)&&s.Width>0&&s.Depth>0);
    }catch{return false;}}
