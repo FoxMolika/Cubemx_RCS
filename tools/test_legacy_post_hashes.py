@@ -1,5 +1,6 @@
 """Regression: generated legacy helper whitelist must cover the previous release."""
 from pathlib import Path
+import base64
 import hashlib
 import json
 import re
@@ -26,7 +27,13 @@ def main():
     previous = "{:03d}".format(int(VERSION_CODE) - 1)
     previous_path = "foxmolika_Tools_" + previous + "/foxmolika_PostGenerate.exe"
     assert previous_path in paths, "missing previous release helper: " + previous_path
-    assert "foxmolika_Tools_085/foxmolika_PostGenerate.exe" in paths, "missing 0.8.5 helper"
+    entries_by_digest = {(entry["path"], entry["sha256"]) for entry in entries}
+    for variant in ("085", "085_repair", "086", "087"):
+        version = variant.split("_", 1)[0]
+        path = f"foxmolika_Tools_{version}/foxmolika_PostGenerate.exe"
+        fixture = ROOT / "tests/fixtures" / f"legacy_post_{variant}.base64.txt"
+        digest = hashlib.sha256(base64.b64decode(fixture.read_bytes())).hexdigest()
+        assert (path, digest) in entries_by_digest, f"missing {variant} helper digest: {digest}"
     report = {
         "passed": True,
         "version": VERSION,

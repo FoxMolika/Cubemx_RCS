@@ -24,7 +24,7 @@ def main():
  assert (ROOT/paths[0]).read_bytes()==(ROOT/paths[1]).read_bytes()
  manual=ROOT/'docs/用户手册.html'
  manual_text=manual.read_text(encoding='utf-8')
- for phrase in ['foxmolika 用户手册','0.8.7','硬件管理','App_Init','App_Task','导出C/H',
+ for phrase in ['foxmolika 用户手册',VERSION,'硬件管理','App_Init','App_Task','导出C/H',
                 '工程关联','XS_spin8','team_spin8_gyro','历代更新','生成后助手']:
   assert phrase in manual_text,('user manual',phrase)
  assert 'data:image/png;base64,' in manual_text and 'src="http' not in manual_text

@@ -12,6 +12,11 @@ internal static class HardwareBinding {
     internal const string Relative = "Application/foxmolikaHardware";
     internal const string ManifestName = "hardware.xml";
     internal const string PendingName = ".foxmolika-hardware-pending.xml";
+    internal const string TimerBridgeDefine = "#define RCS_HW_CUBEMX_TIMER_BRIDGE 1";
+    internal const string TimerBridgeBlock = "  /* foxmolika: timer dispatch begin */\n"
+        + "  extern void rcs_hw_on_timer(TIM_HandleTypeDef *timer);\n"
+        + "  rcs_hw_on_timer(htim);\n"
+        + "  /* foxmolika: timer dispatch end */";
     internal const int MaxFiles = 2048, MaxDevices = 64;
     internal const int MaxFileBytes = 2*1024*1024, MaxPayloadBytes = 32*1024*1024;
     const int MaxManifestBytes = 1024*1024;
@@ -56,7 +61,17 @@ internal static class HardwareBinding {
     internal static Manifest Load(string root,bool allowMissing) {
         string directory=ProjectBinding.Inside(root,Relative);
         CheckPending(Path.GetDirectoryName(directory));
-        return LoadDirectory(directory,allowMissing,true);
+        var manifest=LoadDirectory(directory,allowMissing,true);
+        if(manifest!=null&&manifest.Files.ContainsKey("rcs_hw_config.h")&&
+            File.ReadLines(Inside(directory,"rcs_hw_config.h")).Contains(TimerBridgeDefine)) {
+            string main=Inside(root,"Core/Src/main.c");
+            if(!File.Exists(main)||new FileInfo(main).Length>MaxFileBytes||
+                !Regex.IsMatch(File.ReadAllText(main).Replace("\r\n","\n"),
+                    @"/\* USER CODE BEGIN Callback 1 \*/(?:(?!/\* USER CODE END Callback 1 \*/)[\s\S])*?\n"
+                    +Regex.Escape(TimerBridgeBlock)+@"\n[ \t]*/\* USER CODE END Callback 1 \*/"))
+                throw new IOException("CubeMX 定时器转发块缺失或已改动。请重新导出路线后再生成或编译："+main);
+        }
+        return manifest;
     }
     internal static void CheckPending(string application) {
         string pending=Path.Combine(application,PendingName);ProjectBinding.NoLink(pending);

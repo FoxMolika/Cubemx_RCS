@@ -21,10 +21,10 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *can)
     __set_PRIMASK(saved);
 }
 #endif
-#if defined(HAL_UART_MODULE_ENABLED) && RCS_HW_DEFINE_UART_CALLBACK
+#if defined(HAL_UART_MODULE_ENABLED) && RCS_HW_NEEDS_UART_CALLBACK && RCS_HW_DEFINE_UART_CALLBACK && !defined(RCS_HW_EXTERNAL_UART_BRIDGE)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *uart) { rcs_hw_uart_irq(uart); }
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *uart) { rcs_hw_uart_error(uart); }
 #endif
-#if defined(HAL_TIM_MODULE_ENABLED) && RCS_HW_DEFINE_TIMER_CALLBACK
+#if defined(HAL_TIM_MODULE_ENABLED) && RCS_HW_NEEDS_TIMER_CALLBACK && RCS_HW_DEFINE_TIMER_CALLBACK && !defined(RCS_HW_CUBEMX_TIMER_BRIDGE)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *timer) { rcs_hw_on_timer(timer); }
 #endif

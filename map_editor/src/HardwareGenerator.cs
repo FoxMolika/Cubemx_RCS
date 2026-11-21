@@ -27,6 +27,9 @@ namespace RcsMap {
    var devices=HardwareRules.Devices(doc).Where(d=>d.Enabled).ToList();
    var externs=new SortedSet<string>();var rows=new StringBuilder();var operationRows=new StringBuilder();int operationCount=0;
    var custom=new StringBuilder();var obsDecl=new StringBuilder();var obsFns=new StringBuilder();
+   var uartComplete=new StringBuilder();var uartError=new StringBuilder();
+   var uartHandlers=new SortedSet<string>(StringComparer.Ordinal);
+   bool needsCustomUart=false,needsTimer=false;
    string[] slots={"INIT","SERVICE","STOP","COMMAND","DONE","CAN","UART","TIMER","OBSERVATION"};
    var cases=slots.ToDictionary(s=>s,s=>new StringBuilder());int cylinder=0,gyro=0,pwm=0,spin8=0;
    for(int i=0;i<devices.Count;i++){
@@ -48,6 +51,17 @@ namespace RcsMap {
      port="&"+timer;externs.Add("extern TIM_HandleTypeDef "+timer+";");u[0]=4u*(U(d,"Channel")-1u);u[1]=U(d,"PeriodUs");u[2]=U(d,"CounterHz");u[3]=U(d,"SettleMs");f4[0]=N(d,"PulseMinUs");f4[1]=N(d,"PulseMaxUs");f4[2]=N(d,"AngleMin");f4[3]=N(d,"AngleMax");
      if(f4[2]>=f4[3]||f4[0]==f4[1]||Math.Max(f4[0],f4[1])>=u[1])throw new Exception(d.Name+"舵机安全角/脉宽/周期组合无效。");
     }else if(t.DriverKind=="custom"){
+     needsCustomUart|=HardwareCallbackPolicy.HasCode(t.Hooks.OnUartRx);
+     needsTimer|=HardwareCallbackPolicy.HasCode(t.Hooks.OnTimer);
+     if(!String.IsNullOrEmpty(t.UartRxCompleteHandler)) {
+      string uart=HardwareRules.ExpandResource(t.Resources.Single(r=>r.Kind=="uart").Value,d);
+      if(!Regex.IsMatch(uart,@"\Ahuart[1-6]\z"))throw new Exception(d.Name+"的 UART 分发需绑定 F407 的 huart1～huart6。");
+      externs.Add("extern UART_HandleTypeDef "+uart+";");
+      uartHandlers.Add(t.UartRxCompleteHandler);
+      uartHandlers.Add(t.UartErrorHandler);
+      uartComplete.Append("    if (uart == &"+uart+") { "+t.UartRxCompleteHandler+"(uart); return; }\n");
+      uartError.Append("    if (uart == &"+uart+") { "+t.UartErrorHandler+"(uart); return; }\n");
+     }
      string prefix="hw_"+d.Id;
      bool cHeaders=t.Files.Any(x=>x.Path.EndsWith(".c",StringComparison.OrdinalIgnoreCase))&&!t.Files.Any(x=>x.Path.EndsWith(".cpp",StringComparison.OrdinalIgnoreCase)||x.Path.EndsWith(".hpp",StringComparison.OrdinalIgnoreCase));
      custom.Append(cHeaders?"extern \"C\" {\n":"").Append(Expand(t.Includes,d,i)).Append("\n").Append(cHeaders?"}\n":"");
@@ -81,13 +95,19 @@ namespace RcsMap {
    var values=new Dictionary<string,string>{{"EXTERNS",String.Join("\n",externs.ToArray())},{"CUSTOM_CODE",custom.ToString()},{"DEVICE_ROWS",rows.ToString()},{"OBSERVATION_DECLARATIONS",obsDecl.ToString()},{"OBSERVATION_FUNCTIONS",obsFns.ToString()}};
    foreach(var slot in slots)values["CUSTOM_"+slot+"_CASES"]=cases[slot].ToString();
    values["OPERATION_ROWS"]=operationRows.ToString();
+   values["UART_HANDLER_DECLARATIONS"]=String.Join("\n",uartHandlers.Select(name=>"extern \"C\" void "+name+"(UART_HandleTypeDef *uart);"));
+   values["UART_COMPLETE_HANDLERS"]=uartComplete.ToString();
+   values["UART_ERROR_HANDLERS"]=uartError.ToString();
    foreach(string name in new[]{"rcs_hw.cpp","rcs_hw.h","rcs_hw_callbacks.c"})Add(result,name,Regex.Replace(Resource(name+".tpl"),@"@([A-Z_]+)@",m=>values[m.Groups[1].Value]));
    string config="/** @file rcs_hw_config.h\n * @brief 从硬件实例生成；修改参数请回到GUI，禁止把无反馈当真实到位。\n */\n#pragma once\n";
    config+="#define RCS_HW_DEVICE_COUNT "+devices.Count+"u\n#define RCS_HW_STORAGE "+Math.Max(devices.Count,1)+"u\n#define RCS_HW_TEAM_CYLINDERS "+cylinder+"\n#define RCS_HW_TEAM_GYROS "+gyro+"\n#define RCS_HW_SPIN8_GYROS "+spin8+"\n#define RCS_HW_PWM_DEVICES "+pwm+"\n";
    config+="#define RCS_HW_OP_COUNT "+operationCount+"u\n#define RCS_HW_OP_STORAGE "+Math.Max(operationCount,1)+"u\n";
+   bool needsUart=gyro>0||spin8>0||needsCustomUart||uartHandlers.Count>0;
+   config+=HardwareCallbackPolicy.UartNeeds+(needsUart?"1\n":"0\n");
+   config+=HardwareCallbackPolicy.TimerNeeds+(needsTimer?"1\n":"0\n");
    foreach(string bus in new[]{"CAN","UART","TIMER"})config+="#ifndef RCS_HW_DEFINE_"+bus+"_CALLBACK\n#define RCS_HW_DEFINE_"+bus+"_CALLBACK 1\n#endif\n";
-   if(gyro>0||spin8>0)config+="#if !defined(HAL_UART_MODULE_ENABLED)\n#error \"RCS hardware: enable the selected UART and RX interrupt in CubeMX\"\n#endif\n";
-   if(pwm>0)config+="#if !defined(HAL_TIM_MODULE_ENABLED)\n#error \"RCS hardware: enable the selected PWM timer in CubeMX\"\n#endif\n";
+   if(needsUart)config+="#if !defined(HAL_UART_MODULE_ENABLED)\n#error \"RCS hardware: enable the selected UART and RX interrupt in CubeMX\"\n#endif\n";
+   if(pwm>0||needsTimer)config+="#if !defined(HAL_TIM_MODULE_ENABLED)\n#error \"RCS hardware: enable the selected timer in CubeMX\"\n#endif\n";
    Add(result,"rcs_hw_config.h",config);
    return result;
   }

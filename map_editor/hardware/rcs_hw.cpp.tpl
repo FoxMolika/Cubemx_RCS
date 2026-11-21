@@ -379,6 +379,7 @@ extern "C" void rcs_hw_on_can_rx(CAN_HandleTypeDef *can,const CAN_RxHeaderTypeDe
     try { @CUSTOM_CAN_CASES@ } catch(...) { latch(RCS_HW_EXCEPTION); }
 }
 #if defined(HAL_UART_MODULE_ENABLED)
+@UART_HANDLER_DECLARATIONS@
 extern "C" void rcs_hw_on_uart_rx(UART_HandleTypeDef *uart,const uint8_t *data,size_t len)
 {
     if(!hw_initialized || !uart) return;
@@ -390,6 +391,7 @@ extern "C" void rcs_hw_on_uart_rx(UART_HandleTypeDef *uart,const uint8_t *data,s
 }
 extern "C" void rcs_hw_uart_irq(UART_HandleTypeDef *uart)
 {
+@UART_COMPLETE_HANDLERS@
     for(size_t i=0;i<hw_uart_count;++i) if(hw_uarts[i].handle==uart) {
         hw_uart_port &port=hw_uarts[i];
         port.receiving=false;
@@ -402,6 +404,7 @@ extern "C" void rcs_hw_uart_irq(UART_HandleTypeDef *uart)
 }
 extern "C" void rcs_hw_uart_error(UART_HandleTypeDef *uart)
 {
+@UART_ERROR_HANDLERS@
     for(size_t i=0;i<hw_uart_count;++i) if(hw_uarts[i].handle==uart) { latch(RCS_HW_UART); return; }
 }
 #endif

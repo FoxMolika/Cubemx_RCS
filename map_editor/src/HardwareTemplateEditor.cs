@@ -49,6 +49,10 @@ namespace RcsMap {
    [DisplayName("类别 actuator/sensor/communication")]public string Category{get{return t.Category;}set{t.Category=value;}}
    [DisplayName("平台 F407_HAL/F407_STD")]public string Platform{get{return t.Platform;}set{t.Platform=value;}}
    [DisplayName("驱动类型")]public string DriverKind{get{return t.DriverKind;}set{t.DriverKind=value;}}
+   [DisplayName("UART 接收完成函数"),Description("可选，配合错误处理函数使用，签名为 void Name(UART_HandleTypeDef *uart)。仅接收模板声明的独占 UART。")]
+   public string UartRxCompleteHandler{get{return t.UartRxCompleteHandler;}set{t.UartRxCompleteHandler=String.IsNullOrWhiteSpace(value)?null:value.Trim();}}
+   [DisplayName("UART 错误处理函数"),Description("可选，配合接收完成函数使用。驱动负责错误恢复和重新启动接收。")]
+   public string UartErrorHandler{get{return t.UartErrorHandler;}set{t.UartErrorHandler=String.IsNullOrWhiteSpace(value)?null:value.Trim();}}
    [DisplayName("支持实例数")]public int MaxInstances{get{return t.MaxInstances;}set{t.MaxInstances=value;}}
    [DisplayName("服务周期 ms")]public int PeriodMs{get{return t.PeriodMs;}set{t.PeriodMs=value;}}
    [DisplayName("最小堆空间 bytes")]public int MinHeapBytes{get{return t.MinHeapBytes;}set{t.MinHeapBytes=value;}}

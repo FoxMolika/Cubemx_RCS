@@ -136,6 +136,7 @@ def ioc_pairs(document):
 def source_hashes():
     paths = [ROOT / "tools/test_beta_native.py", ROOT / "map_editor/src/HardwareGenerator.cs",
              ROOT / "map_editor/src/HardwareModel.cs", ROOT / "map_editor/src/HardwareExport.cs",
+             ROOT / "map_editor/src/HardwareCallbackPolicy.cs",
              ROOT / "keil_headers/HardwareBinding.cs", ROOT / "map_editor/templates/rcs_app_task.c.tpl",
              ROOT / "map_editor/src/TemplateGenerator.cs", ROOT / "map_editor/src/SourceTemplates.cs",
              ROOT / "map_editor/src/MachineGenerator.cs", ROOT / "map_editor/src/HardwareOperations.cs"]

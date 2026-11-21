@@ -94,10 +94,19 @@ namespace RcsMap {
    route=Path.GetFullPath(route);var plan=new Plan{Route=route,Binding=binding,Hardware=HardwareDirectory(route),
     Application=Path.GetDirectoryName(route),Revision=TemplateGenerator.RouteRevision(document)};
    plan.Root=binding==null?plan.Application:binding.Root;
-   if(binding!=null){CheckIoc(document,binding);Observe(plan,Path.Combine(binding.Root,binding.IocName));}
+   string ioc=null;
+   if(binding!=null) {
+    CheckIoc(document,binding);
+    string iocPath=Path.Combine(binding.Root,binding.IocName);Observe(plan,iocPath);
+    if(plan.Observed[iocPath]!=null)ioc=HardwareCallbackPolicy.SourceEncoding.GetString(plan.Observed[iocPath]);
+   }
    ProjectBinding.NoLink(plan.Root);ProjectBinding.NoLink(plan.Application);
    Dictionary<string,byte[]> originalRoute;var routes=Exporter.Prepare(document,route,out originalRoute);
    var hardware=HardwareGenerator.Generate(document);
+   string main=HardwareCallbackPolicy.Reconcile(hardware,binding,ioc,path=>{
+    NoLinkedParents(path);Observe(plan,path);return plan.Observed[path];
+   });
+   if(main!=null)Add(plan,Path.Combine(binding.Root,"Core","Src","main.c"),HardwareCallbackPolicy.SourceEncoding.GetBytes(main));
    var generated=new Dictionary<string,byte[]>(StringComparer.OrdinalIgnoreCase);
    foreach(var entry in hardware) {
     string name=HardwareBinding.ValidName(entry.Key);
@@ -296,7 +305,8 @@ namespace RcsMap {
     string project=binding.ProjectName+".uvprojx";
     allowed=allowed||ProjectBinding.Same(path,Path.Combine(root,project))||ProjectBinding.Same(path,Path.Combine(root,"MDK-ARM",project))||
      ProjectBinding.Same(path,Path.Combine(root,BuildVersion.ToolDirectory,"route-build.xml"))||
-     ProjectBinding.Same(path,Path.Combine(root,"foxmolika_Tools_084","route-build.xml"));
+     ProjectBinding.Same(path,Path.Combine(root,"Core","Src","main.c"))||
+     Regex.IsMatch(relative,@"\Afoxmolika_Tools_08[4-7]/route-build\.xml\z",RegexOptions.IgnoreCase);
    }
    if(!allowed)throw new IOException("恢复目标超出允许的硬件/路线/工程范围："+path);
    NoLinkedParents(path);
