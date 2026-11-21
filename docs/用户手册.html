@@ -51,10 +51,8 @@ td:first-child { width: 24%; }
 <main>
 <h1 id="foxmolika">foxmolika 用户手册</h1>
 <p>RCS 底盘与位点地图 · CubeMX 套件<br />
-操作基线为 <strong>0.8.7</strong>，包含生成式生成后助手白名单、0.8.6 硬件保存修复和 XS_spin8 陀螺仪内置模板。</p>
+操作基线为 <strong>0.8.8</strong>。</p>
 <p>一体安装器把底盘组件导入 CubeMX，同时安装地图编辑器与工程关联工具。CubeMX 生成板级初始化和底盘代码。地图编辑器根据保存的地图导出应用、路线和所选硬件驱动。Keil 编译两部分代码。</p>
-<p><strong>0.8.7 更新：</strong>生成后助手升级白名单改为发布构建时生成的 SHA-256 表，修复 0.8.5→0.8.6 无法迁移；安装器与编辑器的“使用说明”统一为本手册。0.8.6 的硬件地图保存修复和 <code>team_spin8_gyro</code> 模板继续保留。</p>
-
 <p><a id="index"></a></p>
 <h2 id="section">目录</h2>
 <ul>
@@ -138,6 +136,13 @@ td:first-child { width: 24%; }
 <p>导入自有驱动时，可新建模板或复制内置模板，加入 C、H、C++ 文件和初始化、服务、停止、命令、完成等生命周期代码。个人模板包用 <code>.rcshw.json</code>，UTF-8 文件上限为 3 MiB。地图保留模板版本、摘要和参数快照。需要切换模板版本时显式点 <strong>更新模板</strong>，完成后重新确认参数。有航点、状态或定位引用时先解除引用再删除实例。</p>
 <p>在航点动作或状态机里选择已配置设备的具体操作。对同一设备有严格顺序的两个目标各放在不同的动作或状态。编辑器会检查资源冲突，如独占 GPIO、UART、定时器通道及底盘同 CAN 的 <code>0x200</code> 发送帧。接入未知协议时需提供真实驱动，并明确归属总线资源。</p>
 <p>队内 C++ 模板需要完整 C++ 库、至少 <code>0x2000</code> 堆和 Arm Compiler 6.22。配置 CubeMX 的 Heap Size 后重新生成，在 Keil 关闭 MicroLIB。工程登记工具会给硬件 C++ 文件添加所需的 <code>-fexceptions</code>。</p>
+<h3 id="uart">UART 和定时器回调</h3>
+<p>导出时，编辑器根据已启用设备的实际事件需求生成 HAL 回调。比如工程已有 CubeMX 的 TIM14 时基回调和个人 USART6 陀螺仪的 UART 回调，而地图中的设备由个人驱动自行处理接收，导出器会保留原有入口，避免重复定义。</p>
+<ul>
+<li><strong>个人 UART 驱动和内置 UART 设备共存</strong>。在个人模板的 <strong>UART 接收完成处理函数</strong> 和 <strong>UART 错误处理函数</strong> 字段填入驱动中对应的函数名。驱动需提供可被外部调用的普通函数，签名为 <code>void Name(UART_HandleTypeDef *uart)</code>，C++ 文件内的函数使用 <code>extern &quot;C&quot;</code>。将原来的两个 HAL 全局回调改为这两个函数，保留函数体。模板声明一条独占 UART 资源，填入实际句柄，<code>OnUartRx</code> 留空。重新导入或更新地图内的模板快照后，生成器会按句柄分发；不同设备须使用各自的 UART。</li>
+<li><strong>CubeMX 的定时器时基和设备 <code>OnTimer</code> 共存</strong>。标准 <code>Core/Src/main.c</code> 的 <code>USER CODE … Callback 1</code> 区会加入有标记的转发块。CubeMX 保留原来的 <code>HAL_IncTick()</code>，转发把原句柄交给设备钩子。钩子应先判断自己的定时器实例，再处理事件。重新生成后若提示转发块缺失，重新导出再构建。</li>
+<li><strong>工程已有多个强定义或回调归属不明确</strong>。导出消息会列出已识别的回调及文件。根据提示保留一个入口并明确转发路径。检查参与当前 Keil 目标编译的源文件、模板快照和旧宏；宏展开或条件编译生成的入口仍需结合实际编译结果核对。</li>
+</ul>
 <h3 id="section-8">定位硬件与可选纠错</h3>
 <ol>
 <li>无独立定位硬件时，保留空纠错组，路线由电机反馈做里程推算。</li>
@@ -256,7 +261,11 @@ App_Task();
 </tr>
 <tr>
 <td>“工程已有生成后操作”</td>
-<td>查看 <code>.ioc</code> 的 <code>ProjectManager.UAScriptAfterPath</code>。0.8.7 起按官方助手 SHA-256 表识别，已发布版本可直接升级；仍失败时先把该行清空一次（保存并关闭 CubeMX），再重新关联。未知或手改脚本按<a href="#migration">迁移步骤</a>核对。</td>
+<td>查看 <code>.ioc</code> 的 <code>ProjectManager.UAScriptAfterPath</code> 和它指向的实际文件。已知助手按路径和 SHA-256 校验。自定义操作先备份并按<a href="#migration">迁移步骤</a>合并，保留工程依赖的生成步骤。</td>
+</tr>
+<tr>
+<td><code>L6200E</code> 提示 HAL UART / TIM 回调重复</td>
+<td>用 0.8.8 保存地图并重新 <strong>导出到关联工程</strong>。若以前临时加过 <code>RCS_HW_DEFINE_UART_CALLBACK=0</code> 或 <code>RCS_HW_DEFINE_TIMER_CALLBACK=0</code>，在工程副本中移除对应宏，重载 Keil 工程并完整重新编译。遇到导出冲突时按消息中的文件和回调名核对归属。</td>
 </tr>
 <tr>
 <td>Keil 缺少 C/H 或说路线不是最新</td>
@@ -289,7 +298,7 @@ App_Task();
 <h2 id="section-11">迁移旧地图与工程</h2>
 <ol>
 <li>复制工程与地图，先在副本内升级。使用过 <code>RCS.Chassis</code> 组件的项目，先在 CubeMX 取消旧组件，再选 <code>Robotics / foxmolika</code>，避免两套组件同时生成。</li>
-<li>保存并关闭 <code>.ioc</code>，用修正版 <strong>关联工程…</strong>。已知旧助手按路径与 SHA-256 校验。0.8.4 正式版和原版 <code>084_alpha</code> 可迁移到 <code>foxmolika_Tools_085</code>。未知或手工改过的生成后脚本需要人工保留并合并，旧助手与备份可供比对。</li>
+<li>在 CubeMX 选择 0.8.8 底盘组件，保存并关闭 <code>.ioc</code>，用本版 <strong>关联工程…</strong>。已知旧助手按路径与 SHA-256 校验，其中包括 0.8.4 正式版、原版 <code>084_alpha</code>、已登记的 0.8.5 修复构建和 0.8.7 助手。关联成功后助手位于 <code>foxmolika_Tools_088</code>。未知或手工改过的生成后脚本需要人工保留并合并，旧助手与备份可供比对。</li>
 <li>重新打开 <code>.ioc</code> 并 Generate Code。打开旧地图后另存，核对底盘参数和启动方式。旧地图应重新确认是否启用应用与硬件，尤其是自动启动和起点。</li>
 <li>对完整且签名有效的旧 <strong>6/8</strong> 或 <strong>15/17</strong> 文件生成目录可尝试升级到 <strong>19/21</strong>。编辑器会合并对应的 <code>USER CODE</code>。只有部分文件、生成区被手改、同一区有冲突或旧安全钩子被手改时，会提示保留原内容。此时先导出到独立空目录，再逐项合并并复核安全逻辑。</li>
 <li>在 Keil 重载、核对分组并编译。若旧 main 已接 <code>App_task_Init()</code>、旧导航任务或自写调度，按本版生成的 <code>app.h</code> 与<a href="#main-entry">固定入口</a>检查调用链。</li>
@@ -306,8 +315,12 @@ App_Task();
 </thead>
 <tbody>
 <tr>
-<td><strong>0.8.7</strong> · 本版</td>
-<td>生成后助手白名单改为发布时从官方安装包生成 SHA-256 表，任何已发布助手都能按摘要迁移，不再逐版本手写；0.8.5→0.8.6 的升级中断已修复。一体安装器与编辑器的“使用说明”统一为本手册，更新说明接续在“历代更新”。<a href="https://github.com/FoxMolika/Cubemx_RCS/tree/v0.8.7">v0.8.7</a></td>
+<td><strong>0.8.8</strong> · 本版</td>
+<td>导出器根据设备需求处理 UART 和 TIM 回调。标准 CubeMX 定时器时基可与设备钩子共存，个人 UART 模板可指定处理函数并按句柄分发。补录原版 0.8.7 和已知 0.8.5 修复助手的 SHA-256。</td>
+</tr>
+<tr>
+<td><strong>0.8.7</strong></td>
+<td>生成后助手白名单改为从官方安装包提取 SHA-256。安装器、编辑器的“使用说明”统一为用户手册，版本记录移到手册末尾。<a href="https://github.com/FoxMolika/Cubemx_RCS/tree/v0.8.7">v0.8.7</a></td>
 </tr>
 <tr>
 <td><strong>0.8.6</strong></td>

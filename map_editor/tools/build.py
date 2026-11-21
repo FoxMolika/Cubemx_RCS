@@ -1,6 +1,5 @@
 """构建编辑器和独立安装器；不依赖 CubeMX，也不下载运行时。"""
 from pathlib import Path
-import base64
 import hashlib
 import shutil
 import sys
@@ -15,19 +14,9 @@ from sync_versions import main as sync_versions
 
 
 def editor_guide(dist):
-    # 唯一的用户入口是用户手册；更新说明写在手册的“历代更新”里。
-    manual = ROOT.parent / "docs/用户手册.html"
-    guide = (manual if manual.exists() else ROOT / "docs/使用说明.html").read_text(encoding="utf-8")
-    image = ROOT / "docs/editor_ui.png"
-    if image.is_file():
-        preview = (
-            '<p>编辑器实际界面：上方绿色区域是工程关联入口。</p>'
-            '<img alt="foxmolika地图编辑器工程关联界面" src="data:image/png;base64,'
-            + base64.b64encode(image.read_bytes()).decode("ascii") + '">'
-        )
-        guide = guide.replace("<!--PREVIEW-->", preview)
+    # 安装器、编辑器和软件包使用同一份内嵌图片的手册，保留原始字节。
     target = dist / "使用说明.html"
-    target.write_text(guide, encoding="utf-8")
+    shutil.copyfile(ROOT.parent / "docs/用户手册.html", target)
     return target
 
 

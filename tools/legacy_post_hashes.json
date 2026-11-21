@@ -76,11 +76,19 @@
     },
     {
       "path": "foxmolika_Tools_085/foxmolika_PostGenerate.exe",
+      "sha256": "3aa5a043d8dd55cb34ed8fb130cd3c34143eac1a7c641752f5f07f2e21826eaa"
+    },
+    {
+      "path": "foxmolika_Tools_085/foxmolika_PostGenerate.exe",
       "sha256": "51d8b80c59d4290f882b58c85f219a6247326473c7be045440320639c1e9bc08"
     },
     {
       "path": "foxmolika_Tools_086/foxmolika_PostGenerate.exe",
       "sha256": "c8c0451b699d77495cb5ecfe482d69f3a5b1d09f4388da5feae842cd5316873f"
+    },
+    {
+      "path": "foxmolika_Tools_087/foxmolika_PostGenerate.exe",
+      "sha256": "16f9cd14221c4e56874c361a8383b7f6dd4dd735b58bb6ac1376c9ad7b9fe496"
     }
   ]
 }

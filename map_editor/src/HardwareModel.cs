@@ -74,6 +74,8 @@ namespace RcsMap {
   [DataMember] public List<DeviceOperation> Operations {get;set;}
   [DataMember] public List<DeviceFile> Files {get;set;}
   [DataMember] public DeviceHooks Hooks {get;set;}
+  [DataMember(EmitDefaultValue=false)] public string UartRxCompleteHandler {get;set;}
+  [DataMember(EmitDefaultValue=false)] public string UartErrorHandler {get;set;}
   public DeviceTemplate(){Defaults();}
   [OnDeserializing] void Restore(StreamingContext c){Defaults();Id=Version=Name=null;}
   void Defaults(){Id="user_"+Guid.NewGuid().ToString("N");Version="1.0.0";Name="新硬件模板";Category="actuator";Platform="F407_HAL";DriverKind="custom";MaxInstances=1;PeriodMs=1;Verified="none";Note=Includes=Declarations=ObservationKind="";Parameters=new List<DeviceParameter>();Resources=new List<DeviceResource>();Operations=new List<DeviceOperation>();Files=new List<DeviceFile>();Hooks=new DeviceHooks();}
@@ -117,6 +119,14 @@ namespace RcsMap {
    var operations=new HashSet<string>();foreach(var o in t.Operations)if(o==null||!Identifier(o.Id)||!operations.Add(o.Id)||String.IsNullOrWhiteSpace(o.Name)||!MapDocument.Finite(o.DefaultValue)||!MapDocument.Finite(o.Min)||!MapDocument.Finite(o.Max)||o.Min>o.Max||o.DefaultValue<o.Min||o.DefaultValue>o.Max)throw new Exception("设备操作ID、范围或默认值无效。");
    var paths=new HashSet<string>(StringComparer.OrdinalIgnoreCase);int total=0;foreach(var f in t.Files){if(f==null)throw new Exception("模板文件为空。");SafePath(f.Path);if(!paths.Add(f.Path)||!new[]{".c",".h",".cpp",".hpp"}.Contains(System.IO.Path.GetExtension(f.Path)))throw new Exception("模板文件重复或扩展名不支持。");if(f.Content!=null){Code(f.Content,"模板源文件");total+=f.Content.Length;}else if(String.IsNullOrEmpty(f.Resource))throw new Exception("模板文件缺少内容。");if(!String.IsNullOrEmpty(f.Resource))SafePath(f.Resource);}
    foreach(var s in new[]{t.Includes,t.Declarations,t.Hooks.Init,t.Hooks.Service,t.Hooks.Stop,t.Hooks.Command,t.Hooks.Done,t.Hooks.OnCanRx,t.Hooks.OnUartRx,t.Hooks.OnTimer,t.Hooks.ReadObservation}){Code(s,"模板生命周期");total+=s.Length;}
+   if(!String.IsNullOrEmpty(t.UartRxCompleteHandler)||!String.IsNullOrEmpty(t.UartErrorHandler)) {
+    if(t.DriverKind!="custom"||!Identifier(t.UartRxCompleteHandler)||!Identifier(t.UartErrorHandler)||
+       t.UartRxCompleteHandler==t.UartErrorHandler||t.UartRxCompleteHandler.StartsWith("HAL_",StringComparison.Ordinal)||
+       t.UartErrorHandler.StartsWith("HAL_",StringComparison.Ordinal)||
+       t.Resources.Count(r=>r.Kind=="uart")!=1||t.Resources.Any(r=>r.Kind=="uart"&&r.Shared)||
+       HardwareCallbackPolicy.HasCode(t.Hooks.OnUartRx))
+     throw new Exception("自定义 UART 分发需填写两个不同的 C 函数名，声明一个独占 uart 资源，并留空 UART 接收钩子。");
+   }
    if(total>2*1024*1024)throw new Exception("模板文本总量超过2MB。");if(t.ObservationAxes!=0&&t.ObservationAxes!=3&&t.ObservationAxes!=4&&t.ObservationAxes!=7)throw new Exception("定位能力观测轴无效。");
    if(t.ObservationAxes!=0&&(!new[]{"imu","tracking_encoder","external_pose"}.Contains(t.ObservationKind)||t.ObservationKind=="imu"&&t.ObservationAxes!=4||t.ObservationKind=="tracking_encoder"&&t.ObservationAxes!=3))throw new Exception("定位能力必须声明合适的观测类型及轴；遥控和普通通信不是定位源。");
    if(t.DriverKind=="custom"&&t.Operations.Count>0&&(String.IsNullOrWhiteSpace(t.Hooks.Command)||String.IsNullOrWhiteSpace(t.Hooks.Done)))throw new Exception("自定义执行操作必须提供命令与完成检查，不能以空钩子冒充成功。");

@@ -42,6 +42,8 @@ namespace RcsMap {
    r["rcs_hw.cpp"]="#include \"rcs_hw.h\"\nint fixture_hw(void){return "+(d.Changed?"2":"1")+";}\n";
    r["rcs_hw.h"]="#pragma once\nint fixture_hw(void);\n";
    r["rcs_hw_config.h"]="#pragma once\n#define FIXTURE_CONFIG 1\n";
+   if(d.Mode=="timer")r["rcs_hw_config.h"]+=HardwareCallbackPolicy.TimerNeeds+"1\n";
+   if(d.Mode=="uart")r["rcs_hw_config.h"]+=HardwareCallbackPolicy.UartNeeds+"1\n";
    r["team/team.c"]="#include \"team.h\"\nint team(void){return 1;}\n";
    r["team/team.h"]="#pragma once\nint team(void);\n";return r;
   }
@@ -123,8 +125,35 @@ static class HardwareProjectHarness {
   Error(()=>HardwareBinding.LoadDirectory(directory,false,true));
   Error(()=>RcsMap.HardwareExport.CheckDestination(new RcsMap.MapDocument(),route));
  }
+ static void CallbackOwnership(string area) {
+  string root=Path.Combine(area,"callbacks"),main=Path.Combine(root,"Core/Src/main.c"),ioc=Path.Combine(root,"case.ioc");
+  Directory.CreateDirectory(Path.GetDirectoryName(main));Directory.CreateDirectory(Path.Combine(root,"MDK-ARM"));
+  string original="void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)\r\n{\r\n"
+   +"  if (htim->Instance == TIM14) { HAL_IncTick(); }\r\n"
+   +"  /* USER CODE BEGIN Callback 1 */\r\n  /* user text */\r\n  /* USER CODE END Callback 1 */\r\n}\r\n"
+   +"void HAL_UART_RxCpltCallback(UART_HandleTypeDef *uart) { (void)uart; }\r\n"
+   +"void HAL_UART_ErrorCallback(UART_HandleTypeDef *uart) { (void)uart; }\r\n";
+  File.WriteAllText(main,original,new UTF8Encoding(true));var first=File.ReadAllBytes(main);
+  File.WriteAllText(ioc,"ProjectManager.ProjectName=case\nNVIC.TimeBaseIP=TIM14\n");
+  var project=Project();project.Descendants("Files").First().Add(new XElement("File",
+   new XElement("FileName","main.c"),new XElement("FilePath","../Core/Src/main.c"),new XElement("FileType","1")));
+  project.Save(Path.Combine(root,"MDK-ARM/case.uvprojx"));
+  var binding=ProjectBinding.Plan(ioc,File.ReadAllText(ioc));File.WriteAllBytes(binding.Marker,binding.Bytes());
+  Action<string> export=mode=>RcsMap.HardwareExport.ExportBound(new RcsMap.MapDocument{Mode=mode},binding);
+  export("on");Check(File.ReadAllBytes(main).SequenceEqual(first),"no dispatch demand keeps all existing HAL owners");
+  var before=Snapshot(root);
+  Check(Error(()=>export("uart")).Contains("HAL_UART_RxCpltCallback")&&Same(before,Snapshot(root)),"UART collision diagnosed without writing");
+  export("timer");string linked=File.ReadAllText(main).Replace("\r\n","\n");
+  Check(linked.Replace(HardwareBinding.TimerBridgeBlock+"\n","")==original.Replace("\r\n","\n"),"timer bridge is the only change to CubeMX main");
+  Check(HardwareBinding.Load(root,false)!=null,"post accepts generated timer bridge");
+  before=Snapshot(root);export("timer");Check(Same(before,Snapshot(root)),"repeat timer export byte stable");
+  File.WriteAllBytes(main,first);
+  Check(Error(()=>HardwareBinding.Load(root,false)).Contains("定时器转发块"),"post detects lost timer bridge after code generation");
+  export("timer");Check(Same(before,Snapshot(root)),"re-export restores timer forwarding");
+  export("on");Check(File.ReadAllBytes(main).SequenceEqual(first),"removing timer demand retires only the managed block");
+ }
  static void Run(string[] args){
-  TransactionBoundary(args[0]);ManifestBoundary(args[0]);
+  TransactionBoundary(args[0]);ManifestBoundary(args[0]);CallbackOwnership(args[0]);
   string root=Path.Combine(args[0],"owned project");Directory.CreateDirectory(root);Directory.CreateDirectory(Path.Combine(root,"MDK-ARM"));Directory.CreateDirectory(Path.Combine(root,"Modules"));
   foreach(string n in new[]{"rcs_chassis.c","rcs_chassis.h","rcs_control.h","rcs_hal.h","rcs_config.h"})File.WriteAllText(Path.Combine(root,"Modules",n),"/* fixture */\n");
   string ioc=Path.Combine(root,"工程 A.ioc");File.WriteAllText(ioc,"ProjectManager.ProjectName=工程 A\n");
@@ -302,7 +331,7 @@ def main():
     area.mkdir(parents=True)
     harness = area / "Harness.cs"
     harness.write_text(HARNESS, encoding="utf-8")
-    sources = [ROOT / "map_editor/src" / n for n in ["HardwareExport.cs", "Exporter.cs", "UserRegions.cs", "RevisionGuard.cs"]]
+    sources = [ROOT / "map_editor/src" / n for n in ["HardwareExport.cs", "Exporter.cs", "UserRegions.cs", "RevisionGuard.cs", "HardwareCallbackPolicy.cs"]]
     sources += [ROOT / "keil_headers" / n for n in ["ProjectBinding.cs", "KeilHeaders.cs", "HardwareBinding.cs"]]
     exe = area / "hardware-project-tests.exe"
     output = compile_csharp(exe, [harness, *sources], references=XML_REFERENCES, defines=["RCS_MAP_EDITOR"])
