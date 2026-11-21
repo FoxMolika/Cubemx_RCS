@@ -85,6 +85,7 @@ namespace RcsMap {
    values["APP_HAS_ACTIONS"]=values["ACTIONS_REQUIRED"].TrimEnd('u');
    values["APP_HAS_TERRAIN"]=terrain?"1":"0";
    values["APP_POINT_COUNT"]=values["POINT_COUNT"];
+   MachineValues(doc, values);
    var files = new Dictionary<string, string>();
    foreach (string name in new[] { "rcs_route.c", "rcs_route.h", "rcs_actions.c", "rcs_actions.h", "rcs_nav.c", "rcs_nav.h" })
     files[name] = SourceTemplates.Render(name, values, terrain);
@@ -93,12 +94,14 @@ namespace RcsMap {
     files["rcs_terrain.h"] = Exporter.Resource("rcs_terrain.h");
    }
    // 应用任务骨架：模板自带用户区，用 Stamp 补默认哈希，重新导出才可能保留用户改动。
-   foreach (string name in new[] { "rcs_app_task.c", "rcs_app_task.h" })
-    files[name] = UserRegions.Stamp(SourceTemplates.Render(name, values, terrain));
+   foreach (string name in new[] { "rcs_app_task.c", "rcs_app_task.h", "app.c", "app.h", "machism.c", "machism.h" })
+    files[name] = name=="machism.c"||name=="machism.h"?SourceTemplates.Render(name,values,terrain):UserRegions.Stamp(SourceTemplates.Render(name, values, terrain));
    foreach (string name in new[] { "rcs_feedback_port.c", "rcs_feedback_port.h", "rcs_can_port.c",
-                                   "rcs_can_port.h", "rcs_app_config.h", "rcs_feedback_config.h",
-                                   "rcs_observer_config.h" })
+                                   "rcs_can_port.h", "rcs_observer_config.h" })
     files[name] = Exporter.Resource(name);
+   foreach(string name in new[]{"rcs_app_config.h","rcs_feedback_config.h"})
+    files[name]=SourceTemplates.Render(name,values,terrain);
+   HardwareIntegration.Apply(doc,files);
    foreach(string name in files.Keys.ToArray()){
     bool user=false;var wrapped=new StringBuilder();foreach(string raw in files[name].Replace("\r\n","\n").Split('\n')){string line=raw;if(line.StartsWith("/* USER CODE BEGIN"))user=true;if(!user&&!line.StartsWith("/* RCS REGION DEFAULT")){while(line.Length>110){int cut=line.LastIndexOf(',',Math.Min(100,line.Length-1));if(cut<0)break;wrapped.AppendLine(line.Substring(0,cut+1));line="        "+line.Substring(cut+1).TrimStart();}}wrapped.AppendLine(line);if(line.StartsWith("/* USER CODE END"))user=false;}files[name]=wrapped.ToString();GeneratedPolicy.Check(name,files[name]);
    }

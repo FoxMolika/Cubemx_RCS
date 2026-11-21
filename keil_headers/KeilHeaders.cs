@@ -17,23 +17,8 @@ using System.Xml.Linq;
 #endif
 static class KeilHeaders {
  static readonly string[] Module={"rcs_chassis.h","rcs_control.h","rcs_hal.h"};
- static string Norm(string p){return p.Replace('\\','/').Trim();}
- static string Relative(string fromDir,string file){
-  var from=new Uri(Path.GetFullPath(fromDir).TrimEnd('\\')+"\\");var to=new Uri(Path.GetFullPath(file));
-  return Uri.UnescapeDataString(from.MakeRelativeUri(to).ToString()).Replace('\\','/');}
- static List<string> FindProjects(string arg){
-  string p=Path.GetFullPath(String.IsNullOrWhiteSpace(arg)?Environment.CurrentDirectory:arg.Trim().Trim('"'));
-  if(File.Exists(p)){
-   if(p.EndsWith(".uvprojx",StringComparison.OrdinalIgnoreCase))return new List<string>{p};
-   p=Path.GetDirectoryName(p);}
-  if(!Directory.Exists(p))throw new Exception("路径不存在："+p);
-  var found=new List<string>();
-  foreach(string dir in new[]{p,Path.Combine(p,"MDK-ARM")})
-   if(Directory.Exists(dir))found.AddRange(Directory.GetFiles(dir,"*.uvprojx"));
-  return found.Distinct(StringComparer.OrdinalIgnoreCase).ToList();}
- internal static int Fix(string project,Action<string> say){
-  string dir=Path.GetDirectoryName(project);
-  ProjectBinding.NoLink(project);byte[] original=File.ReadAllBytes(project);var doc=ProjectBinding.ReadXml(project);int added=0;bool anyGroup=false;
+ internal static int UpdateChassisHeaders(XDocument doc,string project){
+  string dir=Path.GetDirectoryName(project);int added=0;bool anyGroup=false;
   foreach(var target in doc.Descendants("Target")){
    foreach(var group in target.Descendants("Group")){
     var files=group.Element("Files");if(files==null)continue;
@@ -56,7 +41,27 @@ static class KeilHeaders {
    }
   }
   if(!anyGroup)throw new Exception("工程中没有包含 rcs_chassis.c 的分组。请先在 CubeMX 中启用 foxmolika 底盘组件并 Generate Code："+project);
-  var binding=ProjectBinding.ForKeil(project);if(binding!=null)added+=binding.UpdateRoute(doc,project,false);
+  return added;
+ }
+ static string Norm(string p){return p.Replace('\\','/').Trim();}
+ static string Relative(string fromDir,string file){
+  var from=new Uri(Path.GetFullPath(fromDir).TrimEnd('\\')+"\\");var to=new Uri(Path.GetFullPath(file));
+  return Uri.UnescapeDataString(from.MakeRelativeUri(to).ToString()).Replace('\\','/');}
+ static List<string> FindProjects(string arg){
+  string p=Path.GetFullPath(String.IsNullOrWhiteSpace(arg)?Environment.CurrentDirectory:arg.Trim().Trim('"'));
+  if(File.Exists(p)){
+   if(p.EndsWith(".uvprojx",StringComparison.OrdinalIgnoreCase))return new List<string>{p};
+   p=Path.GetDirectoryName(p);}
+  if(!Directory.Exists(p))throw new Exception("路径不存在："+p);
+  var found=new List<string>();
+  foreach(string dir in new[]{p,Path.Combine(p,"MDK-ARM")})
+   if(Directory.Exists(dir))found.AddRange(Directory.GetFiles(dir,"*.uvprojx"));
+  return found.Distinct(StringComparer.OrdinalIgnoreCase).ToList();}
+ internal static int Fix(string project,Action<string> say){
+  string dir=Path.GetDirectoryName(project);
+  ProjectBinding.NoLink(project);byte[] original=File.ReadAllBytes(project);var doc=ProjectBinding.ReadXml(project);int added=0;
+  added=UpdateChassisHeaders(doc,project);
+  var binding=ProjectBinding.ForKeil(project);if(binding!=null){added+=binding.UpdateRoute(doc,project,false);added+=HardwareBinding.Update(doc,project,binding.Root);}
   if(added==0){say("已是最新，无需修改："+project);return 0;}
   string backup=project+".rcs-backup";ProjectBinding.NoLink(backup);if(!File.Exists(backup))File.Copy(project,backup);
   var settings=new XmlWriterSettings{Encoding=new UTF8Encoding(false),Indent=true,IndentChars="  "};

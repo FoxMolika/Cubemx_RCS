@@ -10,14 +10,14 @@ namespace RcsMap {
  public static class Exporter {
   public static string Resource(string name){using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("assets/"+name)){if(stream==null)throw new Exception("资源缺失："+name);using(var reader=new StreamReader(stream,Encoding.UTF8))return reader.ReadToEnd();}}
   public static Dictionary<string,string> Generate(MapDocument doc){return TemplateGenerator.Generate(doc);}
-  static Dictionary<string,string> Prepare(MapDocument d,string dir,out Dictionary<string,byte[]> originals){
+  internal static Dictionary<string,string> Prepare(MapDocument d,string dir,out Dictionary<string,byte[]> originals){
    RevisionGuard.CheckSavedMap(d);
    var files=Generate(d);originals=new Dictionary<string,byte[]>();ProjectBinding.NoLink(dir);
    bool terrain=ProjectBinding.DeclaresTerrain(files.ContainsKey("rcs_nav.h")?files["rcs_nav.h"]:"")||
                 ProjectBinding.DeclaresTerrain(files.ContainsKey("rcs_nav.c")?files["rcs_nav.c"]:"");
    var expected=ProjectBinding.RouteNames(terrain);
    if(!files.Keys.OrderBy(n=>n,StringComparer.Ordinal).SequenceEqual(expected.OrderBy(n=>n,StringComparer.Ordinal)))
-    throw new IOException("生成器文件清单不完整，应为15个文件或带坡道17个文件；未修改输出目录。");
+    throw new IOException("生成器文件清单不完整，应为19个文件或带坡道21个文件；未修改输出目录。");
    if(File.Exists(dir))throw new IOException("输出路径是文件，未覆盖："+dir);
    if(Directory.Exists(dir)&&Directory.GetFileSystemEntries(dir).Length>0){
     var names=Directory.GetFileSystemEntries(dir).Select(Path.GetFileName).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
@@ -32,7 +32,7 @@ namespace RcsMap {
    }
    return files;
   }
-  public static void CheckDestination(MapDocument d,string dir){Dictionary<string,byte[]> originals;Prepare(d,Path.GetFullPath(dir),out originals);}
+  public static void CheckDestination(MapDocument d,string dir){Dictionary<string,byte[]> originals;Prepare(d,Path.GetFullPath(dir),out originals);HardwareExport.CheckDestination(d,dir);}
   // 操作对象只供内部事务复用/故障注入，产品入口始终使用真实文件系统，无环境变量旁路。
   internal sealed class ExportOperations {
    internal Action<string,string> Move = Directory.Move;
@@ -87,6 +87,7 @@ namespace RcsMap {
   }
   // 仅更新拥有生成签名的文件；用户区按稳定ID合并。旧目录、安装、回滚分别作为事务步骤。
   public static void Export(MapDocument document,string directory) {
+   if(HardwareExport.TryExport(document,directory))return;
    Export(document,directory,new ExportOperations());
   }
   internal static void Export(MapDocument d,string dir,ExportOperations operations) {

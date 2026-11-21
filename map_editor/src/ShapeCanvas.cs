@@ -262,7 +262,7 @@ namespace RcsMap
                 ApplyShapeDrag(drag, WorldPoint(e.Location));
                 if (!WithinField(SurfaceOutline.Points(drag.Surface)))
                     throw new InvalidOperationException("轮廓超出场地，未提交本次位置。");
-                Document.Version = 6;
+                Document.Version = Math.Max(Document.Version, 6);
                 DraftRules.Check(Document);
                 drag.Moved = true;
                 ShapeStatus(drag.Type == ShapeRotation ?
@@ -426,7 +426,7 @@ namespace RcsMap
                 change();
                 if (!WithinField(SurfaceOutline.Points(surface)))
                     throw new Exception("轮廓超出场地。");
-                Document.Version = 6;
+                Document.Version = Math.Max(Document.Version, 6);
                 DraftRules.Check(Document);
                 if (EndChange != null)
                     EndChange();

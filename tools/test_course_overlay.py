@@ -21,7 +21,9 @@ def main():
  # 基准来自已发布0.7编辑器，摘要随仓库保存；全新克隆无需相邻旧版安装目录。
  golden=json.loads((R/'tests/fixtures/course070-sha256.json').read_text(encoding='utf-8'))
  assert sha(fixture/'map.rcsmap.json')==golden['map_sha256'],'golden map changed'
- assert {name:hashlib.sha256(data).hexdigest() for name,data in actual.items()}==golden['generated_files'],'flat6files changed from070'
+ # 本版增加13个应用文件；角度标签仍不得改变原六个导航模块的任何字节。
+ assert len(actual)==19 and set(golden['generated_files']).issubset(actual)
+ assert {name:hashlib.sha256(actual[name]).hexdigest() for name in golden['generated_files']}==golden['generated_files'],'legacy flat6files changed from070'
  assert (fixture/'map.rcsmap.json').read_bytes()==before
  run('--selftest',area/'model');text=(area/'model/selftest.txt').read_text(encoding='utf-8');assert 'PASS 49 ' in text,text
  run('--render-course-angles',area/'course.png');assert (area/'course.png').stat().st_size>10000

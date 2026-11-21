@@ -43,6 +43,13 @@ namespace RcsMap {
     if(args.Length==2&&args[0]=="--export-linked"){RevisionGuard.SourceMapFile=args[1];var document=MapDocument.Parse(File.ReadAllText(args[1]));string ioc=ProjectExport.Resolve(document,args[1]);if(ioc==null)throw new IOException("请先关联工程。");Console.WriteLine(ProjectExport.Export(document,ioc));return 0;}
     if(args.Length==3&&args[0]=="--save-as-map"){ProjectExport.Save(MapDocument.Parse(File.ReadAllText(args[1])),args[1],args[2]);return 0;}
     if(args.Length==2&&args[0]=="--demo"){File.WriteAllText(args[1],MapDocument.Demo().Json(),new UTF8Encoding(false));return 0;}
+    if(Is(args,"--hardware-selftest",2)){Styles();HardwareTests.Run(args[1]);return 0;}
+    if(Is(args,"--hardware-fixture",2)){HardwareTests.Write(args[1]);return 0;}
+    if(Is(args,"--render-hardware-manager",2)){Styles();HardwareTests.Render(args[1]);return 0;}
+    if(Is(args,"--render-hardware-template",2)){Styles();HardwareTests.Render(args[1],true);return 0;}
+    if(Is(args,"--machine-selftest",2)){Styles();ApplicationTests.Run(args[1]);return 0;}
+    if(Is(args,"--machine-fixture",2)){ApplicationTests.WriteFixture(args[1]);return 0;}
+    if(Is(args,"--render-machine",2)){Styles();ApplicationTests.Render(args[1]);return 0;}
     if(Is(args,"--terrain-drive-selftest",2)){TerrainDriveTests.Run(args[1]);return 0;}
     if(Is(args,"--terrain-drive-fixture",2)){TerrainDriveTests.Write(args[1]);return 0;}
     if(Is(args,"--terrain-drive-demo",2)){File.WriteAllText(args[1],TerrainDriveTests.Demo(false).Json(),new UTF8Encoding(false));return 0;}

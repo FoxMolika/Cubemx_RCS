@@ -7,7 +7,7 @@ def main():
  def run(args):
   p=subprocess.run(list(map(str,args)),capture_output=True,timeout=60);assert p.returncode==0,(args,p.returncode,p.stdout.decode(errors='replace'),p.stderr.decode(errors='replace'));return p.stdout.decode('utf-8',errors='replace').strip()
  run([exe,'--correction-selftest',area]);model=(area/'correction-selftest.txt').read_text().strip();checks=int(re.search(r'PASS (\d+)',model).group(1));assert checks>=38
- folder=area/'generated';run([exe,'--export',area/'correction-fixture.json',folder]);assert len(list(folder.iterdir()))==6
+ folder=area/'generated';run([exe,'--export',area/'correction-fixture.json',folder]);assert len(list(folder.iterdir()))==19
  run([sys.executable,R/'tools/style_check.py',folder]);out=area/'generated-test.exe'
  args=['gcc','-std=c99','-O2','-Wall','-Wextra','-Werror','-pedantic','-I',folder,'-I',R/'firmware',R/'map_editor/tests/test_generated_correction.c',folder/'rcs_route.c',folder/'rcs_nav.c',folder/'rcs_actions.c',R/'firmware/rcs_chassis.c','-lm','-o',out];run(args);generated=run([out])
  out=area/'runtime.exe';run(['gcc','-std=c99','-O2','-Wall','-Wextra','-Werror','-pedantic','-I',R/'map_editor/firmware','-I',R/'firmware',R/'map_editor/tests/test_corrections.c',R/'map_editor/firmware/rcs_nav.c',R/'firmware/rcs_chassis.c','-lm','-o',out]);runtime=run([out]);assert 'independent correction assertions' in runtime

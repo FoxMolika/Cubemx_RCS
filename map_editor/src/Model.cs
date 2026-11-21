@@ -68,6 +68,9 @@ namespace RcsMap {
   [DataMember] public string Done {get;set;} [DataMember] public string Cancel {get;set;}
   [DataMember] public string FromPoint {get;set;} [DataMember] public string ToPoint {get;set;}
   [DataMember] public string UserKey {get;set;}
+  [DataMember(EmitDefaultValue=false)] public string DeviceId {get;set;}
+  [DataMember(EmitDefaultValue=false)] public string OperationId {get;set;}
+  [DataMember(EmitDefaultValue=false)] public double OperationValue {get;set;}
   public RouteAction(){Defaults();}
   [OnDeserializing] void Restore(StreamingContext c){Defaults();}
   void Defaults(){Id=Guid.NewGuid().ToString("N");Name="新动作";MaxWz=90;Alpha=180;Tolerance=3;SettleMs=100;DriftLimit=50;Enabled=true;Timeout=30;Start=Done=Cancel="/* 用户代码 */";Condition="1";}
@@ -109,6 +112,8 @@ namespace RcsMap {
   public Obstacle(){} public Obstacle(double x,double y,double w,double h){X=x;Y=y;Width=w;Height=h;}
  }
  [DataContract] public class MapDocument {
+  [DataMember(EmitDefaultValue=false)] public List<DeviceInstance> Devices {get;set;}
+  [DataMember(EmitDefaultValue=false)] public ApplicationSettings Application {get;set;}
   [DataMember(EmitDefaultValue=false)] public TerrainDriveSettings TerrainDrive {get;set;}
   [DataMember(EmitDefaultValue=false)] public List<HardwareSource> HardwareSources {get;set;}
   [DataMember(EmitDefaultValue=false)] public TerrainMap Terrain {get;set;}
@@ -141,19 +146,20 @@ namespace RcsMap {
     }d.Version=3;}d.StructuralCheck();return d;}}
   static string LegacyId(string point,string kind){using(var sha=System.Security.Cryptography.SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes((point??"")+":"+kind))).Replace("-","").Substring(0,32).ToLowerInvariant();}
   public MapDocument Clone(){return Parse(Json());}
-  public void StructuralCheck(){if((Version!=3&&Version!=4&&Version!=5&&Version!=6)||Settings==null||Points==null||Obstacles==null||Points.Count>512||Obstacles.Count>256||Points.Any(p=>p==null)||Obstacles.Any(o=>o==null))throw new Exception("地图格式/版本不正确，或元素过多。");
+  public void StructuralCheck(){if((Version!=3&&Version!=4&&Version!=5&&Version!=6&&Version!=7&&Version!=8)||Settings==null||Points==null||Obstacles==null||Points.Count>512||Obstacles.Count>256||Points.Any(p=>p==null)||Obstacles.Any(o=>o==null))throw new Exception("地图格式/版本不正确，或元素过多。");
+   ApplicationRules.Check(this);
    TerrainMotionRules.Structure(this);
    CorrectionRules.Structure(this);
    var terrainErrors=TerrainGeometry.Structure(this);if(terrainErrors.Count>0)throw new Exception(String.Join(" / ",terrainErrors.ToArray()));
    if(ProjectIoc!=null&&(ProjectIoc.Length>2048||ProjectIoc.IndexOf('\0')>=0))throw new Exception("关联工程路径不正确或过长。");
    foreach(var p in Points)if(p.ArrivalActions==null||p.DepartureActions==null||p.ArrivalActions.Count+p.DepartureActions.Count>64||p.ArrivalActions.Any(a=>a==null)||p.DepartureActions.Any(a=>a==null))throw new Exception("动作组格式无效或单点动作超过64条。");
    int total=Points.Sum(p=>p.ArrivalActions.Concat(p.DepartureActions).Sum(a=>(a.Start??"").Length+(a.Condition??"").Length+(a.Done??"").Length+(a.Cancel??"").Length))+(ActionIncludes??"").Length;foreach(var p in Points)total+=(p.ActionStart??"").Length+(p.ActionCondition??"").Length+(p.ActionDone??"").Length+(p.ActionCancel??"").Length;
-   if(total>256*1024)throw new Exception("动作代码总长度不能超过256K字符。");}
+   if(total>256*1024)throw new Exception("动作代码总长度不能超过256K字符。");HardwareRules.Structure(this);}
   public static bool Finite(double v){return !Double.IsNaN(v)&&!Double.IsInfinity(v);}
   static void Range(List<string> e,double v,double lo,double hi,string label){if(!Finite(v)||v<lo||v>hi)e.Add(label+"：范围 "+lo+"～"+hi);}
   public List<string> Validate(bool route=true) {
    StructuralCheck();var e=new List<string>();var s=Settings;
-   e.AddRange(TerrainGeometry.Validate(this));e.AddRange(CorrectionRules.Validate(this));
+   e.AddRange(TerrainGeometry.Validate(this));e.AddRange(CorrectionRules.Validate(this));e.AddRange(HardwareRules.Validate(this));
    Range(e,s.Width,500,100000,"场地宽度");Range(e,s.Height,500,100000,"场地高度");Range(e,s.Grid,10,5000,"网格");
    Range(e,s.Radius,1,10000,"车体半径");Range(e,s.Layout,0,2,"轮型");Range(e,s.Diameter,1,1000,"轮径");
    Range(e,s.Wheelbase,1,3000,"轮距");Range(e,s.Track,1,3000,"轮距");Range(e,s.OmniRadius,1,1500,"全向半径");Range(e,s.Theta0,-360,360,"W0角度");
@@ -215,6 +221,11 @@ namespace RcsMap {
    if(v[keys[0]]<0||v[keys[0]]>2||v[keys[0]]!=Math.Floor(v[keys[0]]))throw new Exception("底盘轮型无效。");
    var s=Settings;s.Layout=(int)v[keys[0]];s.Diameter=v[keys[1]];s.Wheelbase=v[keys[2]];s.Track=v[keys[3]];s.OmniRadius=v[keys[4]];s.Theta0=v[keys[5]];s.Gear=v[keys[6]];s.MaxRpm=v[keys[7]];
    if(v.ContainsKey("RCS_COMMAND_TIMEOUT_MS"))s.CommandTimeoutMs=v["RCS_COMMAND_TIMEOUT_MS"];
+   // 显式导入硬件配置时同步应用总线与逻辑轮ID；新应用仍默认禁用。
+   if(v.ContainsKey("RCS_CAN_BUS")&&new[]{"RCS_MOTOR_ID_0","RCS_MOTOR_ID_1","RCS_MOTOR_ID_2","RCS_MOTOR_ID_3"}.All(v.ContainsKey)){
+    if(Application==null)Application=new ApplicationSettings();Version=Math.Max(Version,7);
+    Application.CanBus=(int)v["RCS_CAN_BUS"];Application.MotorId0=(int)v["RCS_MOTOR_ID_0"];Application.MotorId1=(int)v["RCS_MOTOR_ID_1"];Application.MotorId2=(int)v["RCS_MOTOR_ID_2"];Application.MotorId3=(int)v["RCS_MOTOR_ID_3"];
+   }
    // With the C620 rotor angle as encoder, the chassis direction (logical wheel ->
    // rotor sign) is exactly the encoder direction. External encoders must be checked.
    string[] dirs={"RCS_DIRECTION_0","RCS_DIRECTION_1","RCS_DIRECTION_2","RCS_DIRECTION_3"};

@@ -14,7 +14,7 @@ using System.Xml.Linq;
 class Install {
  internal static readonly string[] Files={"foxmolika_MapEditor.exe","使用说明.html","LICENSE.txt","examples/示例路线.rcsmap.json","examples/robot_route_task.c","examples/robot_route_task.h","sdk/rcs_chassis.c","sdk/rcs_chassis.h"};
  internal const string Marker="rcs-map-installed.xml";
- internal static string DefaultDir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"foxmolika_MapEditor");
+ internal static string DefaultDir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"foxmolika_MapEditor_"+BuildVersion.DisplayVersion);
  static string Hash(byte[] bytes){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-","").ToLowerInvariant();}
  static byte[] Payload(string name){using(var s=Assembly.GetExecutingAssembly().GetManifestResourceStream("payload/"+name)){if(s==null)throw new Exception("缺少载荷："+name);using(var m=new MemoryStream()){s.CopyTo(m);return m.ToArray();}}}
  static bool Within(string root,string file){return file.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase);}
@@ -47,7 +47,7 @@ class Install {
 }
 class Wizard:Form {
  TextBox path=new TextBox();Label status=new Label();Button launch;
- public Wizard(string dir){Text="foxmolika 位点地图编辑器 · 安装程序 "+BuildVersion.Version+"";ClientSize=new Size(760,430);Font=new Font("Microsoft YaHei UI",10);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;BackColor=Color.White;
+ public Wizard(string dir){Text="foxmolika 位点地图编辑器 · 安装程序 "+BuildVersion.DisplayVersion+"";ClientSize=new Size(760,430);Font=new Font("Microsoft YaHei UI",10);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;BackColor=Color.White;
   Controls.Add(new Label{Text="画出路线，生成编码器闭环路径代码",Font=new Font(Font.FontFamily,19,FontStyle.Bold),AutoSize=true,Location=new Point(24,25)});
   Controls.Add(new Label{Text="CubeMX 配套编辑器 · 独立 Windows 窗口 · 无需 Python",AutoSize=true,Location=new Point(26,74),ForeColor=Color.DimGray});
   Controls.Add(new Label{Text="安装目录（也可直接粘贴路径）",AutoSize=true,Location=new Point(26,122)});path.SetBounds(26,153,590,30);path.Text=dir;Controls.Add(path);

@@ -1,0 +1,95 @@
+{
+  "fixture_format": 1,
+  "hardware": false,
+  "provenance": {
+    "082": {
+      "commit": "5fc26462498f78b373e7db487fb9b8599c62d3dd",
+      "installer_sha256": "188704b664bb250e7af12823a6f5cfa7b4cac09aa67fa159371e5526790b709a",
+      "editor_sha256": "10dbe24e110d6b377c3f6e40edf57b2315d2a86595e85ccd47f6bbfd4118c2a5",
+      "post_sha256": "423301952b60be5dffead82f3f33dcbbb415ab41ca44940c0cda0d6bc1f04d0f",
+      "verification": "original official installer SHA and embedded manifest editor SHA verified; post extracted from editor and exact SHA checked"
+    },
+    "083": {
+      "commit": "1126b6d320aadc7dcfb38e7b1be2468ad4ce952f",
+      "editor_sha256": "8a9e067c71b9379cb2ba438ca0996ca5957eef9308ee59fd8f8499e0992d2667",
+      "post_sha256": "550bbb4148c0de6310d754046deebb1d535c5d523f5b7bceac7a81e5bfb8ea97",
+      "verification": "actual local review snapshot console EXE; exact helper SHA checked; not an official release claim"
+    }
+  },
+  "cases": {
+    "core6": {
+      "source": "082",
+      "count": 6,
+      "map_sha256": "8947729e5932f36285d453bb8e4610aa10385490df232fea2c74b1de7bc958c7"
+    },
+    "core8": {
+      "source": "082",
+      "count": 8,
+      "map_sha256": "a2978d64055ecdb74b883ceba1048875fdf4f9dc00bc136df2dc03ce0883cf32"
+    },
+    "app15": {
+      "source": "083",
+      "count": 15,
+      "map_sha256": "ef5046ef7aa09022b6bffd7cc92f9e30c2a97f200c874bbe57cb2dd852627fcb"
+    },
+    "app17": {
+      "source": "083",
+      "count": 17,
+      "map_sha256": "9727618f04d0129407bc70353b4300db25991733ede05c573a8ca1c6d9e93780"
+    }
+  },
+  "files": {
+    "post_082.base64.txt": "1c3db9f3323e5759d9e4672b0c5679c8e7d8d903fe3d319b858266e1ee40d8d3",
+    "post_083.base64.txt": "0878e50176888830338cda7d04843772f358318fc097152b85fd2a375ae5e686",
+    "app15/map.json": "ef5046ef7aa09022b6bffd7cc92f9e30c2a97f200c874bbe57cb2dd852627fcb",
+    "app17/map.json": "9727618f04d0129407bc70353b4300db25991733ede05c573a8ca1c6d9e93780",
+    "core6/map.json": "8947729e5932f36285d453bb8e4610aa10385490df232fea2c74b1de7bc958c7",
+    "core8/map.json": "a2978d64055ecdb74b883ceba1048875fdf4f9dc00bc136df2dc03ce0883cf32",
+    "core8/generated/rcs_actions.c": "c9eee0c7a02b43f928ae6437579aef2087e321e86d2143fe7a94575936f6fc2d",
+    "core8/generated/rcs_actions.h": "a6a60ed77696260ef9c47d0624ffeeb0b4eccf4125f0d1ef13038e5181cbdac0",
+    "core8/generated/rcs_nav.c": "b1d8b47a9bbb14c27b141d5b2be73a7c72a7c52a8504adc2abb85e486fd90bd4",
+    "core8/generated/rcs_nav.h": "be3302dc90cd02a9ea9a419d97fa2fa6b7371780926860dae2497fbdc707377b",
+    "core8/generated/rcs_route.c": "73480a74ea56c91548bcafefd695ffc1a8e43cff71e2050bcd3d55833f4c98c9",
+    "core8/generated/rcs_route.h": "2920a41788aa3784c9c78bef5b57ea47740a12e5e6b81e56b646055bc3399cba",
+    "core8/generated/rcs_terrain.c": "58e811134a84d5b067081b06b58b31fb8b2eccd789fae2c6e32abf99e9fe13a9",
+    "core8/generated/rcs_terrain.h": "c392aed8b8e882fa328f0cf4ab1a0d4e485b9abcbcfeaaa42eed5b51be15d0df",
+    "core6/generated/rcs_actions.c": "f2cad909ee7f1f100c571608747eeae1dbd98e2dd2b6922c5b64f23f693ffb31",
+    "core6/generated/rcs_actions.h": "38f59571c57e4967efa640dcc5e93b21aa5ac383645d668d17d3247cc20cd5f6",
+    "core6/generated/rcs_nav.c": "c18a3380ad1051e1fb6c1907ef75af5372880ab45ed9dd5c884d3d7144b8c655",
+    "core6/generated/rcs_nav.h": "9e73faa0058d8b58748f9fe64b77185e2b77cd265fa37d6a48e94fa6353c3b27",
+    "core6/generated/rcs_route.c": "6b3e9a39550a4e962202bf7d2a4c7a8c8df22b9010269a15595206c495731b05",
+    "core6/generated/rcs_route.h": "c6ed50911e1c428f5b99124dc0c7cde012607e2b255bc667f130db8804ead5e8",
+    "app17/generated/rcs_actions.c": "c9eee0c7a02b43f928ae6437579aef2087e321e86d2143fe7a94575936f6fc2d",
+    "app17/generated/rcs_actions.h": "a6a60ed77696260ef9c47d0624ffeeb0b4eccf4125f0d1ef13038e5181cbdac0",
+    "app17/generated/rcs_app_config.h": "5f71bd7b56037ef0d0095f003033444a24c29f79b93b5672707e4464e9706279",
+    "app17/generated/rcs_app_task.c": "a2a72acafb03c2d084c46b2493ec52a420043ffadac85d7f31608717f735157c",
+    "app17/generated/rcs_app_task.h": "e274141540233208792b0e44e0081d7341d298c3537be41105e0f513611bfb36",
+    "app17/generated/rcs_can_port.c": "5c735b674739a48e1f34ce886caae1b2bc3d2dd671df512151469ec455a3c0c5",
+    "app17/generated/rcs_can_port.h": "4ccac26a0862fa7cc804d097463d24981ff6dbbfac71cd539756c68dabc6c108",
+    "app17/generated/rcs_feedback_config.h": "d5c745e71b733eac3a10cc741777354529fb4c278954e71b87a1f2b5edf1d4da",
+    "app17/generated/rcs_feedback_port.c": "841e9c8b97f2614a7a473bcfbb6246fbba85e6218aef0a8d7ff4054bf9d0cae8",
+    "app17/generated/rcs_feedback_port.h": "6887b1c89e70caa8400c96cbcab34ab49263ddd3e24760650ff0255cbfd64014",
+    "app17/generated/rcs_nav.c": "b1d8b47a9bbb14c27b141d5b2be73a7c72a7c52a8504adc2abb85e486fd90bd4",
+    "app17/generated/rcs_nav.h": "be3302dc90cd02a9ea9a419d97fa2fa6b7371780926860dae2497fbdc707377b",
+    "app17/generated/rcs_observer_config.h": "68ee207939270ef6cf4f25a3aa76252a2445ca3da6f44a5c28727b1e2539b89c",
+    "app17/generated/rcs_route.c": "7ef29f1a2b16ee32ee9a944c135585cd73d0ffcdfc4ccc9e08f23370de201829",
+    "app17/generated/rcs_route.h": "2920a41788aa3784c9c78bef5b57ea47740a12e5e6b81e56b646055bc3399cba",
+    "app17/generated/rcs_terrain.c": "58e811134a84d5b067081b06b58b31fb8b2eccd789fae2c6e32abf99e9fe13a9",
+    "app17/generated/rcs_terrain.h": "c392aed8b8e882fa328f0cf4ab1a0d4e485b9abcbcfeaaa42eed5b51be15d0df",
+    "app15/generated/rcs_actions.c": "f2cad909ee7f1f100c571608747eeae1dbd98e2dd2b6922c5b64f23f693ffb31",
+    "app15/generated/rcs_actions.h": "38f59571c57e4967efa640dcc5e93b21aa5ac383645d668d17d3247cc20cd5f6",
+    "app15/generated/rcs_app_config.h": "5f71bd7b56037ef0d0095f003033444a24c29f79b93b5672707e4464e9706279",
+    "app15/generated/rcs_app_task.c": "a2a72acafb03c2d084c46b2493ec52a420043ffadac85d7f31608717f735157c",
+    "app15/generated/rcs_app_task.h": "1017a9edb77231108f195e248a4bae58efac487b00ee7f702c54aa41bccbb094",
+    "app15/generated/rcs_can_port.c": "5c735b674739a48e1f34ce886caae1b2bc3d2dd671df512151469ec455a3c0c5",
+    "app15/generated/rcs_can_port.h": "4ccac26a0862fa7cc804d097463d24981ff6dbbfac71cd539756c68dabc6c108",
+    "app15/generated/rcs_feedback_config.h": "d5c745e71b733eac3a10cc741777354529fb4c278954e71b87a1f2b5edf1d4da",
+    "app15/generated/rcs_feedback_port.c": "841e9c8b97f2614a7a473bcfbb6246fbba85e6218aef0a8d7ff4054bf9d0cae8",
+    "app15/generated/rcs_feedback_port.h": "6887b1c89e70caa8400c96cbcab34ab49263ddd3e24760650ff0255cbfd64014",
+    "app15/generated/rcs_nav.c": "c18a3380ad1051e1fb6c1907ef75af5372880ab45ed9dd5c884d3d7144b8c655",
+    "app15/generated/rcs_nav.h": "9e73faa0058d8b58748f9fe64b77185e2b77cd265fa37d6a48e94fa6353c3b27",
+    "app15/generated/rcs_observer_config.h": "68ee207939270ef6cf4f25a3aa76252a2445ca3da6f44a5c28727b1e2539b89c",
+    "app15/generated/rcs_route.c": "60779f620162a42e93da5d7268165e6ad7dc491905227ce4dd2225a3da4d4b33",
+    "app15/generated/rcs_route.h": "c6ed50911e1c428f5b99124dc0c7cde012607e2b255bc667f130db8804ead5e8"
+  }
+}

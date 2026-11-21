@@ -5,7 +5,10 @@ from xml.etree import ElementTree as E
 import base64,ctypes,hashlib,json,shutil,subprocess,sys,uuid,re,zipfile
 from settings import DEFAULTS,config_header
 R=Path(__file__).resolve().parents[1]
-FILES=['rcs_route.c','rcs_route.h','rcs_nav.c','rcs_nav.h','rcs_actions.c','rcs_actions.h']
+FILES=['rcs_route.c','rcs_route.h','rcs_nav.c','rcs_nav.h','rcs_actions.c','rcs_actions.h',
+       'app.c','app.h','machism.c','machism.h','rcs_app_task.c','rcs_app_task.h',
+       'rcs_feedback_port.c','rcs_feedback_port.h','rcs_can_port.c','rcs_can_port.h',
+       'rcs_app_config.h','rcs_feedback_config.h','rcs_observer_config.h']
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def main():
  sys.stdout.reconfigure(encoding='utf-8');area=R/'build'/('routes_'+uuid.uuid4().hex[:8]);area.mkdir();exe=R/'map_editor/dist/foxmolika_MapEditor.exe';checks=[]

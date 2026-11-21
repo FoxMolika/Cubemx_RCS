@@ -8,7 +8,7 @@ def post_helper():
     area = ROOT / "build"
     area.mkdir(exist_ok=True)
     sources = [ROOT / "keil_headers" / name for name in (
-        "KeilHeaders.cs", "ProjectBinding.cs",
+        "KeilHeaders.cs", "ProjectBinding.cs", "HardwareBinding.cs",
     )]
     exe = area / "foxmolika_PostGenerate.exe"
     stamp = area / "post-source.sha256"

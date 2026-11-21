@@ -25,14 +25,22 @@ namespace RcsMap {
             return ProjectBinding.Inside(Path.GetDirectoryName(Path.GetFullPath(ioc)), ProjectBinding.RouteRelative);
         }
         public static string Export(MapDocument document, string ioc) {
+            string destination=Destination(ioc);
+            bool hardware=HardwareExport.Applies(document,destination);
+            if(hardware)HardwareExport.Recover(document,destination,ProjectBinding.Load(Path.GetDirectoryName(Path.GetFullPath(ioc))));
             Exporter.Generate(document); // Validate the route before changing project settings.
             Exporter.CheckDestination(document, Destination(ioc));
             Associate(ioc);
             var binding = ProjectBinding.Load(Path.GetDirectoryName(Path.GetFullPath(ioc)));
             binding.Preflight();
+            if(hardware) {
+                HardwareExport.ExportBound(document,binding);
+                return "应用、路线与硬件已导出并登记到关联工程：\r\n"+binding.RouteDirectory+
+                    "\r\n硬件："+HardwareBinding.Relative+"\r\n"+(HardwareExport.LastReport??"CubeMX再次生成会自动补回硬件C/C++/头文件。");
+            }
             Exporter.Export(document, binding.RouteDirectory);
             RevisionGuard.Bind(binding);
-            string format = ProjectBinding.RequiredRouteFiles(binding.RouteDirectory, false).Length == 17 ? "17个文件" : "15个文件";
+            string format = ProjectBinding.RequiredRouteFiles(binding.RouteDirectory, false).Length == 21 ? "21个文件" : "19个文件";
             try {
                 var projects = binding.Projects();
                 if (projects.Count == 0 || !ProjectBinding.HasChassis(ProjectBinding.ReadXml(projects[0])))
@@ -40,7 +48,7 @@ namespace RcsMap {
                         "\r\n尚未生成含底盘的Keil工程。重新打开.ioc并Generate Code，生成后工具会自动加入路径文件和包含目录。";
                 foreach (string project in projects) global::KeilHeaders.Fix(project, message => { });
                 return "已导出路径" + format + "，并自动加入Keil工程和包含目录：\r\n" + binding.RouteDirectory +
-                    "\r\nKeil已打开时请重新加载工程；CubeMX再次生成会自动补回。任务调用仍写在自己的任务文件中。";
+                    "\r\nKeil已打开时请重新加载工程；CubeMX再次生成会自动补回。main按使用说明调用App_Init/App_Task；业务在应用与状态机中编辑。";
             } catch (Exception error) {
                 throw new IOException("路径文件已导出并保留，但Keil登记尚未完成：" + binding.RouteDirectory +
                     "。请关闭占用程序后重试导出，或重新Generate Code。原因：" + error.Message, error);

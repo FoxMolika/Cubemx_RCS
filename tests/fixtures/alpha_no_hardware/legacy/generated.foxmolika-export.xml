@@ -1,0 +1,23 @@
+<FoxmolikaExport Schema="1" Map="C:\Users\FoxMolia\Desktop\final\foxmolika_CubeMX_0.8.4_alpha\tests\fixtures\alpha_no_hardware\legacy\map.json" MapSha256="9b8134ee4f8e8ad267304a834e1136b5f1e7659e1516d7c75f6d48f5476534b9" RouteSha256="e67387f3a749dbf6db8c45ed53c19d73a90c6c8a819f64020375e8c950bd694c" Revision="9b8134ee4f8e8ad267304a834e1136b5f1e7659e1516d7c75f6d48f5476534b9">
+  <GeneratedFiles>
+    <File Name="rcs_route.c" Sha256="c143921bd7f8eb6b8394b3f383b589980fa354e1c5bf67b78f1753def7d36aae" />
+    <File Name="rcs_route.h" Sha256="3c879998cac5ec956c166ba3027351aaf5891d97535f8fe5a6badbeb928578f8" />
+    <File Name="rcs_nav.c" Sha256="197e64eccee532d55de7f0538249fa20ea1c89f594957905914f86c2d5b76f40" />
+    <File Name="rcs_nav.h" Sha256="634bd48f3615fce8a1317b371e29ca1374470259bbdaff14aee1f85ebe14f981" />
+    <File Name="rcs_actions.c" Sha256="e0ecf2c6d5d0aa38a348f209fd9ee281d6a3e64df1f11b03653699a14d7ce2ee" />
+    <File Name="rcs_actions.h" Sha256="29b0dddcec89e9577f8fab068b907f7d8b2fa8369b214e57460cdb776ec9d670" />
+    <File Name="rcs_app_task.c" Sha256="35e08ea35b3deac294db20e963e5464bfb91e03b38ae12943b3ced77b9f7f260" />
+    <File Name="rcs_app_task.h" Sha256="200dbdfba47144561547b44864762012bb280561864b9be08f2804c93c5aea5e" />
+    <File Name="app.c" Sha256="6f091dd77f919fc9fa6b0df482acae34ec7c25143b510af1e6eadd999b5e3b9b" />
+    <File Name="app.h" Sha256="add3009e6c63c3c19cb00218af50940d6fe3b2a90c8beb42b4b31b39854fe268" />
+    <File Name="machism.c" Sha256="cfd52f3c1e176299c4dd918a395d1cc54a6e2acabe2414e5c6c3f94ae8c4bc38" />
+    <File Name="machism.h" Sha256="cc5f04328f15deb03549524f1edcb3a7e2916dde0f8bee4dfad5930d2e87e410" />
+    <File Name="rcs_feedback_port.c" Sha256="fdaee754d3d6cbc34ce09915cb0070aa823710cb61159d7795efa1931b914f66" />
+    <File Name="rcs_feedback_port.h" Sha256="d8bb37d11e2f608fd9c21d8defc4e70d93e5754c6a6beb1bc1f603b9ff4c109a" />
+    <File Name="rcs_can_port.c" Sha256="cc2dd05912fa8fa7c4aa5238ddcc3bca908c76181d64f8565f2f748e3eef08b1" />
+    <File Name="rcs_can_port.h" Sha256="3fc7596be2cb36b3b53c7ac149accbac20c603d49ce4e3aca6446a2dd67feb79" />
+    <File Name="rcs_app_config.h" Sha256="a02f34f791dc00d0beeaa01643e647e57f1b97b3e758b00aa54dba62a13e63be" />
+    <File Name="rcs_feedback_config.h" Sha256="4ae0a41c670e2c19bcf430f86dd0281d4ae2a69077f8264fce62a9e11f40476a" />
+    <File Name="rcs_observer_config.h" Sha256="3114ef0030b5dce968718555fa4bdf114226990e68e3f636a11925baf4c09886" />
+  </GeneratedFiles>
+</FoxmolikaExport>

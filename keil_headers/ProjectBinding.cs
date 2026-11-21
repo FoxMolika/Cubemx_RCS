@@ -99,11 +99,15 @@ internal sealed class ProjectBinding {
     internal const string RouteRelative = "Application/foxmolikaRoute";
     internal static readonly string[] RouteFiles = {
         "rcs_route.c", "rcs_route.h", "rcs_nav.c", "rcs_nav.h", "rcs_actions.c", "rcs_actions.h",
-        "rcs_app_task.c", "rcs_app_task.h",
+        "rcs_app_task.c", "rcs_app_task.h", "app.c", "app.h", "machism.c", "machism.h",
         "rcs_feedback_port.c", "rcs_feedback_port.h", "rcs_can_port.c", "rcs_can_port.h",
         "rcs_app_config.h", "rcs_feedback_config.h", "rcs_observer_config.h"
     };
     internal static readonly string[] TerrainFiles = { "rcs_terrain.c", "rcs_terrain.h" };
+    // 只接受完整的已知代际；检测到新版入口但缺文件时绝不能退回旧版放行。
+    internal static readonly string[] LegacyRouteFiles = RouteFiles.Where(n =>
+        n != "app.c" && n != "app.h" && n != "machism.c" && n != "machism.h").ToArray();
+    internal static readonly string[] CoreRouteFiles = RouteFiles.Take(6).ToArray();
     internal static string[] RouteNames(bool terrain) { return terrain ? RouteFiles.Concat(TerrainFiles).ToArray() : RouteFiles; }
     internal static bool DeclaresTerrain(string text) {
         return Regex.IsMatch(text ?? "", @"(?m)^[ \t]*#[ \t]*include[ \t]*""rcs_terrain\.h""");
@@ -115,17 +119,19 @@ internal sealed class ProjectBinding {
         int basic = RouteFiles.Count(n => File.Exists(Path.Combine(directory, n)));
         int terrain = TerrainFiles.Count(n => File.Exists(Path.Combine(directory, n)));
         if (basic == 0 && terrain == 0 && allowEmpty) return new string[0];
-        if (basic != RouteFiles.Length) throw new IOException("路径目录不完整，须重新导出完整15个文件或带坡道17个文件。");
+        string[] selected = RouteFiles.Except(LegacyRouteFiles).Any(n => File.Exists(Path.Combine(directory,n))) ? RouteFiles :
+            LegacyRouteFiles.Except(CoreRouteFiles).Any(n => File.Exists(Path.Combine(directory,n))) ? LegacyRouteFiles : CoreRouteFiles;
+        if (basic != selected.Length) throw new IOException("路径目录不完整，须重新导出完整19个文件或带坡道21个文件。");
         foreach (string name in new[] { "rcs_nav.c", "rcs_nav.h" })
             if (new FileInfo(Path.Combine(directory, name)).Length > 2 * 1024 * 1024)
                 throw new IOException("导航文件超过2MB，保留原内容：" + name);
         bool declared = DeclaresTerrain(File.ReadAllText(Path.Combine(directory, "rcs_nav.h"), new UTF8Encoding(false, true))) ||
                         DeclaresTerrain(File.ReadAllText(Path.Combine(directory, "rcs_nav.c"), new UTF8Encoding(false, true)));
         if (declared && terrain != TerrainFiles.Length)
-            throw new IOException("导航声明使用坡道模块，但rcs_terrain.c/.h缺失；保留工程，请重新导出完整17个文件。");
+            throw new IOException("导航声明使用坡道模块，但rcs_terrain.c/.h缺失；保留工程，请重新导出完整21个文件。");
         if (!declared && terrain != 0)
             throw new IOException("平地导航旁存在未匹配的坡道文件，保留原内容；请通过编辑器完成安全升级或降级。");
-        return RouteNames(declared);
+        return declared ? selected.Concat(TerrainFiles).ToArray() : selected;
     }
     static string TextHash(string text) { using (var sha = SHA256.Create()) return
         BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(text))).Replace("-", "").ToLowerInvariant(); }
@@ -180,7 +186,7 @@ internal sealed class ProjectBinding {
         if (receipt.Elements("GeneratedFiles").Count() > 1) throw new IOException("路线版本清单重复，请重新导出。");
         var manifest = receipt.Element("GeneratedFiles");
         if (manifest == null) {
-            if (required.Length != RouteFiles.Length) throw new IOException("坡道路线缺少完整版本清单，请重新导出4C4H。");
+            if (required.Contains("rcs_terrain.c")) throw new IOException("坡道路线缺少完整版本清单，请重新导出完整坡道文件。");
             return; // Old flat receipts remain readable until the next export.
         }
         var entries = manifest.Elements().ToList();
@@ -292,11 +298,11 @@ internal sealed class ProjectBinding {
         }
         return current;
     }
-    internal int UpdateRoute(XDocument document, string project, bool preview) {
+    internal int UpdateRoute(XDocument document, string project, bool preview, string[] plannedRequired=null, bool ensureGuard=false) {
         CheckPaths(); string dir = Path.GetDirectoryName(Path.GetFullPath(project));
-        string[] required = RequiredRouteFiles(RouteDirectory, true);
+        string[] required = plannedRequired??RequiredRouteFiles(RouteDirectory, true);
         if (!preview && required.Length == 0) return 0;
-        foreach (string name in required) GeneratedHash(Path.Combine(RouteDirectory, name));
+        if(plannedRequired==null)foreach (string name in required) GeneratedHash(Path.Combine(RouteDirectory, name));
         if (required.Length == 0) required = RouteFiles;
         int changed = 0; bool eligible = false;
         foreach (var target in document.Descendants("Target")) {
@@ -337,14 +343,14 @@ internal sealed class ProjectBinding {
                 try { return Same(FilePath(dir, v), RouteDirectory); } catch (ArgumentException) { return false; }
             });
             if (!contains) { include.Value = include.Value.TrimEnd(';') + (include.Value.Trim().Length == 0 ? "" : ";") + Relative(dir, RouteDirectory); changed++; }
-            changed += EnsureBuildGuard(target,project);
+            changed += EnsureBuildGuard(target,project,ensureGuard);
         }
         if (!eligible) throw new IOException("Keil工程尚未包含foxmolika底盘，请先在CubeMX启用组件并Generate Code。");
         return changed;
     }
-    internal int EnsureBuildGuard(XElement target,string project) {
+    internal int EnsureBuildGuard(XElement target,string project,bool force=false) {
         string receipt=Path.Combine(Root,BuildVersion.ToolDirectory,"route-build.xml");
-        if(!File.Exists(receipt))return 0;
+        if(!File.Exists(receipt)&&!force)return 0;
         var common=target.Descendants("TargetCommonOption").FirstOrDefault();
         if(common==null)throw new IOException("Keil缺少目标构建选项，无法登记路线版本检查。");
         var before=common.Element("BeforeMake");
@@ -386,6 +392,7 @@ internal sealed class ProjectBinding {
         if(FileHash(Inside(root,RouteRelative+"/rcs_route.c"))!=(string)xml.Attribute("RouteSha256"))
             throw new IOException("路线配置源码与最近导出不一致，请检查并重新导出。");
         CheckGeneratedFiles(xml, Inside(root, RouteRelative));
+        HardwareBinding.CheckVersion(root);
         return "PASS foxmolika route revision "+(string)xml.Attribute("Revision");
     }
     internal void Preflight() {

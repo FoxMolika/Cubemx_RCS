@@ -71,6 +71,12 @@ def csharp_arguments(output, sources, *, target="exe", references=(),
     source_files = list(sources)
     if not any(Path(path).resolve() == version_source.resolve() for path in source_files):
         source_files.append(version_source)
+    # 工程登记/portable post共享硬件清单解析，不要求每个前端单独维护依赖。
+    hardware_binding = ROOT / "keil_headers/HardwareBinding.cs"
+    project_binding = ROOT / "keil_headers/ProjectBinding.cs"
+    if hardware_binding.exists() and any(Path(p).resolve() == project_binding.resolve() for p in source_files):
+        if not any(Path(p).resolve() == hardware_binding.resolve() for p in source_files):
+            source_files.append(hardware_binding)
     args.extend(source_files)
     return args
 

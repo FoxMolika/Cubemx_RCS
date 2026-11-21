@@ -43,7 +43,7 @@ namespace RcsMap
             var candidate = doc.Clone();
             if (candidate.TerrainDrive == null)
                 candidate.TerrainDrive = new TerrainDriveSettings();
-            candidate.Version = 6;
+            candidate.Version = Math.Max(candidate.Version, 6);
             using (var dialog = new PropertyDialog(
                 "坡道执行参数 · 模型须标定，制动须真实绑定", candidate.TerrainDrive,
                 () => DraftRules.Check(candidate)))

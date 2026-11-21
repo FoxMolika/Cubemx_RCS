@@ -25,6 +25,11 @@ static class ProjectSetup {
  // 仅允许已发布0.8.0及本仓库已验收补丁的确切助手，旧目录不覆盖。
  static readonly string[] Legacy080Hashes={"a4ff97d599ff032e83ef19d14d50917d4844aee566ac9974596c548e766e1195","29954df7d9b5bcfb3a61c56287f7405b7c078de629e0626f6aa877560539c654"};
  const string Legacy081Hash="d79e631bcad450570792e191b02883c691dda6854f01f19b1423c6dbaf413e31";
+ // 0.8.2正式发布附件的实际摘要。未知脚本不替换，避免覆盖用户分发器。
+ const string Legacy082Hash="423301952b60be5dffead82f3f33dcbbb415ab41ca44940c0cda0d6bc1f04d0f";
+ // 本机DeepSeek 0.8.3基线1126b6d的已核对助手，仅用于升级到独立beta目录。
+ const string Legacy083Hash="550bbb4148c0de6310d754046deebb1d535c5d523f5b7bceac7a81e5bfb8ea97";
+ const string Legacy083BetaHash="f994f682bd2bc512c75adb37c1011af71b65464074ef8d8613700d455ee9ab1c";
  static bool LegacyHook(string root,string hook){
   string normalized=hook.Replace('\\','/');
   string expected=normalized.Equals("foxmolika_Tools_036/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy036Hash:
@@ -37,7 +42,10 @@ static class ProjectSetup {
    normalized.Equals("foxmolika_Tools_060/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy060Hash:
    normalized.Equals("foxmolika_Tools_061/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy061Hash:
    normalized.Equals("foxmolika_Tools_070/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy070Hash:
-   normalized.Equals("foxmolika_Tools_081/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy081Hash:null;
+   normalized.Equals("foxmolika_Tools_081/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy081Hash:
+   normalized.Equals("foxmolika_Tools_082/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy082Hash:
+   normalized.Equals("foxmolika_Tools_083/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy083Hash:
+   normalized.Equals("foxmolika_Tools_083_beta/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase)?Legacy083BetaHash:null;
   bool from080=normalized.Equals("foxmolika_Tools_080/foxmolika_PostGenerate.exe",StringComparison.OrdinalIgnoreCase);
   if(expected==null&&!from080)return false;
   string file=ProjectBinding.Inside(root,hook);ProjectBinding.NoLink(Path.GetDirectoryName(file));ProjectBinding.NoLink(file);
@@ -82,12 +90,12 @@ static class ProjectSetup {
   Directory.CreateDirectory(Path.GetDirectoryName(tool));if(!File.Exists(tool))Atomic(tool,payload);
   try{if(changeExt)Atomic(ext,Utf8.GetBytes(merged));if(changeMarker)Atomic(binding.Marker,markerNew);if(changeIoc)Atomic(path,Utf8.GetBytes(updated));}
   catch{if(changeMarker){if(markerOld!=null)Atomic(binding.Marker,markerOld);else if(File.Exists(binding.Marker))File.Delete(binding.Marker);}if(changeExt){if(old!=null)Atomic(ext,old);else if(File.Exists(ext))File.Delete(ext);}throw;}
-  return "底盘与路径工程关联完成。请返回CubeMX重新打开.ioc并Generate Code。\r\n已启用CAN HAL与生成后自动登记。\r\n地图编辑器可直接导出到 "+ProjectBinding.RouteRelative+"，自动加入路径3C3H和包含目录。\r\n硬件CAN配置和任务调用仍由你接入。\r\n"+(upgrade?"已切换RCS.foxmolika "+BuildVersion.Version+"；请先安装本套件。\r\n":"")+"原文件如有修改，备份为 *.rcs-before-"+BuildVersion.ToolCode+"。";
+  return "底盘与路径工程关联完成。请返回CubeMX重新打开.ioc并Generate Code。\r\n已启用CAN HAL与生成后自动登记。\r\n地图编辑器可直接导出到 "+ProjectBinding.RouteRelative+"，自动加入应用与路径19/21个文件和包含目录。\r\nCAN引脚/位时序/RX0中断由CubeMX配置；main按beta教程调用App_Init/App_Task。\r\n"+(upgrade?"已切换RCS.foxmolika "+BuildVersion.Version+"；请先安装本套件。\r\n":"")+"原文件如有修改，备份为 *.rcs-before-"+BuildVersion.ToolCode+"。";
  }
 #if !RCS_MAP_EDITOR
  [STAThread] static int Main(string[] args){try{if(args.Length>0){string p=args.FirstOrDefault(x=>!x.StartsWith("/"));if(p==null)throw new Exception("需要.ioc路径。");Console.WriteLine(Apply(p,args.Any(x=>x.Equals("/UPGRADE",StringComparison.OrdinalIgnoreCase))));return 0;}
   Application.EnableVisualStyles();using(var form=new Form{Text="foxmolika 工程关联 "+BuildVersion.Version+"",Width=640,Height=310,StartPosition=FormStartPosition.CenterScreen}){
-   var info=new Label{Left=20,Top=20,Width=580,Height=145,Text="底盘和地图路径共用一次工程关联。\r\n\r\n启用CAN HAL，生成后自动补底盘4H；\r\n地图导出到Application/foxmolikaRoute，自动加入3C3H及包含路径。\r\n使用RCS.foxmolika "+BuildVersion.Version+"；需先安装套件。\r\n不向main.c插入底盘或路径任务调用。"};form.Controls.Add(info);
+   var info=new Label{Left=20,Top=20,Width=580,Height=145,Text="底盘和地图路径共用一次工程关联。\r\n\r\n启用CAN HAL，生成后自动补底盘4H；\r\n地图导出到Application/foxmolikaRoute，自动加入19/21个应用与路径文件及包含路径。\r\n使用RCS.foxmolika "+BuildVersion.Version+"；需先安装套件。\r\n不向main.c插入底盘或路径任务调用。"};form.Controls.Add(info);
    var button=new Button{Text="选择 .ioc 并关联 / 升级",Left=20,Top=180,Width=270,Height=40};button.Click+=(s,e)=>{using(var d=new OpenFileDialog{Filter="CubeMX工程|*.ioc",Title="保存并关闭CubeMX工程后，选择.ioc"})if(d.ShowDialog(form)==DialogResult.OK){try{MessageBox.Show(form,Apply(d.FileName,true),"完成");}catch(Exception ex){MessageBox.Show(form,ex.Message,"未完成");}}};form.Controls.Add(button);Application.Run(form);}return 0;
  }catch(Exception e){try{File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"project-setup-error.log"),e.ToString(),Utf8);}catch{}Console.Error.WriteLine(e.Message);return 2;}}
 #endif

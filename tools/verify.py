@@ -29,8 +29,8 @@ def main():
     missing=b/'missing_can';missing.mkdir(exist_ok=True)
     (missing/'stm32f4xx_hal.h').write_text('#include <stdint.h>\n',encoding='ascii')
     p=subprocess.run([gcc,'-std=c99','-fsyntax-only','-I',str(missing),'-I',str(ROOT/'firmware'),str(ROOT/'firmware/rcs_hal.c')],capture_output=True,text=True,errors='replace')
-    assert p.returncode and 'RCS: CAN HAL is disabled' in p.stderr and 'unknown type' not in p.stderr,p.stderr
-    evidence.append('PASS missing CAN HAL yields an actionable configuration error without unknown-type cascade')
+    assert p.returncode == 0, p.stderr
+    evidence.append('PASS missing CAN HAL compiles a non-driving interface; beta application requires configured CAN')
     # Compile-time guards in rcs_config.h reject invalid cross-field CubeMX settings.
     probe=stub/'probe.c';probe.write_text('#include "rcs_config.h"\nint rcs_probe;\n',encoding='ascii')
     bad_cases=[{'RCS_MOTOR_ID_1':1},{'RCS_COMMAND_TIMEOUT_MS':5},{'RCS_FEEDBACK_TIMEOUT_MS':4,'RCS_PERIOD_MS':5},

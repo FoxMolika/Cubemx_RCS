@@ -61,7 +61,7 @@ namespace RcsSuite {
   }
  }
  static class Setup {
-  internal static string DefaultDir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"foxmolika_CubeMX_Suite_"+PackService.Version);
+  internal static string DefaultDir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"foxmolika_CubeMX_Suite_"+BuildVersion.DisplayVersion);
   internal static string Option(string[] a,string key,string fallback=null){string s=a.FirstOrDefault(x=>x.StartsWith(key+"=",StringComparison.OrdinalIgnoreCase));return s==null?fallback:s.Substring(key.Length+1);}
   internal static string ResolveCube(string explicitPath){if(!String.IsNullOrWhiteSpace(explicitPath)){string c=CubeLocator.Normalize(explicitPath);if(!CubeLocator.Valid(c))throw new Exception("请选择包含 STM32CubeMX.exe 和 jre/bin/java.exe 的完整 CubeMX 安装目录。");return c;}var all=CubeLocator.Find();if(all.Count==0)throw new Exception("未找到 STM32CubeMX。请先安装 CubeMX，再选择 STM32CubeMX.exe；无需手动导入 .pack。");return all[0];}
   internal static void Install(string dir,string explicitCube,string testHome,Action<string> report){dir=Path.GetFullPath(dir);string cube=ResolveCube(explicitCube);bool isolated=!String.IsNullOrEmpty(testHome);string home=Path.GetFullPath(testHome??Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
@@ -98,7 +98,7 @@ namespace RcsSuite {
  }
  class Wizard:Form {
   ComboBox cube=new ComboBox();TextBox dest=new TextBox(),log=new TextBox();Button install,remove,launch,guide,projectSetup;bool busy;
-  public Wizard(string cubePath,string dir){Text="foxmolika CubeMX 合并安装程序 "+PackService.Version;ClientSize=new Size(850,650);MinimumSize=Size;StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",10);BackColor=Color.White;
+  public Wizard(string cubePath,string dir){Text="foxmolika CubeMX 合并安装程序 "+BuildVersion.DisplayVersion;ClientSize=new Size(850,650);MinimumSize=Size;StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",10);BackColor=Color.White;
    Controls.Add(new Label{Text="底盘生成 + 位点地图，一次安装",Font=new Font(Font.FontFamily,22,FontStyle.Bold),Location=new Point(24,22),AutoSize=true});
    Controls.Add(new Label{Text="单文件安装包 · 自动导入 RCS.foxmolika "+PackService.Version+" · 含 Keil 头文件补全工具",Location=new Point(27,77),AutoSize=true,ForeColor=Color.FromArgb(30,117,102)});
    Controls.Add(new Label{Text="本机 STM32CubeMX 安装位置",Location=new Point(27,120),AutoSize=true});cube.SetBounds(27,149,670,31);cube.DropDownStyle=ComboBoxStyle.DropDown;foreach(string c in CubeLocator.Find())cube.Items.Add(c);cube.Text=cubePath??(cube.Items.Count>0?Convert.ToString(cube.Items[0]):"");Controls.Add(cube);
@@ -110,7 +110,7 @@ namespace RcsSuite {
    guide=new Button{Text="使用说明",Location=new Point(373,363),Size=new Size(130,41)};guide.Click+=(s,e)=>Open("使用说明.html");Controls.Add(guide);
    remove=new Button{Text="卸载此套工具",Location=new Point(516,363),Size=new Size(155,41)};remove.Click+=(s,e)=>Work(true);Controls.Add(remove);
    projectSetup=new Button{Text="关联工程…",Location=new Point(684,363),Size=new Size(138,41)};projectSetup.Click+=(s,e)=>Open("foxmolika_ProjectSetup.exe");Controls.Add(projectSetup);
-   log.SetBounds(27,427,795,192);log.Multiline=true;log.ReadOnly=true;log.ScrollBars=ScrollBars.Vertical;log.BackColor=Color.FromArgb(244,248,252);log.Text="选择并启用 RCS.foxmolika "+PackService.Version+" 后保存关闭.ioc；安装器或地图编辑器均可“关联工程…”。\r\n地图选择“导出到关联工程”，自动加入路径3C3H和包含目录。\r\n后续Generate Code自动补底盘4H和已导出的路径登记；硬件配置及任务调用仍由你接入。";Controls.Add(log);
+   log.SetBounds(27,427,795,192);log.Multiline=true;log.ReadOnly=true;log.ScrollBars=ScrollBars.Vertical;log.BackColor=Color.FromArgb(244,248,252);log.Text="选择并启用 RCS.foxmolika "+PackService.Version+" 后保存关闭.ioc；安装器或地图编辑器均可“关联工程…”。\r\n地图选择“导出到关联工程”，自动加入应用与路径19/21个文件和包含目录。\r\n后续Generate Code自动补底盘4H和已导出的路径登记；CAN引脚/位时序/RX0中断由CubeMX配置；main按beta教程调用App_Init/App_Task。";Controls.Add(log);
    FormClosing+=(s,e)=>{if(busy){e.Cancel=true;MessageBox.Show(this,"正在等待 CubeMX 核验完成，请稍候。");}};
   }
   void Append(string s){if(InvokeRequired){BeginInvoke(new Action<string>(Append),s);return;}log.AppendText("\r\n"+s);}

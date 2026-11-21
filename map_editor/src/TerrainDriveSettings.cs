@@ -59,7 +59,7 @@ namespace RcsMap
         public static void Structure(MapDocument document)
         {
             if (document.TerrainDrive == null) return;
-            if (document.Version != 6) throw new Exception("坡道执行参数须使用v6地图。");
+            if (document.Version < 6) throw new Exception("坡道执行参数须使用v6地图。");
             var config = document.TerrainDrive;
             var numbers = new[] { config.TransitionMm, config.DecelerationMmS2,
                                   config.LateralToleranceMm, config.HeadingToleranceDeg };
