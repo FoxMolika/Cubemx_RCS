@@ -13,9 +13,11 @@ import uuid
 
 ROOT=Path(__file__).resolve().parents[1]
 FIXTURE=ROOT/"tests/fixtures/alpha_no_hardware"
-# 仅这六个文件允许变化：新增只读调试接口与微秒窗口。任何其他差异仍视为回归。
+# 仅这些文件允许变化：新增只读调试接口与微秒窗口；app.c 的 CAN 句柄改为弱引用，
+# 使未在 CubeMX 启用 CAN 的工程不再于链接期报 L6218E（语义变为启动时 ERROR_CONFIGURATION）。
+# 任何其他差异仍视为回归。
 ALLOWED_CHANGES={"rcs_app_task.c","rcs_app_task.h","rcs_feedback_port.c","rcs_feedback_port.h",
-                 "rcs_can_port.c","rcs_feedback_config.h"}
+                 "rcs_can_port.c","rcs_feedback_config.h","app.c"}
 
 
 def sha(p):
@@ -59,6 +61,9 @@ def main():
             if name in ALLOWED_CHANGES:
                 continue
             assert expected[name]==actual[name],kind+"无硬件输出发生变化："+name
+        app_c=actual["app.c"].decode("utf-8")
+        assert "extern CAN_HandleTypeDef hcan1 __attribute__((weak));" in app_c,kind+"缺少CAN弱引用"
+        assert "App_task_Init(&hcan1)" in app_c,kind+"句柄绑定被意外改动"
         app=actual["rcs_app_task.c"].decode("utf-8")
         header=actual["rcs_app_task.h"].decode("utf-8")
         port=actual["rcs_feedback_port.c"].decode("utf-8")
