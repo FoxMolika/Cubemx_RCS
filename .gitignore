@@ -12,3 +12,6 @@ native/MDK-ARM/
 /keil_headers/BuildVersion.cs
 
 /交付/
+
+# 队内 STD 原样参考（19.6MB），不入公开仓库
+/reference/
