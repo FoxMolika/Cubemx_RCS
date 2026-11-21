@@ -1,44 +1,29 @@
-# foxmolika CubeMX 套件 0.8.2
+# foxmolika 0.8.4.beta（本地硬件模板版）
 
-0.8.2修复发布来源缺口：全部验收及打包从干净的版本标签开始，源码包逐字节核对Git提交，上传前再次检查标签与资产。保留v0.8.0和v0.8.1的标签及附件。版本统一由 `tools/version.py` 生成，见[版本与发布](docs/版本与发布.md)及[代码梳理](docs/代码梳理_0.8.1.md)。
+独立项目，基于0.8.3.beta继续实现；旧目录和队内ZIP不改动，不推送、不发布、不自动烧录。
 
-开发检查统一使用：
+先读 [统一使用说明](docs/0.8.4.beta使用说明.html)；调试时看[调试变量与错误码](docs/调试变量与错误码.md)，所有 Watch 变量名和故障码取值都在那里。新入口为工具栏“硬件管理…”：添加队内/基础设备实例、编辑参数、创建/导入/导出个人模板，在航点和状态机中选择硬件操作。main仍只接App_Init/App_Task一次。
 
-```powershell
-python tools/check.py --level host    # Windows/.NET Framework/Python/GCC，含实际生成兼容性回归
-python tools/check.py --level native  # 再验证已安装的 CubeMX、F4固件和 Keil
-python tools/check.py --level release # 维护者发布核验，必须有历史版本目录和事前SHA256快照
+当前自动接入：队内无传感器气缸、队内JY901，以及GPIO/PWM基础模板；用户可导入或编写C/H/C++和生命周期。队内其它电机及STD库留作来源参考，尚不应称为全部自动适配。没有独立定位硬件时纠错留空。
+
+基础路线仍19/21文件，硬件输出到Application/foxmolikaHardware，自动登记C/C++和头文件。已修改文件不覆盖，取消设备保留归档，跨文件失败有恢复记录。
+
+## 本地构建与验证
+
+```text
+python tools/validate_beta.py
 ```
 
-完整克隆保留 `aaeeca5` 基线历史供回归比较；无需复制旧版安装目录。`python tools/sync_versions.py` 生成当前C#常量及教程（HTML源位于 `docs/templates/*.html.in`）。`--list` 可查看步骤，`--from 脚本路径` 可继续执行，报告明确记录此次执行范围。构建产物放在忽略的 `build/`、`dist/`、`pack/`，参考地图不会被重新生成的随机ID改写。原生验收的工具路径约定见[方案](docs/代码审查与重构方案.md)。
+需要Windows/.NET Framework编译器、GCC/G++；原生验收另需本机CubeMX6.18.1、F4 V1.28.3、Keil ARM6.22。队内C++适配需要完整C++库和至少0x2000堆，不能使用MicroLIB。所有验收只在本项目build内的隔离配置中安装生成，不烧录。
 
-新增坡道执行4C4H与凸轮廓拖动编辑；参见 docs/坡道与形状编辑.md。平地6文件保持0.7.0回归，坡道8文件自动关联。旧0.7.0目录不覆盖。
+交付入口为`交付/使用说明.html`与两个0.8.4.beta单文件安装器。完整验证摘要和本轮JSON证据随交付保存，主机模拟、ARM编译和实车证据分开记录。
 
-**保留0.7.0引入的可选纠错模板：没有独立观测时留空，不自动纠错。** 主窗口“定位硬件”导入能力档案，航点流程中间添加支持的模板；导入不自动启用。刷新估计和驱动对齐明确分开。旧自动纠错仅作记录，详细接入见 docs/定位硬件接入.md。
+## 代码入口
 
-两个航点之间可沿直线连续跨越已接合的平台和坡道，不必逐面添加航点。交界只做内部几何分段，不执行停车、纠错或动作；中间限速、坡度、净空、障碍和车体包络全部检查。主窗口“立体示例”可直接查看两个地面航点连续上下平台。选中目的航点，在右下查看“入段表面链”，桥下路线可明确“保持起点层”。保留主窗口一体编辑、全局撤销/重做、草稿与普通Medium安装，原有版本目录不覆盖。
-
-**坡道执行采用已知地图基础模型，须实测标定与制动接入。** 支持纵向上下直坡的C/H导出；动态预览仍限平地，坡道可做三视图几何预览。地面路线继续使用现有固件。没有高度闭环、IMU融合、自动寻路、台阶或升降平台控制；三维画面为规划几何预览。
-
-STM32F407 HAL 底盘模块与位点地图编辑器。独立生成 C/H，支持 CubeMX 软件包和 Keil 工程关联，不向 main.c 插入业务。
-
-- [下载安装包与 SHA-256（Releases）](../../releases/latest)
-- [安装与使用教程](docs/使用说明.html)
-- [地图、航点动作与量角器](docs/地图编辑器说明.html)
-- [底盘接口](docs/接入说明.md)
-- [坡道执行与形状编辑](docs/坡道与形状编辑.md)
-- [本次变更](变更说明_0.8.2.md)
-- [发布验证结果](docs/验证记录.md)（完整 JSON 见 Release 附件）
-- [全部版本](CHANGELOG.md)
-
-航点执行顺序：平移到点 → 停稳 → 到达后动作 → 独立纠偏 → 起步前动作 → 离开验收。旋转是独立动作，旋转时 XY 命令为零，机构动作不会因纠偏重放。
-
-量角器支持画布两点、网格方向与夹角、计划/手动参考朝向、相对转角、位点引用或固定角度，以及添加旋转动作。编辑器不可恢复异常生成本地 ZIP，窗口显示完整路径；恢复地图单独保存，不上传。
-
-安装后点击“启动地图编辑器”，以后运行安装目录的 foxmolika_MapEditor.exe。要自动登记 C/H，必须主动点“关联工程…”选择已保存的 .ioc，然后 Generate Code。地图保存后还必须导出到关联工程；保存与导出不是同一个操作。
-
-入口在主窗口米色工具栏与左侧平台/坡道、连接页。右侧直接改航点/障碍归属；Z由表面推导。当前层决定新点归属，默认选中点后插入；无需应用地形，直接保存草稿。
-
-旧v1/v2迁移为v3；v3/v4/v5仍可读取。新轮廓和坡道参数保存为v6，旧编辑器拒绝打开，防止忽略字段。建议另存地图并使用工程副本升级。只有驱动编码器时默认不纠错；坡道行程换算仍受里程计误差和标定误差影响。
-
-重建需要 Windows、.NET Framework C# 编译器、Python、GCC；原生验收另需 STM32CubeMX/F4 固件包和可用 Keil 编译器。目标电脑运行安装器/编辑器不需要 Python。发布流程见 tools/check.py 与 tools/publish_release.py。
+- map_editor/src/HardwareModel.cs、HardwareCatalog.cs：模板/实例、参数、资源与快照。
+- HardwareEditor.cs、HardwareTemplateEditor.cs、HardwareOperations.cs：GUI和动作绑定。
+- HardwareGenerator.cs、HardwareIntegration.cs：真实驱动生成和App生命周期。
+- map_editor/hardware：首批驱动和薄适配；reference：两队内ZIP的来源摘要与原始参考。
+- map_editor/templates/rcs_app_task.*.tpl：应用调度与只读调试快照 `g_dbg`（每次 App_task 刷新）。
+- HardwareExport.cs、keil_headers/HardwareBinding.cs：交付、Keil登记、归档与恢复。
+- tools/test_hardware_*.py、test_beta_compatibility.py、test_beta_native.py：本轮回归。
