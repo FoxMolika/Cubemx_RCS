@@ -8,6 +8,8 @@ import subprocess
 import sys
 
 from build_support import ROOT, csharp_compiler
+from cubemx_runner import cube_directory
+from keil_build import uv4_executable
 from provenance import capture, assert_current
 
 # 顺序具有依赖关系：先冻结编辑器，再测试，最后构建并验证一体安装器。
@@ -86,19 +88,15 @@ def preflight(level):
     if missing:
         raise RuntimeError("PATH 中缺少主机工具：" + ", ".join(missing))
     if level in ("native", "release"):
-        default_cube = Path.home() / "AppData/Local/Programs/STM32CubeMX"
-        cube = Path(os.environ.get("STM32CubeMX_PATH", str(default_cube)))
+        cube = cube_directory()
         required = (
-            cube / "STM32CubeMX.exe", cube / "jre/bin/javac.exe",
-            # 旧 INI 探针仍使用默认安装路径，不能把环境变量支持误报为完整迁移。
-            default_cube / "STM32CubeMX.exe", default_cube / "jre/bin/java.exe",
-            default_cube / "jre/bin/javac.exe",
-            Path.home() / "AppData/Local/Keil_v5/UV4/UV4.exe",
+            cube / "STM32CubeMX.exe", cube / "jre/bin/javac.exe", cube / "jre/bin/java.exe",
+            uv4_executable(),
             Path.home() / "STM32Cube/Repository/STM32Cube_FW_F4_V1.28.3",
         )
         absent = [str(path) for path in required if not path.exists()]
         if absent:
-            raise RuntimeError("原生验收缺少工具/固件（保留原验收路径约定）：\n" + "\n".join(absent))
+            raise RuntimeError("原生验收缺少工具/固件：\n" + "\n".join(absent))
     if level == "release":
         absent = []
         for version in ARCHIVE_VERSIONS:

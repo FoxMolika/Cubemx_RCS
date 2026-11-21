@@ -1,11 +1,12 @@
 from version import VERSION, VERSION_CODE, TOOL_DIRECTORY
+from cubemx_runner import cube_directory
 from pathlib import Path
 import subprocess,sys,uuid,json,hashlib
 R=Path(__file__).resolve().parents[1]
 def main():
  sys.stdout.reconfigure(encoding='utf-8');area=R/'build'/('project_setup_'+uuid.uuid4().hex[:8]);area.mkdir();exe=R/'suite/build/foxmolika_ProjectSetup.exe';checks=[]
  seed=(R/'tests/fixtures/tester123_no_can.ioc').read_bytes();main=b'/* user main unchanged */\r\n'
- C=Path.home()/'AppData/Local/Programs/STM32CubeMX';classes=area/'classes';classes.mkdir()
+ C=cube_directory();classes=area/'classes';classes.mkdir()
  subprocess.run([str(C/'jre/bin/javac.exe'),'-proc:none','-cp',str(C/'STM32CubeMX.exe'),'-d',str(classes),str(R/'tools/CubeIniProbe.java')],check=True,capture_output=True)
  def fixture(name,ext=None,replace=None):
   d=area/name;d.mkdir();p=d/'case.ioc';p.write_bytes(seed if replace is None else replace);(d/'main.c').write_bytes(main)
