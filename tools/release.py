@@ -1,8 +1,10 @@
 from version import VERSION, release_asset_names
 'Package ONLY validated current artifacts; never rebuild or install here.'
+from datetime import datetime, timezone
 from pathlib import Path
+from gate_diagnostics import GateError
 from xml.etree import ElementTree as E
-import hashlib, json, re, shutil, subprocess, sys, zipfile
+import hashlib, json, os, re, shutil, subprocess, sys, zipfile
 from provenance import assert_current, create_source_archive, verify_source_archive
 R = Path(__file__).resolve().parents[1]
 
@@ -12,14 +14,22 @@ def sha(p):
 def read(name):
     return json.loads((R / name).read_text(encoding='utf-8'))
 
-def main():
+def _release_body():
     sys.stdout.reconfigure(encoding='utf-8')
     evidence = read('build/check-release.json')
     provenance = evidence['source_provenance']
-    assert provenance['tag_required'] is True, '正式打包必须绑定版本标签'
-    assert_current(provenance, R)
+    if provenance['tag_required'] is not True:
+        raise GateError('missing_evidence', '正式打包必须绑定版本标签', hint='先打 tag 再跑 release')
+    try:
+        assert_current(provenance, R)
+    except RuntimeError as error:
+        raise GateError('source_changed', str(error), hint='确认 HEAD 与 tag 一致、工作区干净后再打包') from error
     from check import steps_for
-    assert evidence['completed'] == [list(s) for s in steps_for('release')[:-1]], '必须先完成本标签全部host/native检查'
+    expected_steps = [list(s) for s in steps_for('release')[:-1]]
+    if evidence['completed'] != expected_steps:
+        raise GateError('missing_evidence', '必须先完成本标签全部host/native检查',
+                        hint='重跑 python tools/check.py --level release',
+                        detail={'expected': expected_steps, 'actual': evidence['completed']})
     provenance_tests = read('build/provenance_validation.json')
     assert provenance_tests['status'] == 'PASS' and provenance_tests['checks'] >= 24
     for name, digest in provenance_tests['source_sha256'].items():
@@ -230,9 +240,27 @@ def main():
         assert artifact.is_file(), name
         sums.append(sha(artifact) + '  ' + name + '\n')
     (dist / 'SHA256SUMS.txt').write_text(''.join(sums), encoding='utf-8')
-    assert_current(provenance, R)
+    try:
+        assert_current(provenance, R)
+    except RuntimeError as error:
+        raise GateError('source_changed', str(error), hint='确认 HEAD 与 tag 一致、工作区干净后再打包') from error
     print('PASS packaged verified single-file installer, exact-tag source ZIP and synchronized tutorials')
     print('Installer SHA256', sha(setup))
     print('Installer bytes', setup.stat().st_size)
+def main():
+    """发布入口：同一标签只允许成功打包一次；失败不占用标记，便于修复后重试。"""
+    from gate_diagnostics import GateError
+    marker = R / 'build/release.done.json'
+    if marker.exists() and os.environ.get('RCS_GATE_FORCE') != '1':
+        raise GateError(
+            'duplicate_invocation',
+            '本标签已成功打包过：' + str(marker),
+            hint='确认产物无误后可删除该标记，或设置 RCS_GATE_FORCE=1 强制重跑',
+            detail={'marker': str(marker), 'content': marker.read_text(encoding='utf-8', errors='replace')},
+        )
+    _release_body()
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(datetime.now(timezone.utc).isoformat() + '\n', encoding='utf-8')
+
 if __name__ == '__main__':
     main()
