@@ -52,6 +52,35 @@ static class InstallerIoTests {
   // 遗留的是本测试自有临时目录，后续测试不把它误算成新场景泄漏。
   Directory.Delete((string)e.Data["StageDirectory"],true);Scenario("failed stage cleanup attaches error without masking first move failure");
  }
+ static void SameVersionRepair(string area){
+  string dir=Path.Combine(area,"same-version");Payload.Extract(dir);
+  string app=Path.Combine(dir,"app.txt"),saved=Path.Combine(dir,Payload.SavedSetup);
+  string user=Path.Combine(dir,"用户地图.rcsmap.json");
+  File.WriteAllText(app,"older or damaged app");File.WriteAllText(saved,"previous setup");
+  File.WriteAllText(user,"user map");
+  string backup=Payload.Extract(dir);
+  Payload.Preflight(dir);
+  Check(File.ReadAllText(app)=="verified app bytes\n"&&File.ReadAllText(user)=="user map","repair replaces only managed files");
+  Check(File.ReadAllText(Path.Combine(backup,"app.txt"))=="older or damaged app"&&
+   File.ReadAllText(Path.Combine(backup,Payload.SavedSetup))=="previous setup","both replaced originals backed up");
+  Check(Payload.Extract(dir)==null,"already current repair produces no additional backup");
+  File.Delete(app);Payload.Extract(dir);Payload.Preflight(dir);
+  Check(File.ReadAllText(app)=="verified app bytes\n","repair restores missing files");
+  Scenario("same-version overwrite, previous bytes backed up, unrelated files preserved, repeat and missing-file repair");
+ }
+ static void RollbackRepair(string area){
+  string dir=Path.Combine(area,"failed-repair");Payload.Extract(dir);
+  string app=Path.Combine(dir,"app.txt"),saved=Path.Combine(dir,Payload.SavedSetup);
+  File.WriteAllText(app,"older app");File.WriteAllText(saved,"older setup");
+  string previous=File.ReadAllText(Path.Combine(dir,Payload.Marker));
+  using(var locked=new FileStream(saved,FileMode.Open,FileAccess.Read,FileShare.Read)){
+   Fail(()=>Payload.Extract(dir));
+   Check(File.ReadAllText(app)=="older app"&&File.ReadAllText(saved)=="older setup","locked setup causes earlier file to roll back");
+   Check(File.ReadAllText(Path.Combine(dir,Payload.Marker))==previous,"failed repair leaves ownership receipt");
+  }
+  Payload.Extract(dir);Payload.Preflight(dir);
+  Scenario("real file lock rolls back earlier replacements and retry repairs original directory");
+ }
  static void PackRetry(string area){
   string source=Path.Combine(area,"pack-source"),to=Path.Combine(area,"pack-backup");Directory.CreateDirectory(source);File.WriteAllText(Path.Combine(source,"data"),"old pack");string before=Signature(source);int moves=0;
   var op=new DirectoryOperations.Operations{MoveDirectory=(a,b)=>{moves++;if(moves<3)throw new Win32Io(5,"short-lived access denied");Directory.Move(a,b);},Delay=ms=>{}};
@@ -81,7 +110,7 @@ static class InstallerIoTests {
   try{PackService.MoveDirectory(source,to,op);}finally{stream.Dispose();if(handle!=new IntPtr(-1))CloseHandle(handle);}
   Check(moves==2&&waits==1&&File.ReadAllText(Path.Combine(to,"data"))=="locked","real sharing lock released on retry");Scenario("real file/directory no-delete-sharing lock released during bounded retry");
  }
- static void Run(string area){Directory.CreateDirectory(area);ExtractRetry(area);PermanentExtract(area);ForeignExtract(area,false);ForeignExtract(area,true);CleanupFailure(area);PackRetry(area);DeniedPack(area);CrossVolume(area,false);CrossVolume(area,true);EditDuringRetry(area);RealLock(area);Console.WriteLine("PASS "+checks+" assertions across "+scenarios.Count+" deterministic installer IO scenarios");}
+ static void Run(string area){Directory.CreateDirectory(area);ExtractRetry(area);PermanentExtract(area);ForeignExtract(area,false);ForeignExtract(area,true);CleanupFailure(area);SameVersionRepair(area);RollbackRepair(area);PackRetry(area);DeniedPack(area);CrossVolume(area,false);CrossVolume(area,true);EditDuringRetry(area);RealLock(area);Console.WriteLine("PASS "+checks+" assertions across "+scenarios.Count+" deterministic installer IO scenarios");}
  static int Main(string[] args){try{Run(args[0]);return 0;}catch(Exception error){Console.Error.WriteLine(error.GetType().Name+": "+error.Message);if(error.InnerException!=null)Console.Error.WriteLine(error.InnerException.Message);return 2;}}
 }
 '''
