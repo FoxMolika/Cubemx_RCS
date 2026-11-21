@@ -8,6 +8,7 @@ import subprocess
 import sys
 
 from build_support import ROOT, csharp_compiler
+import gate_diagnostics as gd
 from cubemx_runner import cube_directory
 from keil_build import uv4_executable
 from provenance import capture, assert_current
@@ -137,6 +138,7 @@ def run_checks(level, start_from=None):
         steps = steps[matches[0]:]
     area = ROOT / "build"
     area.mkdir(exist_ok=True)
+    run_id = gd.new_run_id()
     report_path = area / ("check-" + level + ".json")
     report = {"level": level, "passed": False, "continued_from": start_from,
               "completed": verified_prefix, "verified_prior_prefix": bool(verified_prefix)}
@@ -158,12 +160,26 @@ def run_checks(level, start_from=None):
         if source is not None:
             assert_current(source, ROOT)
         print("\nRUN " + " ".join(step), flush=True)
-        result = subprocess.run([sys.executable, *step], cwd=ROOT)
-        if result.returncode:
+        name = step[0].replace("/", "_")
+        try:
+            outcome = gd.run([sys.executable, *step], cwd=ROOT, run_id=run_id,
+                             log_dir=area / "gate-logs", name=name, check=False)
+        except gd.GateError as error:
             report["failed_step"] = list(step)
-            report["exit_code"] = result.returncode
-            report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-            raise SystemExit(result.returncode)
+            report["error_kind"] = error.kind
+            report["error"] = str(error)
+            report["hint"] = error.hint
+            report["detail"] = error.detail
+            report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+            raise
+        report.setdefault("steps", []).append(outcome.as_dict())
+        if outcome.exit_code:
+            report["failed_step"] = list(step)
+            report["exit_code"] = outcome.exit_code
+            report["error_kind"] = "subprocess_exit"
+            report["hint"] = "见 steps 中该步的 log_path 与 stdout_tail/stderr_tail"
+            report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+            raise SystemExit(outcome.exit_code)
         report["completed"].append(list(step))
         if source is not None:
             assert_current(source, ROOT)
