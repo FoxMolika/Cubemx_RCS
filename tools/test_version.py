@@ -13,7 +13,7 @@ import zipfile
 
 import build_pack
 from build_support import ROOT, XML_REFERENCES, csharp_arguments
-from version import ASSEMBLY_VERSION, PACK_NAME, SETUP_NAME, TOOL_DIRECTORY, VERSION, VERSION_CODE
+from version import DISPLAY_VERSION, ASSEMBLY_VERSION, PACK_NAME, SETUP_NAME, TOOL_DIRECTORY, VERSION, VERSION_CODE
 
 
 def sha(path):
@@ -80,13 +80,13 @@ def alternate_version(area):
     spec = importlib.util.spec_from_file_location("isolated_build_version", file)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    expected = {"Version": "9.8.7", "AssemblyVersion": "9.8.7.0",
-                "ToolDirectory": "foxmolika_Tools_987", "ToolCode": "987"}
+    expected = {"Version": "9.8.7", "DisplayVersion": "9.8.7.beta", "AssemblyVersion": "9.8.7.1",
+                "ToolDirectory": "foxmolika_Tools_987_beta", "ToolCode": "987"}
     generated = module.sync_csharp_version()
     assert generated.is_relative_to(isolated)
     assert constants(generated) == expected
     assert module.PACK_NAME == "RCS.foxmolika.9.8.7.pack"
-    assert module.SETUP_NAME == "foxmolika_CubeMX_Setup_9.8.7_win-x64.exe"
+    assert module.SETUP_NAME == "foxmolika_CubeMX_Setup_9.8.7.beta_win-x64.exe"
     metadata_versions(build_pack.metadata(version=module.VERSION), module.VERSION)
     assert sha(source) == source_digest
     return expected
@@ -101,11 +101,11 @@ def main(argv=None):
     area.mkdir(parents=True)
 
     version_source = ROOT / "keil_headers/BuildVersion.cs"
-    expected = {"Version": VERSION, "AssemblyVersion": ASSEMBLY_VERSION,
+    expected = {"Version": VERSION, "DisplayVersion": DISPLAY_VERSION, "AssemblyVersion": ASSEMBLY_VERSION,
                 "ToolDirectory": TOOL_DIRECTORY, "ToolCode": VERSION_CODE}
     assert constants(version_source) == expected
     assert VERSION_CODE == VERSION.replace(".", "")
-    assert ASSEMBLY_VERSION == VERSION + ".0"
+    assert ASSEMBLY_VERSION == VERSION + ".1"
 
     paths = {"editor": ROOT / "map_editor/dist/foxmolika_MapEditor.exe",
              "post_helper": ROOT / "build/foxmolika_PostGenerate.exe"}
@@ -132,7 +132,7 @@ def main(argv=None):
         assert built.find("a:assemblyIdentity", ns).attrib["version"] == ASSEMBLY_VERSION
 
     # 与post_helper实际缓存键使用相同输入；只改版本常量必须使缓存失效。
-    sources = [ROOT / "keil_headers" / name for name in ("KeilHeaders.cs", "ProjectBinding.cs")]
+    sources = [ROOT / "keil_headers" / name for name in ("KeilHeaders.cs", "ProjectBinding.cs", "HardwareBinding.cs")]
     output = ROOT / "build/foxmolika_PostGenerate.exe"
     compiler_args = csharp_arguments(output, sources, references=XML_REFERENCES, defines=("RCS_POSTGEN",))
     suffix = "\n".join(map(str, compiler_args)).encode("utf-8")

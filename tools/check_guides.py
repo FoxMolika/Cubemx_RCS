@@ -22,7 +22,13 @@ def main():
    if link.startswith('#'):assert link[1:] in page.ids,(rel,link)
    elif not re.match(r'https?://',link):assert (file.parent/link.split('#')[0]).is_file(),(rel,link)
  assert (ROOT/paths[0]).read_bytes()==(ROOT/paths[1]).read_bytes()
+ beta=ROOT/'docs/0.8.4.beta使用说明.html';beta_text=beta.read_text(encoding='utf-8')
+ for phrase in ['0.8.4.beta','硬件管理','新建模板','App_Init','App_Task','应用与状态机','App_Init','App_Task','Machism_Task','19','21',
+                'RCS_CAN_PORT_DEFINE_HAL_CALLBACK','独立观测设备','RX0','main.c','模板快照']:
+  assert phrase in beta_text,('beta tutorial',phrase)
+ assert 'script src=' not in beta_text and 'src="http' not in beta_text
  result={'passed':True,'tutorials':{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in paths},'all_relative_links_resolve':True}
  (ROOT/'build/guide_validation.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
  print('PASS 4 tutorials: install/open/associate, phases/protractor/crash ZIP, export/prebuild and local links')
+ print('PASS beta self-contained tutorial: application/state machine, fixed main, CAN prerequisites, migration and delivery')
 if __name__=='__main__':main()

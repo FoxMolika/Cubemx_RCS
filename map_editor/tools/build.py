@@ -9,13 +9,15 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT.parent / "tools"))
 from build_integration import post_helper
 from build_support import compile_csharp, common_editor_payload, generate_examples
-from version import VERSION
+from version import VERSION, EDITOR_SETUP_NAME
 from windows_integrity import medium
 from sync_versions import main as sync_versions
 
 
 def editor_guide(dist):
-    guide = (ROOT / "docs/使用说明.html").read_text(encoding="utf-8")
+    # beta统一入口必须包含App/main/状态机说明，不能继续嵌入旧版教程。
+    beta = ROOT.parent / "docs/0.8.4.beta使用说明.html"
+    guide = (beta if beta.exists() else ROOT / "docs/使用说明.html").read_text(encoding="utf-8")
     image = ROOT / "docs/editor_ui.png"
     if image.is_file():
         preview = (
@@ -50,6 +52,10 @@ def main():
         "assets/templates/" + path.relative_to(ROOT / "templates").as_posix(): path
         for path in sorted((ROOT / "templates").rglob("*.tpl"))
     })
+    resources.update({
+        "assets/hardware/" + path.relative_to(ROOT / "hardware").as_posix(): path
+        for path in sorted((ROOT / "hardware").rglob("*")) if path.is_file()
+    })
     exe = dist / "foxmolika_MapEditor.exe"
     sources = sorted((ROOT / "src").glob("*.cs")) + [
         ROOT.parent / "keil_headers" / name
@@ -74,7 +80,7 @@ def main():
         "使用说明.html": guide,
         "LICENSE.txt": ROOT.parent / "LICENSE.txt",
     })
-    setup = dist / ("foxmolika_MapEditor_Setup_" + VERSION + "_win-x64.exe")
+    setup = dist / EDITOR_SETUP_NAME
     print(compile_csharp(
         setup, [ROOT / "installer.cs"], target="winexe",
         references=(

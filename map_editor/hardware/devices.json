@@ -1,0 +1,492 @@
+[
+  {
+    "Id": "team_cylinder",
+    "Version": "1.0.0",
+    "Name": "队内无传感器气缸",
+    "Category": "actuator",
+    "Platform": "F407_HAL",
+    "DriverKind": "team_cylinder",
+    "MaxInstances": 16,
+    "PeriodMs": 5,
+    "MinHeapBytes": 8192,
+    "Verified": "none",
+    "Note": "队内原实现经beta薄适配；未实车验证。无传感器动作完成为时间估计，不能冒称真实到位。",
+    "Includes": "",
+    "Declarations": "",
+    "ObservationAxes": 0,
+    "ObservationKind": "",
+    "Parameters": [
+      {
+        "Key": "Port",
+        "Name": "GPIO端口",
+        "Type": "gpio",
+        "Default": "GPIOA",
+        "Min": -1000000000.0,
+        "Max": 1000000000.0,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "Pin",
+        "Name": "引脚编号0..15",
+        "Type": "int",
+        "Default": "0",
+        "Min": 0,
+        "Max": 15,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "ActiveHigh",
+        "Name": "高电平伸出",
+        "Type": "bool",
+        "Default": "1",
+        "Min": -1000000000.0,
+        "Max": 1000000000.0,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "ResetPull",
+        "Name": "初始逻辑为缩回",
+        "Type": "bool",
+        "Default": "1",
+        "Min": -1000000000.0,
+        "Max": 1000000000.0,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "TravelMs",
+        "Name": "估计运动时间ms",
+        "Type": "int",
+        "Default": "500",
+        "Min": 1,
+        "Max": 60000,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "StopLevel",
+        "Name": "取消/停机GPIO电平",
+        "Type": "bool",
+        "Default": "0",
+        "Min": -1000000000.0,
+        "Max": 1000000000.0,
+        "Choices": [],
+        "Description": ""
+      }
+    ],
+    "Resources": [
+      {
+        "Kind": "gpio",
+        "Value": "${Port}:${Pin}",
+        "Shared": false
+      }
+    ],
+    "Operations": [
+      {
+        "Id": "push",
+        "Name": "伸出",
+        "DefaultValue": 1,
+        "Min": 1,
+        "Max": 1
+      },
+      {
+        "Id": "pull",
+        "Name": "缩回",
+        "DefaultValue": 0,
+        "Min": 0,
+        "Max": 0
+      }
+    ],
+    "Files": [
+      {
+        "Path": "rcs_cylinder.h",
+        "Resource": "team/rcs_cylinder.h"
+      },
+      {
+        "Path": "rcs_cylinder.cpp",
+        "Resource": "team/rcs_cylinder.cpp"
+      },
+      {
+        "Path": "rcs_private_config.h",
+        "Resource": "team/rcs_private_config.h"
+      },
+      {
+        "Path": "rcs_types.h",
+        "Resource": "team/rcs_types.h"
+      },
+      {
+        "Path": "rcs_os.h",
+        "Resource": "team/rcs_os.h"
+      },
+      {
+        "Path": "rcs_actor_bus.h",
+        "Resource": "team/rcs_actor_bus.h"
+      },
+      {
+        "Path": "rcs_uart.h",
+        "Resource": "team/rcs_uart.h"
+      }
+    ],
+    "Hooks": {
+      "Init": "",
+      "Service": "",
+      "Stop": "",
+      "Command": "",
+      "Done": "",
+      "OnCanRx": "",
+      "OnUartRx": "",
+      "OnTimer": "",
+      "ReadObservation": ""
+    }
+  },
+  {
+    "Id": "team_jy901",
+    "Version": "1.0.0",
+    "Name": "队内维特JY901角度接收",
+    "Category": "sensor",
+    "Platform": "F407_HAL",
+    "DriverKind": "team_jy901",
+    "MaxInstances": 16,
+    "PeriodMs": 5,
+    "MinHeapBytes": 8192,
+    "Verified": "none",
+    "Note": "未实车验证；必须在CubeMX配置相应外设及中断，确认实例参数后才能运行。",
+    "Includes": "",
+    "Declarations": "",
+    "ObservationAxes": 4,
+    "ObservationKind": "imu",
+    "Parameters": [
+      {
+        "Key": "Uart",
+        "Name": "CubeMX串口句柄",
+        "Type": "uart",
+        "Default": "huart3",
+        "Min": -1000000000.0,
+        "Max": 1000000000.0,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "Baud",
+        "Name": "串口波特率",
+        "Type": "int",
+        "Default": "115200",
+        "Min": 1200,
+        "Max": 921600,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "TimeoutMs",
+        "Name": "样本超时ms",
+        "Type": "int",
+        "Default": "200",
+        "Min": 1,
+        "Max": 60000,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "YawOffsetDeg",
+        "Name": "地图朝向偏移deg",
+        "Type": "float",
+        "Default": "0",
+        "Min": -3600,
+        "Max": 3600,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "Direction",
+        "Name": "朝向方向±1",
+        "Type": "int",
+        "Default": "1",
+        "Min": -1,
+        "Max": 1,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "Required",
+        "Name": "失联时停止应用",
+        "Type": "bool",
+        "Default": "1",
+        "Min": -1000000000.0,
+        "Max": 1000000000.0,
+        "Choices": [],
+        "Description": ""
+      }
+    ],
+    "Resources": [
+      {
+        "Kind": "uart",
+        "Value": "${Uart}",
+        "Shared": false
+      }
+    ],
+    "Operations": [],
+    "Files": [
+      {
+        "Path": "rcs_gyro.h",
+        "Resource": "team/rcs_gyro.h"
+      },
+      {
+        "Path": "rcs_gyro.cpp",
+        "Resource": "team/rcs_gyro.cpp"
+      },
+      {
+        "Path": "rcs_private_config.h",
+        "Resource": "team/rcs_private_config.h"
+      },
+      {
+        "Path": "rcs_types.h",
+        "Resource": "team/rcs_types.h"
+      },
+      {
+        "Path": "rcs_os.h",
+        "Resource": "team/rcs_os.h"
+      },
+      {
+        "Path": "rcs_actor_bus.h",
+        "Resource": "team/rcs_actor_bus.h"
+      },
+      {
+        "Path": "rcs_uart.h",
+        "Resource": "team/rcs_uart.h"
+      }
+    ],
+    "Hooks": {
+      "Init": "",
+      "Service": "",
+      "Stop": "",
+      "Command": "",
+      "Done": "",
+      "OnCanRx": "",
+      "OnUartRx": "",
+      "OnTimer": "",
+      "ReadObservation": ""
+    }
+  },
+  {
+    "Id": "gpio_output",
+    "Version": "1.0.0",
+    "Name": "通用GPIO输出",
+    "Category": "actuator",
+    "Platform": "F407_HAL",
+    "DriverKind": "gpio_output",
+    "MaxInstances": 16,
+    "PeriodMs": 5,
+    "MinHeapBytes": 0,
+    "Verified": "none",
+    "Note": "未实车验证；必须在CubeMX配置相应外设及中断，确认实例参数后才能运行。",
+    "Includes": "",
+    "Declarations": "",
+    "ObservationAxes": 0,
+    "ObservationKind": "",
+    "Parameters": [
+      {
+        "Key": "Port",
+        "Name": "GPIO端口",
+        "Type": "gpio",
+        "Default": "GPIOA",
+        "Min": -1000000000.0,
+        "Max": 1000000000.0,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "Pin",
+        "Name": "引脚编号0..15",
+        "Type": "int",
+        "Default": "0",
+        "Min": 0,
+        "Max": 15,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "StopLevel",
+        "Name": "初始化/停机电平",
+        "Type": "bool",
+        "Default": "0",
+        "Min": -1000000000.0,
+        "Max": 1000000000.0,
+        "Choices": [],
+        "Description": ""
+      }
+    ],
+    "Resources": [
+      {
+        "Kind": "gpio",
+        "Value": "${Port}:${Pin}",
+        "Shared": false
+      }
+    ],
+    "Operations": [
+      {
+        "Id": "write",
+        "Name": "写电平",
+        "DefaultValue": 1,
+        "Min": 0,
+        "Max": 1
+      }
+    ],
+    "Files": [],
+    "Hooks": {
+      "Init": "",
+      "Service": "",
+      "Stop": "",
+      "Command": "",
+      "Done": "",
+      "OnCanRx": "",
+      "OnUartRx": "",
+      "OnTimer": "",
+      "ReadObservation": ""
+    }
+  },
+  {
+    "Id": "pwm_servo",
+    "Version": "1.0.0",
+    "Name": "通用PWM位置舵机",
+    "Category": "actuator",
+    "Platform": "F407_HAL",
+    "DriverKind": "pwm_servo",
+    "MaxInstances": 16,
+    "PeriodMs": 5,
+    "MinHeapBytes": 0,
+    "Verified": "none",
+    "Note": "未实车验证；必须在CubeMX配置相应外设及中断，确认实例参数后才能运行。",
+    "Includes": "",
+    "Declarations": "",
+    "ObservationAxes": 0,
+    "ObservationKind": "",
+    "Parameters": [
+      {
+        "Key": "Timer",
+        "Name": "CubeMX定时器句柄",
+        "Type": "timer",
+        "Default": "htim3",
+        "Min": -1000000000.0,
+        "Max": 1000000000.0,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "Channel",
+        "Name": "PWM通道1..4",
+        "Type": "int",
+        "Default": "1",
+        "Min": 1,
+        "Max": 4,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "CounterHz",
+        "Name": "计数器频率Hz",
+        "Type": "int",
+        "Default": "1000000",
+        "Min": 100000,
+        "Max": 10000000,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "PeriodUs",
+        "Name": "PWM周期us",
+        "Type": "int",
+        "Default": "20000",
+        "Min": 1000,
+        "Max": 60000,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "PulseMinUs",
+        "Name": "最小角脉宽us",
+        "Type": "int",
+        "Default": "500",
+        "Min": 100,
+        "Max": 3000,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "PulseMaxUs",
+        "Name": "最大角脉宽us",
+        "Type": "int",
+        "Default": "2500",
+        "Min": 100,
+        "Max": 3000,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "AngleMin",
+        "Name": "最小安全角度deg",
+        "Type": "float",
+        "Default": "0",
+        "Min": -360,
+        "Max": 360,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "AngleMax",
+        "Name": "最大安全角度deg",
+        "Type": "float",
+        "Default": "180",
+        "Min": -360,
+        "Max": 360,
+        "Choices": [],
+        "Description": ""
+      },
+      {
+        "Key": "SettleMs",
+        "Name": "估计到位时间ms",
+        "Type": "int",
+        "Default": "500",
+        "Min": 1,
+        "Max": 60000,
+        "Choices": [],
+        "Description": ""
+      }
+    ],
+    "Resources": [
+      {
+        "Kind": "timer_channel",
+        "Value": "${Timer}:${Channel}",
+        "Shared": false
+      },
+      {
+        "Kind": "timer_base",
+        "Value": "${Timer}:${CounterHz}:${PeriodUs}",
+        "Shared": true
+      }
+    ],
+    "Operations": [
+      {
+        "Id": "angle",
+        "Name": "设置角度deg",
+        "DefaultValue": 90,
+        "Min": 0,
+        "Max": 180
+      }
+    ],
+    "Files": [],
+    "Hooks": {
+      "Init": "",
+      "Service": "",
+      "Stop": "",
+      "Command": "",
+      "Done": "",
+      "OnCanRx": "",
+      "OnUartRx": "",
+      "OnTimer": "",
+      "ReadObservation": ""
+    }
+  }
+]

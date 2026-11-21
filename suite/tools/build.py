@@ -12,7 +12,7 @@ PROJECT = ROOT.parent
 sys.path.insert(0, str(PROJECT / "tools"))
 from build_integration import post_helper
 from build_support import XML_REFERENCES, compile_csharp, common_editor_payload, run
-from version import VERSION, ASSEMBLY_VERSION, sync_csharp_version
+from version import VERSION, ASSEMBLY_VERSION, SETUP_NAME, sync_csharp_version
 from windows_integrity import medium
 
 
@@ -108,7 +108,7 @@ def main():
         "foxmolika_MapEditor.exe": editor,
         "RCS.foxmolika." + VERSION + ".pack": pack,
         "foxmolika_KeilHeaders.exe": keil,
-        "使用说明.html": ROOT / "docs/使用说明.html",
+        "使用说明.html": PROJECT / "docs/0.8.4.beta使用说明.html",
         "地图编辑器说明.html": PROJECT / "map_editor/dist/使用说明.html",
         "底盘接入说明.md": PROJECT / "docs/接入说明.md",
         "LICENSE.txt": PROJECT / "LICENSE.txt",
@@ -118,7 +118,7 @@ def main():
         "validation/WorkspacePreferencesFactory$MemoryPreferences.class": build / "java/WorkspacePreferencesFactory$MemoryPreferences.class",
     })
     payload["manifest.xml"] = write_manifest(build, payload, pack, packdata)
-    setup = dist / ("foxmolika_CubeMX_Setup_" + VERSION + "_win-x64.exe")
+    setup = dist / SETUP_NAME
     log = compile_csharp(
         setup, sorted((ROOT / "src").glob("*.cs")), target="winexe",
         manifest=setup_manifest(build),
@@ -127,7 +127,7 @@ def main():
     )
     (build / "compile.log").write_text(log or "Build succeeded without warnings.\n", encoding="utf-8")
     medium(setup)
-    shutil.copyfile(ROOT / "docs/使用说明.html", dist / "使用说明.html")
+    shutil.copyfile(PROJECT / "docs/0.8.4.beta使用说明.html", dist / "使用说明.html")
     (dist / "SHA256SUMS.txt").write_text(sha(setup.read_bytes()) + "  " + setup.name + "\n", encoding="utf-8")
     print(setup)
     print("bytes:", setup.stat().st_size)

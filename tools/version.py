@@ -1,12 +1,13 @@
 """当前构建版本的唯一来源；历史夹具与迁移白名单保留各自发布版本。"""
-VERSION = "0.8.3"
+VERSION = "0.8.4"
 VERSION_CODE = "".join(VERSION.split("."))
-ASSEMBLY_VERSION = VERSION + ".0"
-RELEASE_DATE = "2026-11-16"
-TOOL_DIRECTORY = "foxmolika_Tools_" + VERSION_CODE
+DISPLAY_VERSION = VERSION + ".beta"
+ASSEMBLY_VERSION = VERSION + ".1"
+RELEASE_DATE = "2026-11-21"
+TOOL_DIRECTORY = "foxmolika_Tools_" + VERSION_CODE + "_beta"
 PACK_NAME = "RCS.foxmolika." + VERSION + ".pack"
-SETUP_NAME = "foxmolika_CubeMX_Setup_" + VERSION + "_win-x64.exe"
-EDITOR_SETUP_NAME = "foxmolika_MapEditor_Setup_" + VERSION + "_win-x64.exe"
+SETUP_NAME = "foxmolika_CubeMX_Setup_" + DISPLAY_VERSION + "_win-x64.exe"
+EDITOR_SETUP_NAME = "foxmolika_MapEditor_Setup_" + DISPLAY_VERSION + "_win-x64.exe"
 
 
 def sync_csharp_version():
@@ -14,7 +15,7 @@ def sync_csharp_version():
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
     target = root / "keil_headers/BuildVersion.cs"
-    text = """// 自动生成自tools/version.py；请勿直接修改。\ninternal static class BuildVersion\n{{\n    internal const string Version = \"{version}\";\n    internal const string AssemblyVersion = \"{assembly}\";\n    internal const string ToolDirectory = \"{directory}\";\n    internal const string ToolCode = \"{code}\";\n}}\n""".format(version=VERSION, assembly=ASSEMBLY_VERSION, directory=TOOL_DIRECTORY, code=VERSION_CODE)
+    text = """// 自动生成自tools/version.py；请勿直接修改。\ninternal static class BuildVersion\n{{\n    internal const string Version = \"{version}\";\n    internal const string DisplayVersion = \"{display}\";\n    internal const string AssemblyVersion = \"{assembly}\";\n    internal const string ToolDirectory = \"{directory}\";\n    internal const string ToolCode = \"{code}\";\n}}\n""".format(version=VERSION, display=DISPLAY_VERSION, assembly=ASSEMBLY_VERSION, directory=TOOL_DIRECTORY, code=VERSION_CODE)
     if not target.exists() or target.read_text(encoding="utf-8") != text:
         target.write_text(text, encoding="utf-8")
     return target
