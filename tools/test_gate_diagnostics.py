@@ -1,108 +1,133 @@
-"""门禁诊断模块的回归测试：覆盖参数拆分、编码、大输出、失败分类、重复执行与证据缺失。"""
+"""门禁故障注入。使用独立目录，不调用原生工具或发布器。"""
 from pathlib import Path
-import json
+import os
 import subprocess
 import sys
-import tempfile
-import uuid
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+import check
 import gate_diagnostics as gd
-
-PY = sys.executable
-
-
-def area() -> Path:
-    path = Path(tempfile.mkdtemp(prefix="gatecheck_"))
-    return path
+import release
+from check import ROOT, prune_successful, resume_prefix, steps_for
+from release_evidence import ACCEPTANCE, EDITOR, before_step, live_acceptance, record_outputs
 
 
-def expect(kind, fn, label):
+def rejects(kind, action):
     try:
-        fn()
+        action()
     except gd.GateError as error:
-        assert error.kind == kind, (label, error.kind, kind, str(error))
-        assert error.hint, (label, "缺少 hint")
+        assert error.kind == kind, error.report()
         return error
-    raise AssertionError(label + " 未抛出 GateError")
+    raise AssertionError("未拒绝：" + kind)
+
+
+def verify_resume_inherits_records(root, outcome):
+    """走续跑入口，核对传到打包和完成报告的确是原始记录。"""
+    root.mkdir()
+    source = {"commit": "1" * 40}
+    subprocess_step = tuple(outcome["argv"][1:])
+    final = check.RELEASE_STEPS[0]
+    plan = (subprocess_step, final)
+    latest = root / "build/check-release.json"
+    prior = {"schema_version": 2, "level": "release", "status": "failed",
+             "run_id": "previous-attempt", "source_provenance": source,
+             "completed": [list(subprocess_step)], "failed_step": list(final),
+             "steps": [outcome], "evidence": {}, "evidence_paths": {},
+             "installed_editor_sha256": "fixture"}
+    with patch.multiple(check, ROOT=root, steps_for=lambda level: plan,
+                        preflight=lambda level: None, capture=lambda path: source,
+                        require_source=lambda record: None, verify_prefix=lambda path, report: None):
+        gd.write_report(latest, dict(prior, steps=[]))
+        rejects("stale_evidence", lambda: check.run_checks("release", final[0]))
+        missing = dict(outcome, stdout_log=str(root / "missing.log"))
+        gd.write_report(latest, dict(prior, steps=[missing]))
+        rejects("missing_evidence", lambda: check.run_checks("release", final[0]))
+        gd.write_report(latest, prior)
+
+        def package(report, directory, destination):
+            assert report["resumed_run_id"] == prior["run_id"]
+            assert report["steps"] == prior["steps"]
+
+        with patch.object(release, "package", side_effect=package) as packaging:
+            check.run_checks("release", final[0])
+            assert packaging.call_count == 1
+        finished = gd.read_json(latest)
+        assert finished["passed"] and finished["verified_prior_prefix"]
+        assert finished["steps"] == prior["steps"]
+        assert finished["completed"] == [list(step) for step in plan]
 
 
 def main():
-    checks = []
-    root = area()
-    run_id = gd.new_run_id()
-    logs = root / "logs 含空格 和中文"
-    echo = lambda text: [PY, "-c", "import sys;sys.stdout.write(sys.argv[1])", text]
+    with TemporaryDirectory(prefix="gate-test-", dir=ROOT / "build") as temporary:
+        root = Path(temporary)
+        def run(name, code, args=(), **options):
+            return gd.run([sys.executable, "-c", code, *args], cwd=root,
+                          directory=root / name, **options)
 
-    # 1. 路径/参数含空格、中文、引号：必须原样作为一个参数到达子进程
-    weird = '目录 with space/中文/"引号"/draft.json'
-    result = gd.run(echo(weird), run_id=run_id, log_dir=logs, name="space")
-    first = result
-    assert result.stdout_tail == weird, result.stdout_tail
-    assert result.argv[-1] == weird
-    checks.append("空格/中文/引号参数不被拆分")
+        argument = '中文 with spaces "quoted"'
+        result = run("argv", "import sys; print(sys.argv[1])", (argument,))
+        assert result["exit_code"] == 0 and result["stdout"]["tail"] == argument
+        assert gd.read_json(root / "argv/step.json")["argv"][-1] == argument
+        rejects("argument_error", lambda: gd.run("python -c pass", cwd=root, directory=root / "bad"))
+        result = run("gbk", "import sys;sys.stderr.buffer.write('无法写入目录'.encode('gbk'));sys.exit(7)")
+        assert result["exit_code"] == 7 and result["stderr"]["encoding"] == "gbk"
+        assert result["stderr"]["tail"] == "无法写入目录"
+        result = run("big", "print('x'*1_000_000+'TAIL')")
+        assert result["stdout"]["truncated"] and result["stdout"]["tail"].endswith("TAIL")
+        assert len(result["stdout"]["tail"].encode()) <= gd.TAIL_BYTES
+        assert Path(result["stdout_log"]).stat().st_size > 1_000_000
+        error = rejects("subprocess_exit", lambda: run("timeout", "import time;print('PARTIAL');time.sleep(20)", timeout=1))
+        assert error.detail["status"] == "timed_out" and error.detail["stdout"]["tail"] == "PARTIAL"
+        assert gd.read_json(root / "timeout/step.json")["status"] == "timed_out"
+        first = run("repeat-1", "print('first')")
+        run("repeat-2", "print('second')")
+        assert (root / "repeat-1/stdout.log").read_text().strip() == "first"
+        verify_resume_inherits_records(root / "resume", first)
 
-    # 2. GBK 的 stderr 能被正确解码（本机实际遇到过）
-    gbk = [PY, "-c", "import sys;sys.stderr.buffer.write('无法写入输出目录'.encode('gbk'));sys.exit(3)"]
-    error = expect("subprocess_exit", lambda: gd.run(gbk, run_id=run_id, log_dir=logs, name="gbk"), "GBK stderr")
-    assert "无法写入输出目录" in error.detail["stderr_tail"], error.detail["stderr_tail"]
-    assert "gbk" in error.detail["log"].lower() or True
-    checks.append("GBK 编码 stderr 正确解码")
+        contender = ("from pathlib import Path; from gate_diagnostics import workspace_lock\n"
+                     "with workspace_lock(Path('.')): print('ACQUIRED',flush=True)")
+        command = [sys.executable, "-c", contender]
+        env = dict(os.environ, PYTHONPATH=str(ROOT / "tools"), PYTHONIOENCODING="utf-8")
+        with gd.workspace_lock(root):
+            blocked = subprocess.run(command, cwd=root, env=env, capture_output=True, timeout=10)
+            assert blocked.returncode and b"ACQUIRED" not in blocked.stdout
+        unlocked = subprocess.run(command, cwd=root, env=env, capture_output=True, timeout=10)
+        assert unlocked.returncode == 0 and b"ACQUIRED" in unlocked.stdout
 
-    # 3. 大输出：完整落盘，内存只留尾部
-    big = [PY, "-c", "import sys;sys.stdout.write('x'*1000000+'\\nTAIL-MARK')"]
-    result = gd.run(big, run_id=run_id, log_dir=logs, name="big")
-    assert "TAIL-MARK" in result.stdout_tail
-    assert Path(result.log_path).stat().st_size > 1000000, "日志未完整落盘"
-    checks.append("1MB 输出完整落盘且尾部可读")
-
-    # 4. 非零退出：日志必须完整并带 argv
-    bad = [PY, "-c", "import sys;print('out');print('boom',file=sys.stderr);sys.exit(7)"]
-    error = expect("subprocess_exit", lambda: gd.run(bad, run_id=run_id, log_dir=logs, name="bad"), "非零退出")
-    assert error.detail["argv"] == bad
-    text = Path(error.detail["log"]).read_text(encoding="utf-8")
-    assert "boom" in text and "argv.json=" in text and "exit=7" in text
-    checks.append("失败时日志完整且含 argv/exit")
-
-    # 5. argv 传字符串必须立刻报 argument_error（防止路径被空格拆分悄悄发生）
-    expect("argument_error", lambda: gd.run("python -c pass", run_id=run_id, log_dir=logs), "字符串 argv")
-    checks.append("字符串 argv 被拒绝")
-
-    # 6. 预检缺件
-    expect(
-        "preflight_environment",
-        lambda: gd.preflight({"缺失目录": root / "does-not-exist", "存在文件": root}),
-        "预检",
-    )
-    info = gd.preflight({"存在": root})
-    assert info["存在"]["exists"] and info["存在"]["is_dir"] is True
-    checks.append("预检区分缺失与存在")
-
-    # 7. 证据缺失（stale acceptance 指向已删除目录的等价场景）
-    expect("missing_evidence", lambda: gd.require_evidence(root / "acceptance.json"), "证据缺失")
-    proof = root / "acceptance.json"
-    proof.write_text('{"installed_directory":"' + str(root / "gone") + '"}', encoding="utf-8")
-    info = gd.require_evidence(proof)
-    assert info["exists"] and info["size"] > 0
-    checks.append("证据缺失与存在快照")
-
-    # 8. 重复执行：第二次必须是 duplicate_invocation，而不是误导性断言
-    marker = root / "release.done.json"
-    gd.claim_once(marker)
-    expect("duplicate_invocation", lambda: gd.claim_once(marker), "重复执行")
-    checks.append("重复执行给出 duplicate_invocation")
-
-    # 9. 报告带 schema 版本与时间戳
-    report = root / "report.json"
-    gd.write_report(report, {"run_id": run_id, "steps": [first.as_dict()]})
-    payload = json.loads(report.read_text(encoding="utf-8"))
-    assert payload["schema_version"] == 1 and payload["finished_at"]
-    assert payload["steps"][0]["argv"][-1] == weird, "argv 在报告里被改写"
-    checks.append("报告 schema/时间戳/argv 保真")
-
-    for item in checks:
-        print("PASS", item)
-    print(f"PASS {len(checks)} gate diagnostics checks")
+        report_path = root / ACCEPTANCE
+        install = root / "suite/build/install"
+        gd.write_report(report_path, {"installed_directory": str(install)})
+        step = ("suite/tools/verify.py",)
+        run_area = root / "run"
+        before_step(root, run_area, step, {})
+        assert not report_path.exists() and (run_area / "prior" / ACCEPTANCE).exists()
+        rejects("missing_evidence", lambda: record_outputs(root, run_area, step, {"evidence": {}}))
+        gd.write_report(report_path, {"installed_directory": str(install)})
+        report = {"evidence": {EDITOR: "placeholder"}}
+        record_outputs(root, run_area, step, report)
+        rejects("missing_evidence", lambda: live_acceptance(root, report["evidence"]))
+        install.mkdir()
+        editor = install / Path(EDITOR).name
+        editor.write_bytes(b"installed")
+        rejects("hash_mismatch", lambda: live_acceptance(root, report["evidence"]))
+        report["evidence"][EDITOR] = gd.file_sha(editor)
+        assert live_acceptance(root, report["evidence"]) == gd.file_sha(editor)
+        gd.write_report(report_path, {"installed_directory": str(install), "stale": True})
+        rejects("hash_mismatch", lambda: before_step(root, run_area, ("suite/tools/finish_tests.py",), report["evidence"]))
+        rejects("stale_evidence", lambda: resume_prefix({"schema_version": 1}, {}, steps_for("release"), root))
+        saved = {}
+        for index, status, level in ((1, "passed", "host"), (2, "passed", "native"),
+                                     (3, "failed", "host"), (4, "passed", "release")):
+            run_id = f"20261122-00120{index}-{index:012x}"
+            path = root / "gate-runs" / run_id
+            gd.write_report(path / "report.json", {"schema_version": 2, "run_id": run_id,
+                            "status": status, "level": level, "passed": status == "passed",
+                            "finished_at": f"2026-11-22T00:12:0{index}Z"})
+            saved[index] = path
+        assert prune_successful(root, 1) == [saved[1].name]
+        assert not saved[1].exists() and all(saved[n].exists() for n in (2, 3, 4))
+    print("PASS gate logs, timeout, process lock, fresh evidence, resume and retention")
 
 
 if __name__ == "__main__":

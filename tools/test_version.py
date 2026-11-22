@@ -12,7 +12,7 @@ import uuid
 import zipfile
 
 import build_pack
-from build_support import ROOT, XML_REFERENCES, csharp_arguments
+from build_support import ROOT, XML_REFERENCES, compiler_inputs, csharp_arguments
 from version import DISPLAY_VERSION, ASSEMBLY_VERSION, PACK_NAME, SETUP_NAME, TOOL_DIRECTORY, VERSION, VERSION_CODE
 
 
@@ -135,13 +135,12 @@ def main(argv=None):
     sources = [ROOT / "keil_headers" / name for name in ("KeilHeaders.cs", "ProjectBinding.cs", "HardwareBinding.cs")]
     output = ROOT / "build/foxmolika_PostGenerate.exe"
     compiler_args = csharp_arguments(output, sources, references=XML_REFERENCES, defines=("RCS_POSTGEN",))
-    suffix = "\n".join(map(str, compiler_args)).encode("utf-8")
-    prefix = b"".join(path.read_bytes() for path in sources)
-    current_digest = hashlib.sha256(prefix + version_source.read_bytes() + suffix).hexdigest()
-    assert (ROOT / "build/post-source.sha256").read_text().strip() == current_digest
-    changed_digest = hashlib.sha256(prefix + version_source.read_bytes().replace(
-        VERSION.encode("ascii"), b"9.8.7") + suffix).hexdigest()
-    assert current_digest != changed_digest
+    inputs = compiler_inputs(compiler_args)
+    stamp = json.loads((ROOT / "build/build-inputs/post-helper.json").read_text(encoding="utf-8"))
+    assert stamp == {**inputs, "output_sha256": sha(output)}
+    assert stamp["inputs"][str(version_source.resolve())] == sha(version_source)
+    alternate = alternate_version(area)
+    assert sha(area / "alternate/keil_headers/BuildVersion.cs") != stamp["inputs"][str(version_source.resolve())]
 
     # 旧版字符串只允许存在于有意兼容0.8.0助手的白名单行及说明注释。
     current_sources = [*list((ROOT / "keil_headers").glob("*.cs")),
@@ -154,7 +153,6 @@ def main(argv=None):
             assert path.name == "ProjectSetup.cs" and (
                 line.strip().startswith("//") or "bool from080=" in line), (path, number, line)
 
-    alternate = alternate_version(area)
     report = {"passed": True, "version": VERSION, "assembly_version": ASSEMBLY_VERSION,
               "scope": "host metadata and real assembly versions; no native or installation claim",
               "suite_checked": args.include_suite, "binaries": binaries, "pack_sha256": sha(pack),

@@ -1,10 +1,9 @@
 """统一检查入口：host 检查源码，native 检查工具链，release 检查历史发布证据。"""
 from pathlib import Path
 import argparse
-import json
+import re
 import os
 import shutil
-import subprocess
 import sys
 
 from build_support import ROOT, csharp_compiler
@@ -12,10 +11,15 @@ import gate_diagnostics as gd
 from cubemx_runner import cube_directory
 from keil_build import uv4_executable
 from provenance import capture, assert_current
+from release_baselines import preflight as baseline_preflight
+from release_evidence import before_step, record_outputs, live_acceptance, verify_prefix
+from version import VERSION
 
 # 顺序具有依赖关系：先冻结编辑器，再测试，最后构建并验证一体安装器。
 # 纯主机检查不用 CubeMX/Keil；安装事务虽有模拟项，也须先构建套件，归入 native。
 HOST_STEPS = (
+    ("tools/test_gate_diagnostics.py",),
+    ("tools/test_build_inputs.py",),
     ("tools/test_provenance.py",),
     ("tools/test_release_preflight.py",),
     ("tools/sync_versions.py",),
@@ -67,7 +71,6 @@ NATIVE_STEPS = (
     ("suite/tools/finish_tests.py",),
 )
 RELEASE_STEPS = (("tools/release.py",),)
-ARCHIVE_VERSIONS = ("0.3.7", "0.4.0", "0.4.1", "0.5.0", "0.5.1", "0.5.2", "0.6.0", "0.6.1", "0.7.0")
 
 
 def steps_for(level):
@@ -99,111 +102,217 @@ def preflight(level):
         if absent:
             raise RuntimeError("原生验收缺少工具/固件：\n" + "\n".join(absent))
     if level == "release":
-        absent = []
-        for version in ARCHIVE_VERSIONS:
-            directory = ROOT.parent / ("foxmolika_CubeMX_" + version)
-            snapshot = ROOT / "build" / ("original_" + version.replace(".", "") + "_SHA256.json")
-            if not directory.is_dir() or not snapshot.is_file():
-                absent.append(str(snapshot) + " / " + str(directory))
-        if absent:
-            raise gd.GateError("preflight_environment",
-                "历史发布核验需要维护者事前保存的原版目录及 SHA256 快照。\n"
-                "全新克隆请先运行 --level host 或 --level native；release 不会跳过证据检查。\n"
-                + "\n".join(absent)
-            )
+        baseline_preflight(ROOT)
+
+
+def require_source(source):
+    try:
+        assert_current(source, ROOT)
+    except RuntimeError as error:
+        raise gd.GateError("source_changed", str(error), "从干净的候选标签重新执行") from error
+
+
+def release_destination(root, source):
+    commit = source.get("commit")
+    if not isinstance(commit, str) or not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", commit):
+        raise gd.GateError("stale_evidence", "发布来源的提交摘要无效")
+    return root / "build/releases" / ("v" + VERSION) / commit
+
+
+def verify_subprocess_steps(report, expected, *, require_logs=False):
+    """按顺序核对前序子进程记录，包括同一脚本的不同参数。"""
+    records = report.get("steps")
+    if not isinstance(records, list) or len(records) != len(expected):
+        raise gd.GateError("stale_evidence", "发布报告的子进程明细数量不符",
+                           "重新运行完整 release 门禁")
+    for step, record in zip(expected, records):
+        argv = record.get("argv") if isinstance(record, dict) else None
+        duration = record.get("duration_s") if isinstance(record, dict) else None
+        if (not isinstance(argv, list) or len(argv) != len(step) + 1 or not argv[0]
+                or not isinstance(argv[0], str) or argv[1:] != list(step) or record.get("status") != "passed"
+                or type(record.get("exit_code")) is not int or record["exit_code"] != 0
+                or type(duration) not in (int, float) or not 0 <= duration < float("inf")
+                or not all(isinstance(record.get(key), str) and record[key]
+                           for key in ("stdout_log", "stderr_log"))):
+            raise gd.GateError("stale_evidence", "发布报告的子进程明细无效：" + " ".join(step),
+                               "重新运行完整 release 门禁")
+        if require_logs:
+            gd.require_file(record["stdout_log"])
+            gd.require_file(record["stderr_log"])
+
+
+def resume_prefix(prior, source, steps, root):
+    expected = [list(step) for step in steps[:-1]]
+    if not (prior.get("schema_version") == 2 and prior.get("level") == "release"
+            and prior.get("status") == "failed" and prior.get("source_provenance") == source
+            and prior.get("failed_step") == list(RELEASE_STEPS[0])
+            and prior.get("completed") == expected):
+        raise gd.GateError("stale_evidence", "没有同一标签下完整通过且仅打包失败的记录",
+                           "重新运行 python tools/check.py --level release")
+    verify_subprocess_steps(prior, expected, require_logs=True)
+    verify_prefix(root, prior)
+    return expected
 
 
 def run_checks(level, start_from=None):
+    if sys.flags.optimize:
+        raise gd.GateError("argument_error", "门禁必须启用 Python 断言",
+                           "去掉 -O 和 PYTHONOPTIMIZE 后重跑")
+    with gd.workspace_lock(ROOT / "build"):
+        return _run_checks(level, start_from)
+
+
+def _run_checks(level, start_from):
     steps = steps_for(level)
-    # 正式发布从首步绑定干净标签；开发host/native仍允许未提交的工作区。
-    source = capture(ROOT) if level == "release" else None
-    verified_prefix = []
-    previous_evidence = None
-    if start_from:
-        # 继续执行由操作者明确指定；前序产物的哈希仍由后续验收脚本校验。
-        matches = [i for i, step in enumerate(steps) if step[0] == start_from]
-        if not matches:
-            raise ValueError("该层级没有此检查步骤：" + start_from)
-        prior_path = ROOT / "build" / ("check-" + level + ".json")
-        if prior_path.exists():
-            prior = json.loads(prior_path.read_text(encoding="utf-8"))
-            prefix = [list(step) for step in steps[:matches[0]]]
-            if (prior.get("level") == level and prior.get("failed_step") == list(steps[matches[0]])
-                    and prior.get("completed") == prefix and level == "release"
-                    and start_from == "tools/release.py"):
-                assert prior.get("source_provenance") == source, "源码已变化，必须重新完整验收"
-                # 只续接失败的最后发布步骤；发布脚本仍逐项复核当前产物及测试源哈希。
-                verified_prefix = prefix
-                previous_evidence = prior
-        steps = steps[matches[0]:]
-    area = ROOT / "build"
-    area.mkdir(exist_ok=True)
+    if level == "release" and start_from not in (None, RELEASE_STEPS[0][0]):
+        raise gd.GateError("argument_error", "正式发布只允许续跑最后一步")
+    if start_from and not any(step[0] == start_from for step in steps):
+        raise gd.GateError("argument_error", "该层级没有此检查步骤：" + start_from)
     run_id = gd.new_run_id()
-    report_path = area / ("check-" + level + ".json")
-    report = {"level": level, "passed": False, "continued_from": start_from,
-              "completed": verified_prefix, "verified_prior_prefix": bool(verified_prefix)}
-    if source is not None:
-        report["source_provenance"] = source
-    if previous_evidence is not None:
-        (area / ("check-" + level + "-before-resume.json")).write_text(
-            json.dumps(previous_evidence, indent=2), encoding="utf-8")
-    # 开始就写未通过，防止失败后残留的旧 PASS 报告被误用。
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    area = ROOT / "build/gate-runs" / run_id
+    area.mkdir(parents=True)
+    latest = ROOT / "build" / ("check-" + level + ".json")
+    resume = start_from and level == "release"
+    report = {"schema_version": 2, "run_id": run_id, "level": level, "status": "running",
+              "started_at": gd.now(), "passed": False, "continued_from": start_from,
+              "completed": [], "verified_prior_prefix": False, "steps": [], "evidence": {}}
+
+    def save(update_latest=True):
+        gd.write_report(area / "report.json", report)
+        if update_latest:
+            gd.write_report(latest, report)
+
+    print("门禁记录 " + str(area), flush=True)
+    current = ("preflight",)
+    source = None
+    # 已有候选或无效续跑只记录本次尝试，不覆盖可用的前序记录。
+    replace_latest = False
+    save(False)
     try:
+        prior = gd.read_json(latest) if resume else None
         preflight(level)
-    except (RuntimeError, FileNotFoundError) as error:
-        report["failed_step"] = ["preflight"]
-        report["error"] = str(error)
-        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-        raise
-    for step in steps:
-        if source is not None:
-            assert_current(source, ROOT)
-        print("\nRUN " + " ".join(step), flush=True)
-        name = step[0].replace("/", "_")
-        try:
-            outcome = gd.run([sys.executable, *step], cwd=ROOT, run_id=run_id,
-                             log_dir=area / "gate-logs", name=name, check=False)
-        except gd.GateError as error:
-            report["failed_step"] = list(step)
-            report["error_kind"] = error.kind
-            report["error"] = str(error)
-            report["hint"] = error.hint
-            report["detail"] = error.detail
-            report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-            raise
-        report.setdefault("steps", []).append(outcome.as_dict())
-        if outcome.exit_code:
-            report["failed_step"] = list(step)
-            report["exit_code"] = outcome.exit_code
-            report["error_kind"] = "subprocess_exit"
-            report["hint"] = "见 steps 中该步的 log_path 与 stdout_tail/stderr_tail"
-            report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-            raise SystemExit(outcome.exit_code)
-        report["completed"].append(list(step))
-        if source is not None:
-            assert_current(source, ROOT)
-        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    report["passed"] = True
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        if level == "release":
+            try:
+                source = capture(ROOT)
+            except RuntimeError as error:
+                raise gd.GateError("source_changed", str(error), "确认工作区干净且 HEAD 对应候选标签") from error
+            report["source_provenance"] = source
+            destination = release_destination(ROOT, source)
+            if destination.exists():
+                raise gd.GateError("duplicate_invocation", "此标签与提交已有冻结候选：" + str(destination),
+                                   "运行 python tools/publish_release.py 核对已有候选")
+            if prior is not None:
+                report["completed"] = resume_prefix(prior, source, steps, ROOT)
+                report["verified_prior_prefix"] = True
+                report["resumed_run_id"] = prior["run_id"]
+                # 打包在当前进程执行。子进程明细及其原始路径来自前序验收。
+                report["steps"] = prior["steps"].copy()
+                report["evidence"] = prior["evidence"].copy()
+                report["evidence_paths"] = prior["evidence_paths"].copy()
+                report["installed_editor_sha256"] = prior["installed_editor_sha256"]
+        if start_from:
+            index = next(i for i, step in enumerate(steps) if step[0] == start_from)
+            steps = steps[index:]
+        replace_latest = True
+        save()
+        for number, current in enumerate(steps, 1):
+            if source is not None:
+                require_source(source)
+                before_step(ROOT, area, current, report["evidence"])
+                if current == ("suite/tools/finish_tests.py",):
+                    report["installed_editor_sha256"] = live_acceptance(ROOT, report["evidence"])
+            directory = area / "steps" / (f"{number:02d}-" + Path(current[0]).stem)
+            report["active_step"] = list(current)
+            report["active_step_directory"] = str(directory)
+            save()
+            print("\nRUN " + " ".join(current), flush=True)
+            if current in RELEASE_STEPS:
+                from release import package
+                directory.mkdir(parents=True)
+                package(report, directory, destination)
+            else:
+                outcome = gd.run([sys.executable, *current], cwd=ROOT, directory=directory)
+                report["steps"].append(outcome)
+                if outcome["exit_code"]:
+                    for key in ("stdout", "stderr"):
+                        print(outcome[key]["tail"], file=sys.stderr)
+                    raise gd.GateError("subprocess_exit", "步骤失败：" + current[0],
+                                       "查看该步骤的 stdout.log 和 stderr.log",
+                                       {"exit_code": outcome["exit_code"], "directory": str(directory)})
+            if source is not None:
+                require_source(source)
+                record_outputs(ROOT, directory, current, report)
+            report["completed"].append(list(current))
+            save()
+    except (Exception, KeyboardInterrupt) as error:
+        if not isinstance(error, gd.GateError):
+            kind = "preflight_environment" if current == ("preflight",) else "internal_error"
+            error = gd.GateError(kind, str(error) or type(error).__name__, detail={"type": type(error).__name__})
+        report.update(status="failed", failed_step=list(current), error=error.report(),
+                      finished_at=gd.now())
+        save(replace_latest)
+        raise error
+    report.pop("active_step", None)
+    report.pop("active_step_directory", None)
+    report.update(passed=True, status="passed", finished_at=gd.now())
+    save()
     print("PASS " + level + " checks", flush=True)
 
 
+def prune_successful(build, keep):
+    """保留最近 N 次开发验收，其余只清理明确标为通过的门禁记录目录。"""
+    runs = (build / "gate-runs").resolve()
+    if not runs.is_dir():
+        return []
+    eligible = []
+    for path in runs.iterdir():
+        if (not re.fullmatch(r"\d{8}-\d{6}-[0-9a-f]{12}", path.name)
+                or not path.is_dir() or path.resolve() != path):
+            continue
+        try:
+            report = gd.read_json(path / "report.json")
+        except (gd.GateError, OSError):
+            continue
+        if (report.get("schema_version") == 2 and report.get("run_id") == path.name
+                and report.get("status") == "passed" and report.get("passed") is True
+                and report.get("level") in ("host", "native")):
+            stamp = report.get("finished_at")
+            if isinstance(stamp, str):
+                eligible.append((stamp, path))
+    removed = []
+    for _, path in sorted(eligible, reverse=True)[keep:]:
+        if path.resolve() != path or not path.is_relative_to(runs):
+            raise gd.GateError("directory_race", "清理目录已被移动：" + str(path))
+        shutil.rmtree(path)
+        removed.append(path.name)
+    return removed
+
+
 def main(argv=None):
-    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--level", choices=("host", "native", "release"), default="host")
     parser.add_argument("--from", dest="start_from", help="从指定脚本继续；要求此前产物仍在且一致")
+    parser.add_argument("--prune-successful", type=int, metavar="N", help="只保留最近 N 次成功的 host/native 门禁记录")
     parser.add_argument("--list", action="store_true", help="只列出检查顺序，不运行或检查环境")
     args = parser.parse_args(argv)
+    if args.prune_successful is not None:
+        if args.prune_successful < 0 or args.list or args.start_from is not None:
+            parser.error("--prune-successful 需要非负整数，且不能与 --list/--from 同用")
+        with gd.workspace_lock(ROOT / "build"):
+            for run_id in prune_successful(ROOT / "build", args.prune_successful):
+                print("已清理 " + run_id)
+        return
     if args.list:
         for step in steps_for(args.level):
             print(" ".join(step))
         return
     try:
         run_checks(args.level, args.start_from)
-    except (RuntimeError, FileNotFoundError, ValueError) as error:
-        parser.exit(2, str(error) + "\n")
+    except gd.GateError as error:
+        code = error.detail.get("exit_code") or 2
+        parser.exit(code, f"[{error.kind}] {error}\n{error.hint}\n")
 
 
 if __name__ == "__main__":

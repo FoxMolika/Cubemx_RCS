@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 import subprocess
 from version import sync_csharp_version
+from gate_diagnostics import file_sha, write_report, GateError
 
 ROOT = Path(__file__).resolve().parents[1]
 XML_REFERENCES = ("System.Xml.Linq.dll", "System.Xml.dll", "System.Core.dll")
@@ -81,9 +82,35 @@ def csharp_arguments(output, sources, *, target="exe", references=(),
     return args
 
 
-def compile_csharp(output, sources, **options):
+def compiler_inputs(args, resources=None):
+    """从实际传给 csc 的参数取得文件输入，资源名也是输入的一部分。"""
+    paths = [args[0]]
+    paths.extend(arg for arg in args[1:]
+                 if isinstance(arg, os.PathLike) or not str(arg).startswith("/"))
+    paths.extend(str(arg).split(":", 1)[1] for arg in args if str(arg).startswith("/win32manifest:"))
+    # Framework 引用不变更产品的编译方式，但纳入证据。
+    paths.extend(Path(args[0]).parent / str(arg).split(":", 1)[1]
+                 for arg in args if str(arg).startswith("/reference:"))
+    paths.extend((resources or {}).values())
+    files = {str(Path(path).resolve()): file_sha(path) for path in paths}
+    return {"argv": [str(arg) for arg in args], "inputs": files,
+            "resources": {name: str(Path(path).resolve()) for name, path in (resources or {}).items()}}
+
+
+def compile_csharp(output, sources, *, record=None, **options):
     Path(output).parent.mkdir(parents=True, exist_ok=True)
-    return run(csharp_arguments(output, sources, **options))
+    args = csharp_arguments(output, sources, **options)
+    if record is None:
+        return run(args)
+    inputs = compiler_inputs(args, options.get("resources"))
+    log = run(args)
+    if any(file_sha(path) != digest for path, digest in inputs["inputs"].items()):
+        raise GateError("source_changed", "编译时输入文件发生变化：" + str(output))
+    write_report(ROOT / "build/build-inputs" / (record + ".json"), {
+        "schema_version": 1, **inputs, "output": str(Path(output).resolve()),
+        "output_sha256": file_sha(output),
+    })
+    return log
 
 
 def common_editor_payload():

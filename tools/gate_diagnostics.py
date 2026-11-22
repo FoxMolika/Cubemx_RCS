@@ -1,46 +1,29 @@
-"""门禁诊断：统一子进程调用、编码兜底、结构化失败分类与证据留存。
-
-设计约束：
-1. 只做观测与分类，不改变任何通过条件——判定逻辑仍在 check.py/release.py。
-2. 子进程一律按 argv 数组传入，日志里记录 argv 的 JSON（不用 shell 引号，
-   因为 Windows 引号规则与 shlex 不一致，字符串表示会有歧义）。
-3. 输出先收 bytes，再按 utf-8 -> gbk -> latin-1 解码；记录实际采用的编码。
-   这解决了本机 GBK 的 stderr 与 UTF-8 源码输出混排时的乱码问题。
-4. 大输出不整体进内存：完整内容流式落盘，内存只保留尾部若干行。
-"""
+"""门禁的子进程日志、结构化错误与工作区互斥。"""
 from __future__ import annotations
 
+from contextlib import contextmanager
+from datetime import datetime, timezone
+import errno
 import hashlib
 import json
 import os
+from pathlib import Path
+import re
 import subprocess
-import sys
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from pathlib import Path
 
-# 失败分类：必须在抛出点标注，禁止靠匹配 stderr 文本推断。
 KINDS = (
-    "preflight_environment",  # 环境缺件（工具、基线目录、CubeMX/Keil）
-    "argument_error",         # 参数构造错误（含路径被空格拆分）
-    "subprocess_exit",        # 子进程非零退出
-    "missing_evidence",       # 证据文件缺失或指向已删除目录
-    "source_changed",         # 源码/产物在门禁期间被改动
-    "artifact_missing",       # 期望产物不存在
-    "hash_mismatch",          # 摘要不一致
-    "directory_race",         # 目录被并发创建/占用
-    "duplicate_invocation",   # 同一 run 被重复执行
+    "preflight_environment", "argument_error", "subprocess_exit",
+    "missing_evidence", "source_changed", "artifact_missing", "hash_mismatch",
+    "directory_race", "duplicate_invocation", "stale_evidence", "internal_error",
 )
-
+TAIL_BYTES = 16384
 DEFAULT_TAIL_LINES = 200
 
 
 class GateError(RuntimeError):
-    """带分类的门禁失败。kind 必须是 KINDS 之一。"""
-
-    def __init__(self, kind: str, message: str, hint: str = "", detail=None):
+    def __init__(self, kind, message, hint="", detail=None):
         if kind not in KINDS:
             raise ValueError("未知失败分类：" + str(kind))
         super().__init__(message)
@@ -48,218 +31,138 @@ class GateError(RuntimeError):
         self.hint = hint
         self.detail = detail or {}
 
-    def report(self) -> dict:
+    def report(self):
         return {"kind": self.kind, "message": str(self), "hint": self.hint, "detail": self.detail}
 
 
-def decode_output(raw: bytes) -> tuple[str, str]:
-    """按常见编码依次尝试；返回 (文本, 实际编码)。"""
-    for encoding in ("utf-8", "gbk", "latin-1"):
-        try:
-            return raw.decode(encoding), encoding
-        except UnicodeDecodeError:
-            continue
-    return raw.decode("latin-1", errors="replace"), "latin-1"
+def now():
+    return datetime.now(timezone.utc).isoformat()
 
 
-def new_run_id() -> str:
-    return datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
+def new_run_id():
+    return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:12]
 
 
-def tail(text: str, lines: int = DEFAULT_TAIL_LINES) -> str:
-    if lines <= 0:
-        return ""
-    parts = text.splitlines()
-    return "\n".join(parts[-lines:])
+def file_sha(path):
+    with Path(path).open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def evidence(path) -> dict:
-    """关键文件的快照摘要：存在性、大小、时间、SHA256。"""
-    p = Path(path)
-    if not p.exists():
-        return {"path": str(p), "exists": False}
-    st = p.stat()
-    stamp = datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat()
-    if p.is_dir():
-        # 目录只做存在性快照；摘要留给目录内的具体文件。
-        return {"path": str(p), "exists": True, "is_dir": True, "mtime": stamp}
-    return {
-        "path": str(p),
-        "exists": True,
-        "is_dir": False,
-        "size": st.st_size,
-        "mtime": stamp,
-        "sha256": hashlib.sha256(p.read_bytes()).hexdigest(),
-    }
-
-
-@dataclass
-class StepResult:
-    name: str
-    argv: list
-    cwd: str
-    exit_code: int
-    duration_s: float
-    stdout_encoding: str
-    stderr_encoding: str
-    log_path: str
-    stdout_tail: str = ""
-    stderr_tail: str = ""
-    extra: dict = field(default_factory=dict)
-
-    def as_dict(self) -> dict:
-        d = asdict(self)
-        d["argv"] = list(self.argv)
-        return d
-
-
-def _write_log(log_dir: Path, run_id: str, name: str, argv, result) -> Path:
-    log_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%H%M%S")
-    path = log_dir / f"{run_id}.{name}.{stamp}.log"
-    with path.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write("argv.json=" + json.dumps([str(a) for a in argv], ensure_ascii=False) + "\n")
-        handle.write("cwd=" + str(result.get("cwd", "")) + "\n")
-        handle.write("exit=" + str(result.get("exit_code", "")) + "\n")
-        handle.write("stdout.encoding=" + result.get("stdout_encoding", "") + "\n")
-        handle.write("stderr.encoding=" + result.get("stderr_encoding", "") + "\n")
-        handle.write("--- stdout ---\n")
-        handle.write(result.get("stdout", ""))
-        handle.write("\n--- stderr ---\n")
-        handle.write(result.get("stderr", ""))
+def require_file(path, kind="missing_evidence"):
+    path = Path(path)
+    if not path.is_file():
+        raise GateError(kind, "缺少文件：" + str(path), "重新执行生成该文件的步骤", {"path": str(path)})
     return path
 
 
-def run(argv, cwd=None, run_id=None, log_dir=None, name=None, timeout=3600, check=True) -> StepResult:
-    """按 argv 数组执行子进程；完整输出落盘，内存只留尾部。
-
-    check=True 且退出码非零时抛 GateError('subprocess_exit')，detail 带日志路径与尾部。
-    """
-    if isinstance(argv, (str, bytes)):
-        raise GateError(
-            "argument_error",
-            "argv 必须是列表，不能是字符串（避免路径被空格拆分）",
-            hint="把命令拆成列表：['prog','--flag', str(path)]",
-        )
-    argv = [str(a) for a in argv]
-    run_id = run_id or new_run_id()
-    log_dir = Path(log_dir) if log_dir else Path.cwd() / "build" / "gate-logs"
-    name = name or Path(argv[0]).stem
-    started = time.time()
+def read_json(path):
     try:
-        completed = subprocess.run(argv, cwd=str(cwd) if cwd else None, capture_output=True, timeout=timeout)
-    except FileNotFoundError as error:
-        raise GateError(
-            "preflight_environment",
-            f"找不到可执行文件：{argv[0]}",
-            hint="确认该工具已安装，或显式传入绝对路径",
-            detail={"argv": argv},
-        ) from error
-    except subprocess.TimeoutExpired as error:
-        raise GateError(
-            "subprocess_exit",
-            f"步骤超时（>{timeout}s）：{name}",
-            hint="检查是否有交互等待或死锁",
-            detail={"argv": argv},
-        ) from error
-    duration = time.time() - started
-    out_text, out_enc = decode_output(completed.stdout or b"")
-    err_text, err_enc = decode_output(completed.stderr or b"")
-    log_path = _write_log(
-        log_dir,
-        run_id,
-        name,
-        argv,
-        {
-            "cwd": cwd or os.getcwd(),
-            "exit_code": completed.returncode,
-            "stdout": out_text,
-            "stderr": err_text,
-            "stdout_encoding": out_enc,
-            "stderr_encoding": err_enc,
-        },
-    )
-    result = StepResult(
-        name=name,
-        argv=argv,
-        cwd=str(cwd) if cwd else os.getcwd(),
-        exit_code=completed.returncode,
-        duration_s=round(duration, 3),
-        stdout_encoding=out_enc,
-        stderr_encoding=err_enc,
-        log_path=str(log_path),
-        stdout_tail=tail(out_text),
-        stderr_tail=tail(err_text),
-    )
-    if check and completed.returncode != 0:
-        raise GateError(
-            "subprocess_exit",
-            f"子进程失败（exit={completed.returncode}）：{name}",
-            hint="见 detail.argv 与日志；先确认是参数问题还是真实失败",
-            detail={
-                "argv": argv,
-                "cwd": result.cwd,
-                "log": str(log_path),
-                "stdout_tail": result.stdout_tail,
-                "stderr_tail": result.stderr_tail,
-            },
-        )
-    return result
+        value = json.loads(require_file(path).read_text(encoding="utf-8"))
+    except (UnicodeError, ValueError) as error:
+        raise GateError("stale_evidence", "证据 JSON 无效：" + str(path)) from error
+    if not isinstance(value, dict):
+        raise GateError("stale_evidence", "证据必须为 JSON 对象：" + str(path))
+    return value
 
 
-def preflight(required: dict) -> dict:
-    """第 0 步环境预检。required 形如 {'0.3.7 基线': path, 'CubeMX': path}。
-
-    缺失即抛 preflight_environment，并给出可操作的提示，而不是等到深处才失败。
-    """
-    missing = {name: str(path) for name, path in required.items() if not Path(path).exists()}
-    if missing:
-        raise GateError(
-            "preflight_environment",
-            "环境预检失败：" + "；".join(f"{k} 不存在（{v}）" for k, v in missing.items()),
-            hint="安装缺失工具，或设置对应环境变量指向实际位置",
-            detail={"missing": missing, "required": {k: str(v) for k, v in required.items()}},
-        )
-    return {name: evidence(path) for name, path in required.items()}
-
-
-def _run_marker(marker) -> Path:
-    return Path(marker)
-
-
-def claim_once(marker) -> None:
-    """同一门禁/发布只允许执行一次；重复执行给 duplicate_invocation 而不是误导性断言。"""
-    path = _run_marker(marker)
-    if path.exists():
-        raise GateError(
-            "duplicate_invocation",
-            f"该步骤已完成过：{path}",
-            hint="如需重跑，先确认产物状态并显式删除标记文件",
-            detail={"marker": str(path), "content": path.read_text(encoding="utf-8", errors="replace")},
-        )
+def write_report(path, payload):
+    """同目录暂存后替换。读者只能看到上次或本次完整记录。"""
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(datetime.now(timezone.utc).isoformat() + "\n", encoding="utf-8")
+    temp = path.with_name("." + path.name + "." + uuid.uuid4().hex + ".tmp")
+    try:
+        temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        for attempt in range(5):
+            try:
+                os.replace(temp, path)
+                break
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.025 * (attempt + 1))
+    finally:
+        temp.unlink(missing_ok=True)
 
 
-def require_evidence(path, hint="") -> dict:
-    """证据文件必须存在且指向有效目录；stale 指向已删除目录时给 missing_evidence。"""
-    info = evidence(path)
-    if not info.get("exists"):
-        raise GateError(
-            "missing_evidence",
-            f"证据文件缺失：{path}",
-            hint=hint or "先跑对应验收步骤，再读取该文件",
-            detail=info,
-        )
-    return info
+@contextmanager
+def workspace_lock(build):
+    """操作系统持有锁。退出或崩溃均释放句柄，锁文件本身长期保留。"""
+    path = Path(build) / "gate.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+b") as stream:
+        stream.seek(0)
+        try:
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as error:
+            if error.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                raise
+            raise GateError("duplicate_invocation", "工作区已有门禁或发布正在执行",
+                            "等待该进程结束后重试", {"lock": str(path)}) from error
+        yield
 
 
-def write_report(path, payload: dict) -> str:
-    """写结构化报告（含 schema 版本，便于以后演进不互相污染）。"""
-    payload = dict(payload)
-    payload.setdefault("schema_version", 1)
-    payload.setdefault("finished_at", datetime.now(timezone.utc).isoformat())
-    target = Path(path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return str(target)
+def read_tail(path):
+    with path.open("rb") as stream:
+        size = stream.seek(0, os.SEEK_END)
+        stream.seek(max(0, size - TAIL_BYTES))
+        data = stream.read(TAIL_BYTES)
+    clipped = size > TAIL_BYTES
+    for encoding in ("utf-8", "gbk", "latin-1"):
+        if encoding == "utf-8" and clipped:
+            data_for_decode = data.lstrip(bytes(range(0x80, 0xC0)))
+        else:
+            data_for_decode = data
+        try:
+            decoded = data_for_decode.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+        lines = decoded.splitlines()
+        tail = "\n".join(lines[-DEFAULT_TAIL_LINES:]).encode("utf-8")
+        return {"tail": tail[-TAIL_BYTES:].decode("utf-8", errors="ignore"), "encoding": encoding,
+                "bytes": size, "truncated": clipped or len(lines) > DEFAULT_TAIL_LINES or len(tail) > TAIL_BYTES}
+
+
+def run(argv, *, cwd, directory, timeout=3600):
+    """完整字节流直接写文件。报告中的文本只用于快速查看。"""
+    if not isinstance(argv, (tuple, list)) or not argv or not all(isinstance(a, (str, os.PathLike)) for a in argv):
+        raise GateError("argument_error", "argv 必须是非空的字符串或路径列表",
+                        "逐项传参，保留参数内部的空格")
+    argv = [str(a) for a in argv]
+    directory = Path(directory)
+    directory.mkdir(parents=True)
+    out = directory / "stdout.log"
+    err = directory / "stderr.log"
+    result = {"argv": argv, "cwd": str(cwd), "started_at": now(),
+              "stdout_log": str(out), "stderr_log": str(err), "exit_code": None,
+              "status": "running"}
+    record = directory / "step.json"
+    write_report(record, result)
+    started = time.monotonic()
+    failure = None
+    try:
+        with out.open("xb") as stdout, err.open("xb") as stderr:
+            child_env = dict(os.environ, PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8")
+            child_env.pop("PYTHONOPTIMIZE", None)
+            completed = subprocess.run(argv, cwd=cwd, stdout=stdout, stderr=stderr, timeout=timeout, env=child_env)
+            result["exit_code"] = completed.returncode
+        result["status"] = "passed" if completed.returncode == 0 else "failed"
+    except subprocess.TimeoutExpired:
+        result["status"] = "timed_out"
+        failure = ("subprocess_exit", f"步骤超过 {timeout} 秒", "查看超时前已写出的日志")
+    except OSError as error:
+        result["status"] = "failed"
+        failure = ("preflight_environment", f"无法运行 {argv[0]}（cwd={cwd}）：{error}", "检查工具、路径和权限")
+    finally:
+        result.update(finished_at=now(), duration_s=round(time.monotonic() - started, 3))
+        for key, path in (("stdout", out), ("stderr", err)):
+            if path.is_file():
+                result[key] = read_tail(path)
+        write_report(record, result)
+    if failure:
+        raise GateError(*failure, detail=result)
+    return result

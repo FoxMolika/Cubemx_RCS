@@ -8,7 +8,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from audit_release import local_preflight
+from audit_release import candidate_directory, local_preflight
+from gate_diagnostics import workspace_lock
 from provenance import assert_current
 from version import VERSION, release_asset_names
 
@@ -88,11 +89,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--publish", action="store_true", help="明确要求创建并公开当前版本 Release")
     args = parser.parse_args()
+    with workspace_lock(ROOT / "build"):
+        publish(args.publish)
+
+
+def publish(to_remote):
     record, checksums = local_preflight()
-    if not args.publish:
+    if not to_remote:
         print("PASS local release preflight; --publish additionally verifies remote tags and assets")
         return
-    dist = ROOT / "dist"
+    dist = candidate_directory(ROOT, record)
 
     # 复用用户已有 Git 凭据，只存内存；不写令牌、不打印凭据或请求头。
     result = subprocess.run(["git", "credential", "fill"], input="protocol=https\nhost=github.com\n\n",

@@ -52,7 +52,7 @@ def main():
         for name in ("ProjectSetup.cs", "KeilHeaders.cs", "ProjectBinding.cs")
     ]
     print(compile_csharp(
-        exe, sources, target="winexe", defines=("RCS_MAP_EDITOR",),
+        exe, sources, record="editor", target="winexe", defines=("RCS_MAP_EDITOR",),
         references=(
             "System.Xml.Linq.dll", "System.Xml.dll", "System.Windows.Forms.dll",
             "System.Drawing.dll", "System.Core.dll", "System.IO.Compression.dll",
@@ -72,7 +72,7 @@ def main():
     })
     setup = dist / EDITOR_SETUP_NAME
     print(compile_csharp(
-        setup, [ROOT / "installer.cs"], target="winexe",
+        setup, [ROOT / "installer.cs"], record="editor-setup", target="winexe",
         references=(
             "System.Windows.Forms.dll", "System.Drawing.dll", "System.Core.dll",
             "System.IO.Compression.dll", "System.IO.Compression.FileSystem.dll",

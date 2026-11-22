@@ -1,7 +1,6 @@
 """两个前端共用同一个生成后助手，避免工程关联工具内容不一致。"""
-import hashlib
-from build_support import ROOT, XML_REFERENCES, csharp_arguments, run
-from version import sync_csharp_version
+from build_support import ROOT, XML_REFERENCES, csharp_arguments, compiler_inputs, run
+from gate_diagnostics import GateError, file_sha, read_json, write_report
 
 
 def post_helper():
@@ -11,16 +10,19 @@ def post_helper():
         "KeilHeaders.cs", "ProjectBinding.cs", "HardwareBinding.cs",
     )]
     exe = area / "foxmolika_PostGenerate.exe"
-    stamp = area / "post-source.sha256"
+    stamp = area / "build-inputs/post-helper.json"
     args = csharp_arguments(
         exe, sources, references=XML_REFERENCES, defines=("RCS_POSTGEN",),
     )
-    # 编译选项和源码一起参与缓存键；引用或宏变化时必须重新编译。
-    digest = hashlib.sha256(
-        b"".join(path.read_bytes() for path in sources + [sync_csharp_version()])
-        + "\n".join(map(str, args)).encode("utf-8")
-    ).hexdigest()
-    if not exe.is_file() or not stamp.is_file() or stamp.read_text() != digest:
-        run(args)
-        stamp.write_text(digest, encoding="ascii")
+    inputs = compiler_inputs(args)
+    try:
+        prior = read_json(stamp)
+    except GateError:
+        prior = {}
+    if exe.is_file() and prior == {**inputs, "output_sha256": file_sha(exe)}:
+        return exe
+    run(args)
+    if compiler_inputs(args) != inputs:
+        raise GateError("source_changed", "生成后助手编译时输入发生变化")
+    write_report(stamp, {**inputs, "output_sha256": file_sha(exe)})
     return exe
