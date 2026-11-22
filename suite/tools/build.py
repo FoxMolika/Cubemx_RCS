@@ -122,7 +122,7 @@ def main():
     payload["manifest.xml"] = write_manifest(build, payload, pack, packdata)
     setup = dist / SETUP_NAME
     log = compile_csharp(
-        setup, sorted((ROOT / "src").glob("*.cs")), target="winexe",
+        setup, sorted((ROOT / "src").glob("*.cs")), record="suite", target="winexe",
         manifest=setup_manifest(build),
         references=("System.Windows.Forms.dll", "System.Drawing.dll", "System.Xml.Linq.dll", "System.Core.dll"),
         resources={"payload/" + name: path for name, path in payload.items()},

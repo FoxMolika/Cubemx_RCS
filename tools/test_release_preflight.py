@@ -41,9 +41,10 @@ def main():
     git("tag", "v" + VERSION)
     names = list(release_asset_names())
     record = capture(root=area, version=VERSION, assets=names)
-    dist = area / "dist"
-    dist.mkdir()
-    (area / "build").mkdir()
+    candidate = audit_release.candidate_directory(area, record)
+    stage = area / "build/stage"
+    stage.mkdir(parents=True)
+    dist = stage
     for name in names:
         (dist / name).write_bytes(("fixture asset: " + name).encode("ascii"))
     source_name = "foxmolika_CubeMX_Source_" + VERSION + ".zip"
@@ -53,20 +54,44 @@ def main():
     report = {"passed": True, "version": VERSION, "source_provenance": record,
               "installer_sha256": audit_release.sha(dist / SETUP_NAME),
               "pack_sha256": audit_release.sha(dist / PACK_NAME),
-              "source_zip_sha256": audit_release.sha(dist / source_name)}
-    gate = {"passed": True, "completed": [list(step) for step in steps_for("release")],
+              "source_zip_sha256": audit_release.sha(dist / source_name), "gate_run_id": "offline"}
+    steps = [list(step) for step in steps_for("release")]
+    records = [{"argv": ["fixture-python", *step], "status": "passed", "exit_code": 0,
+                "duration_s": 0.1, "stdout_log": f"fixture/{index}/stdout.log",
+                "stderr_log": f"fixture/{index}/stderr.log"}
+               for index, step in enumerate(steps[:-1])]
+    gate = {"schema_version": 2, "status": "passed", "run_id": "offline", "passed": True,
+            "completed": steps, "steps": records,
             "continued_from": None, "source_provenance": record}
     write_json(dist / validation_name, report)
     write_json(dist / declaration_name, record)
-    write_json(area / "build/check-release.json", gate)
 
     def checksums():
         (dist / "SHA256SUMS.txt").write_text("".join(
             audit_release.sha(dist / name) + "  " + name + "\n" for name in names), encoding="utf-8")
 
     checksums()
+    from release import freeze_candidate
+    from gate_diagnostics import GateError
+    def fail_commit():
+        raise RuntimeError("injected failure")
+
+    try:
+        freeze_candidate(stage, candidate, gate, fail_commit)
+    except RuntimeError:
+        assert stage.is_dir() and not candidate.exists()
+    else:
+        raise AssertionError("failed freeze was committed")
+    freeze_candidate(stage, candidate, gate, lambda: None)
+    try:
+        freeze_candidate(candidate, candidate, gate, lambda: None)
+    except GateError as error:
+        assert error.kind == "duplicate_invocation"
+    else:
+        raise AssertionError("existing candidate was overwritten")
+    dist = candidate
     snapshots = {path: path.read_bytes() for path in dist.iterdir()}
-    snapshots[area / "build/check-release.json"] = (area / "build/check-release.json").read_bytes()
+    snapshots[dist / "gate.json"] = (dist / "gate.json").read_bytes()
     checks = []
 
     def reject(label, action):
@@ -87,14 +112,14 @@ def main():
     def untagged():
         weakened = dict(record, tag_required=False)
         write_json(dist / validation_name, dict(report, source_provenance=weakened))
-        write_json(area / "build/check-release.json", dict(gate, source_provenance=weakened))
+        write_json(dist / "gate.json", dict(gate, source_provenance=weakened))
         write_json(dist / declaration_name, weakened)
         checksums()
     reject("untagged development record refused", untagged)
 
     def inconsistent():
         changed = dict(record, commit="0" * 40)
-        write_json(area / "build/check-release.json", dict(gate, source_provenance=changed))
+        write_json(dist / "gate.json", dict(gate, source_provenance=changed))
     reject("different gate and validation provenance refused", inconsistent)
 
     def tampered_zip():
@@ -113,8 +138,15 @@ def main():
     def missing_step():
         changed = deepcopy(gate)
         changed["completed"] = changed["completed"][:-1]
-        write_json(area / "build/check-release.json", changed)
+        write_json(dist / "gate.json", changed)
     reject("old PASS with incomplete release steps refused", missing_step)
+    reject("mixed run IDs refused", lambda: write_json(dist / "gate.json", dict(gate, run_id="older")))
+    reject("completed checklist without subprocess records refused",
+           lambda: write_json(dist / "gate.json", dict(gate, steps=[])))
+    reordered = [records[1], records[0], *records[2:]]
+    reject("out of order subprocess records refused",
+           lambda: write_json(dist / "gate.json", dict(gate, steps=reordered)))
+
 
     original_script = publishing_script.read_bytes()
     reject("dirty publication script after build refused",
