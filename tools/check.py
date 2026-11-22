@@ -106,7 +106,7 @@ def preflight(level):
             if not directory.is_dir() or not snapshot.is_file():
                 absent.append(str(snapshot) + " / " + str(directory))
         if absent:
-            raise RuntimeError(
+            raise gd.GateError("preflight_environment",
                 "历史发布核验需要维护者事前保存的原版目录及 SHA256 快照。\n"
                 "全新克隆请先运行 --level host 或 --level native；release 不会跳过证据检查。\n"
                 + "\n".join(absent)

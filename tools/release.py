@@ -16,6 +16,11 @@ def read(name):
 
 def _release_body():
     sys.stdout.reconfigure(encoding='utf-8')
+    # 变更说明是 Release 正文与 dist 附件的来源；缺失时在首步报分类，而不是打到中途 FileNotFoundError。
+    changelog = R / ('变更说明_' + VERSION + '.md')
+    if not changelog.is_file():
+        raise GateError('missing_evidence', '缺少变更说明：' + changelog.name,
+                        hint='先创建该文件再打包；它是 Release 正文与 dist 附件的来源')
     evidence = read('build/check-release.json')
     provenance = evidence['source_provenance']
     if provenance['tag_required'] is not True:
@@ -136,7 +141,13 @@ def _release_body():
     # 只需改 _prev_tag 一处，不会因目录缺失导致 FileNotFoundError。
     import io as _io, tarfile as _tarfile
     _prev_tag = 'v0.8.7'
-    old = R.parent / 'foxmolika_CubeMX_0.3.7'
+    # 0.3.7 快照用于“不应变化”文件的摘要比对。允许通过环境变量指向别处，
+    # 缺失时按 preflight_environment 报错，避免深处 FileNotFoundError。
+    old = Path(os.environ.get('RCS_BASELINE_0037', str(R.parent / 'foxmolika_CubeMX_0.3.7')))
+    if not old.is_dir():
+        raise GateError('preflight_environment', '缺少 0.3.7 基线目录：' + str(old),
+                        hint='设置 RCS_BASELINE_0037 指向该快照，或从历史归档恢复',
+                        detail={'baseline': str(old)})
     prev = R / 'build/prev_release'
     if prev.exists():
         shutil.rmtree(prev)
